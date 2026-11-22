@@ -15,22 +15,22 @@ import (
 func TestDockerSOPExecInstallsMissingCLIOnce(t *testing.T) {
 	t.Setenv("AGENTFLOW_RUNTIME_CLI_DIR", "")
 	setupMarker := filepath.Join(t.TempDir(), "installed")
-	t.Setenv("LOOPFORGE_TEST_CLI_SETUP", setupMarker)
+	t.Setenv("ZHIYAN_TEST_CLI_SETUP", setupMarker)
 	probes := filepath.Join(t.TempDir(), "probes")
-	t.Setenv("LOOPFORGE_TEST_CLI_PROBES", probes)
+	t.Setenv("ZHIYAN_TEST_CLI_PROBES", probes)
 	useFakeCommands(t, map[string]string{"docker": `#!/bin/sh
 set -eu
 case "$*" in
-  *loopforge-cli-probe*)
-    printf 'probe\n' >> "$LOOPFORGE_TEST_CLI_PROBES"
-    test -s "$LOOPFORGE_TEST_CLI_SETUP" || exit 127 ;;
+  *zhiyan-cli-probe*)
+    printf 'probe\n' >> "$ZHIYAN_TEST_CLI_PROBES"
+    test -s "$ZHIYAN_TEST_CLI_SETUP" || exit 127 ;;
   *"id -u; id -g"*) printf '1000\n1000\n' ;;
-  *loopforge-cli-available*) test -s "$LOOPFORGE_TEST_CLI_SETUP" || exit 127 ;;
-  *loopforge-cli-setup*)
+  *zhiyan-cli-available*) test -s "$ZHIYAN_TEST_CLI_SETUP" || exit 127 ;;
+  *zhiyan-cli-setup*)
     for mode do :; done
     test "$mode" = install
-    printf 'install\n' >> "$LOOPFORGE_TEST_CLI_SETUP" ;;
-  *loopforge-cli-verify*) printf '/opt/loopforge/conversation-cli/.local/bin/agy\n' ;;
+    printf 'install\n' >> "$ZHIYAN_TEST_CLI_SETUP" ;;
+  *zhiyan-cli-verify*) printf '/opt/zhiyan/conversation-cli/.local/bin/agy\n' ;;
   *) for arg do last=$arg; done
      printf '%s\n' "$last" ;;
 esac
@@ -87,7 +87,7 @@ printf '[ "$(id -u)" != 0 ] || export PATH=/root/private/bin:$PATH\n' > /etc/pro
 printf '#!/bin/sh\nexec /bin/sh "$@"\n' > /opt/probe-interpreter/probe-interpreter
 cat > /etc/profile.d/probe-path.sh <<'PROFILE'
 export PATH=/opt/probe-interpreter:$PATH
-case "$PWD" in /tmp/loopforge-cli-version.*) echo 9.9.9 ;; esac
+case "$PWD" in /tmp/zhiyan-cli-version.*) echo 9.9.9 ;; esac
 PROFILE
 cat > /usr/local/bin/curl <<'CURL'
 #!/bin/sh
@@ -109,7 +109,7 @@ else
 fi
 AGY
 chmod 755 "$HOME/.local/bin/agy"
-echo install >> /opt/loopforge/conversation-cli/installs
+echo install >> /opt/zhiyan/conversation-cli/installs
 INSTALL
 CURL
 printf '#!/bin/sh\nexec /bin/sh "$@"\n' > /usr/local/bin/bash
@@ -131,10 +131,10 @@ chmod 755 /root/private/bin/agy /usr/local/bin/curl /usr/local/bin/bash /usr/loc
 		}
 	}
 	path, err := ensureConversationCLI(ctx, sandbox, AgentCLIAntigravity, "/workspace/home")
-	if err != nil || path != "/opt/loopforge/conversation-cli/.local/bin/agy" {
+	if err != nil || path != "/opt/zhiyan/conversation-cli/.local/bin/agy" {
 		t.Fatalf("reusing installed CLI for a conversation: %q: %v", path, err)
 	}
-	if got := docker("", "exec", container, "cat", "/opt/loopforge/conversation-cli/installs"); got != "install" {
+	if got := docker("", "exec", container, "cat", "/opt/zhiyan/conversation-cli/installs"); got != "install" {
 		t.Fatalf("expected CLI to be installed once, got %q", got)
 	}
 	sandbox.profile.Environment = map[string]string{"PROBE_FIXTURE_SECRET": "workspace-value"}
@@ -165,7 +165,7 @@ chmod 755 /root/private/bin/agy /usr/local/bin/curl /usr/local/bin/bash /usr/loc
 	}
 	docker("", "exec", container, "sh", "-c", `
 		for i in $(seq 1 80); do
-			set -- /tmp/loopforge-cli-version.*
+			set -- /tmp/zhiyan-cli-version.*
 			[ -e "$1" ] || exit 0
 			sleep 0.1
 		done
@@ -175,7 +175,7 @@ chmod 755 /root/private/bin/agy /usr/local/bin/curl /usr/local/bin/bash /usr/loc
 // A failed on-demand install must stop the sandbox exec instead of silently
 // running without the CLI on PATH.
 func TestDockerSandboxOnDemandCLIPathReturnsInstallErrors(t *testing.T) {
-	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "loopforge-platform:tested")
+	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "zhiyan-platform:tested")
 	t.Setenv("AGENTFLOW_RUNTIME_CLI_DIR", t.TempDir())
 	t.Setenv("NPM_TEST_LOG", filepath.Join(t.TempDir(), "npm.log"))
 	t.Setenv("NPM_TEST_BIN", "kimi")
@@ -196,7 +196,7 @@ func TestDockerSandboxOnDemandCLIPathReturnsInstallErrors(t *testing.T) {
 // Commands that never need an on-demand install must not touch npm at all.
 func TestDockerSandboxOnDemandCLIPathSkipsWithoutInstalling(t *testing.T) {
 	log := filepath.Join(t.TempDir(), "npm.log")
-	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "loopforge-platform:tested")
+	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "zhiyan-platform:tested")
 	t.Setenv("AGENTFLOW_RUNTIME_CLI_DIR", t.TempDir())
 	t.Setenv("NPM_TEST_LOG", log)
 	t.Setenv("NPM_TEST_BIN", "opencode")

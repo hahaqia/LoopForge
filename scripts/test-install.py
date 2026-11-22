@@ -66,8 +66,8 @@ fi
 export MOCK_PRIVILEGED=1
 exec "$@"
 ''')
-        self.environ = dict(os.environ, PATH=str(self.root / 'mock') + ':' + os.environ['PATH'], MOCK_LOG=str(self.root / 'docker.log'), MOCK_SQL_LOG=str(self.root / 'mysql.log'), AGENTFLOW_HTTP_PORT='18765', LOOPFORGE_PUBLIC_URL='https://team.example.test', LOOPFORGE_BIND='0.0.0.0')
-        for name in ('LOOPFORGE_DOCKER_USE_SUDO', 'LOOPFORGE_DATA_DIR', 'LOOPFORGE_IMAGE', 'COMPOSE_FILE', 'LOOPFORGE_BUILD_FROM_SOURCE', 'LOOPFORGE_PULL_POLICY', 'MIRROR', 'MOCK_USER', 'MOCK_DIRECT', 'MOCK_SUDO_DENIED', 'MOCK_IMAGE_PRESENT', 'MOCK_PULL_FAIL', 'MOCK_TAG_FAIL', 'MOCK_MIRROR_GHCR', 'MOCK_MIRROR_NJU', 'MOCK_CURL_LOG'):
+        self.environ = dict(os.environ, PATH=str(self.root / 'mock') + ':' + os.environ['PATH'], MOCK_LOG=str(self.root / 'docker.log'), MOCK_SQL_LOG=str(self.root / 'mysql.log'), AGENTFLOW_HTTP_PORT='18765', ZHIYAN_PUBLIC_URL='https://team.example.test', ZHIYAN_BIND='0.0.0.0')
+        for name in ('ZHIYAN_DOCKER_USE_SUDO', 'ZHIYAN_DATA_DIR', 'ZHIYAN_IMAGE', 'COMPOSE_FILE', 'ZHIYAN_BUILD_FROM_SOURCE', 'ZHIYAN_PULL_POLICY', 'MIRROR', 'MOCK_USER', 'MOCK_DIRECT', 'MOCK_SUDO_DENIED', 'MOCK_IMAGE_PRESENT', 'MOCK_PULL_FAIL', 'MOCK_TAG_FAIL', 'MOCK_MIRROR_GHCR', 'MOCK_MIRROR_NJU', 'MOCK_CURL_LOG'):
             self.environ.pop(name, None)
         self.environ.pop('MOCK_COLUMN_COUNT', None)
 
@@ -77,11 +77,11 @@ exec "$@"
         target.chmod(0o755)
 
     def shell(self):
-        return os.environ.get('LOOPFORGE_TEST_BASH', 'bash')
+        return os.environ.get('ZHIYAN_TEST_BASH', 'bash')
 
     def bash32(self):
         candidates = []
-        for name in ('LOOPFORGE_TEST_BASH32', 'LOOPFORGE_TEST_BASH'):
+        for name in ('ZHIYAN_TEST_BASH32', 'ZHIYAN_TEST_BASH'):
             value = os.environ.get(name)
             if value:
                 candidates.append(value)
@@ -131,7 +131,7 @@ exec "$@"
         self.assertFalse((self.root / '.env').exists())
 
     def test_expired_sudo_after_build_has_actionable_error(self):
-        result = self.install(MOCK_USER='1000', LOOPFORGE_BUILD_FROM_SOURCE='1', MOCK_EXPIRE_AFTER_BUILD='1', MOCK_SUDO_EXPIRED_FILE=str(self.root / 'sudo-expired'))
+        result = self.install(MOCK_USER='1000', ZHIYAN_BUILD_FROM_SOURCE='1', MOCK_EXPIRE_AFTER_BUILD='1', MOCK_SUDO_EXPIRED_FILE=str(self.root / 'sudo-expired'))
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('sudo -v', result.stderr)
         self.assertNotIn('up -d --no-build', (self.root / 'docker.log').read_text())
@@ -139,7 +139,7 @@ exec "$@"
     def pinned_image(self):
         text = (ROOT / 'compose.yaml').read_text()
         import re
-        return re.search(r'image:\s*\$\{LOOPFORGE_IMAGE:-([^}]+)\}', text).group(1).strip()
+        return re.search(r'image:\s*\$\{ZHIYAN_IMAGE:-([^}]+)\}', text).group(1).strip()
 
     def use_compose_file(self):
         shutil.copyfile(ROOT / 'compose.yaml', self.root / 'compose.yaml')
@@ -150,7 +150,7 @@ exec "$@"
         self.assertIn('pull --policy missing platform mysql', log)
         self.assertNotIn('build platform', log)
         self.assertNotIn('ghcr.nju.edu.cn', log)
-        self.assertIn("LOOPFORGE_IMAGE=''", (self.root / '.env').read_text())
+        self.assertIn("ZHIYAN_IMAGE=''", (self.root / '.env').read_text())
 
     def test_mirror_host_replaces_ghcr_and_tags_the_pinned_name(self):
         self.use_compose_file()
@@ -177,7 +177,7 @@ exec "$@"
 
     def test_mirror_always_refreshes_from_the_configured_host(self):
         self.use_compose_file()
-        self.assert_success(self.install(MIRROR='mirror.example.test', LOOPFORGE_PULL_POLICY='always', MOCK_IMAGE_PRESENT='1'))
+        self.assert_success(self.install(MIRROR='mirror.example.test', ZHIYAN_PULL_POLICY='always', MOCK_IMAGE_PRESENT='1'))
         log = (self.root / 'docker.log').read_text()
         image = self.pinned_image()
         mirror = 'mirror.example.test/' + image[len('ghcr.io/'):]
@@ -279,7 +279,7 @@ esac
         result = self.install(MIRROR='ghcr.nju.edu.cn', MOCK_CURL_LOG=str(curl_log))
         self.assert_success(result)
         self.assertFalse(curl_log.exists())
-        self.assertIn('pull ghcr.nju.edu.cn/tencent/loopforge:', (self.root / 'docker.log').read_text())
+        self.assertIn('pull ghcr.nju.edu.cn/tencent/zhiyan:', (self.root / 'docker.log').read_text())
         self.assertNotIn('Fastest registry', result.stdout)
 
     def test_faster_nju_mirror_is_pulled_and_tagged(self):
@@ -288,10 +288,10 @@ esac
         result = self.install(**self.probe_env(self.timed(self.DIGEST, '0.40'), self.timed(self.DIGEST, '0.10')))
         self.assert_success(result)
         image = self.pinned_image()
-        mirror = 'ghcr.nju.edu.cn/tencent/loopforge@' + self.DIGEST
+        mirror = 'ghcr.nju.edu.cn/tencent/zhiyan@' + self.DIGEST
         log = (self.root / 'docker.log').read_text()
         self.assertLess(log.index(f'pull {mirror}'), log.index(f'tag {mirror} {image}'))
-        self.assertNotIn('pull ghcr.nju.edu.cn/tencent/loopforge:', log)
+        self.assertNotIn('pull ghcr.nju.edu.cn/tencent/zhiyan:', log)
         self.assertIn('Fastest registry is ghcr.nju.edu.cn', result.stdout)
         self.assertIn('ghcr.io was', result.stdout)
         self.assertNotIn('MIRROR=', (self.root / '.env').read_text())
@@ -341,7 +341,7 @@ esac
         self.mirror_probe_curl()
         result = self.install(**self.probe_env('blobtimeout:' + self.timed(self.DIGEST, '0.40'), self.timed(self.DIGEST, '0.10')))
         self.assert_success(result)
-        self.assertIn('pull ghcr.nju.edu.cn/tencent/loopforge@' + self.DIGEST, (self.root / 'docker.log').read_text())
+        self.assertIn('pull ghcr.nju.edu.cn/tencent/zhiyan@' + self.DIGEST, (self.root / 'docker.log').read_text())
         self.assertIn('ghcr.io timed out', result.stdout)
 
     def test_ghcr_blob_redirect_is_timed_without_sending_the_token(self):
@@ -365,7 +365,7 @@ esac
         result = self.install(**self.probe_env(self.timed(self.DIGEST, '0.40'), self.timed(self.DIGEST, '0.10')), MOCK_PULL_FAIL='1')
         self.assert_success(result)
         log = (self.root / 'docker.log').read_text()
-        self.assertIn('pull ghcr.nju.edu.cn/tencent/loopforge@' + self.DIGEST, log)
+        self.assertIn('pull ghcr.nju.edu.cn/tencent/zhiyan@' + self.DIGEST, log)
         self.assertNotIn(' tag ', log)
         self.assertIn('pull --policy missing platform mysql', log)
         self.assertIn('Could not pull', result.stdout)
@@ -393,7 +393,7 @@ esac
             text=True, capture_output=True, stdin=subprocess.DEVNULL, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         log = (self.root / 'docker.log').read_text()
-        self.assertIn('pull ghcr.nju.edu.cn/tencent/loopforge@' + self.DIGEST, log)
+        self.assertIn('pull ghcr.nju.edu.cn/tencent/zhiyan@' + self.DIGEST, log)
         self.assertNotIn(' tag ', log)
         self.assertIn('pull --ignore-buildable --policy always', log)
         self.assertIn('Could not pull', result.stdout)
@@ -421,7 +421,7 @@ esac
             text=True, capture_output=True, stdin=subprocess.DEVNULL, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         image = self.pinned_image()
-        mirror = 'ghcr.nju.edu.cn/tencent/loopforge@' + self.DIGEST
+        mirror = 'ghcr.nju.edu.cn/tencent/zhiyan@' + self.DIGEST
         log = (self.root / 'docker.log').read_text()
         self.assertIn(f'pull {mirror}', log)
         self.assertIn(f'tag {mirror} {image}', log)
@@ -494,7 +494,7 @@ esac
         self.assert_success(self.install())
         self.use_compose_file()
         env = self.root / '.env'
-        env.write_text(env.read_text() + 'LOOPFORGE_IMAGE=ghcr.io/example/ignored:1\nLOOPFORGE_IMAGE=ghcr.io/example/chosen:9\n')
+        env.write_text(env.read_text() + 'ZHIYAN_IMAGE=ghcr.io/example/ignored:1\nZHIYAN_IMAGE=ghcr.io/example/chosen:9\n')
         (self.root / 'docker.log').unlink()
         result = subprocess.run([self.shell(), 'start.sh', 'pull'], cwd=self.root, env=dict(self.environ, MIRROR='ghcr.nju.edu.cn'), text=True, capture_output=True, stdin=subprocess.DEVNULL, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -502,7 +502,7 @@ esac
         self.assertIn('pull ghcr.nju.edu.cn/example/chosen:9', log)
         self.assertIn('tag ghcr.nju.edu.cn/example/chosen:9 ghcr.io/example/chosen:9', log)
         self.assertNotIn('example/ignored', log)
-        self.assertNotIn('ghcr.nju.edu.cn/tencent/loopforge', log)
+        self.assertNotIn('ghcr.nju.edu.cn/tencent/zhiyan', log)
 
     def test_failed_mirror_pull_does_not_retag_or_start(self):
         self.use_compose_file()
@@ -510,7 +510,7 @@ esac
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Could not pull', result.stderr)
         log = (self.root / 'docker.log').read_text()
-        self.assertIn('pull ghcr.nju.edu.cn/tencent/loopforge:', log)
+        self.assertIn('pull ghcr.nju.edu.cn/tencent/zhiyan:', log)
         self.assertNotIn(' tag ', log)
         self.assertNotIn('up -d --no-build', log)
 
@@ -525,7 +525,7 @@ esac
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('Could not pull', result.stderr)
         log = (self.root / 'docker.log').read_text()
-        self.assertIn('pull ghcr.nju.edu.cn/tencent/loopforge:', log)
+        self.assertIn('pull ghcr.nju.edu.cn/tencent/zhiyan:', log)
         self.assertNotIn(' tag ', log)
         self.assertNotIn('up -d --no-build', log)
 
@@ -535,19 +535,19 @@ esac
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Could not tag', result.stderr)
         log = (self.root / 'docker.log').read_text()
-        self.assertIn('pull ghcr.nju.edu.cn/tencent/loopforge:', log)
+        self.assertIn('pull ghcr.nju.edu.cn/tencent/zhiyan:', log)
         self.assertIn(' tag ', log)
         self.assertNotIn('up -d --no-build', log)
 
     def test_source_build_ignores_nju_mirror(self):
         self.use_compose_file()
-        self.assert_success(self.install(LOOPFORGE_BUILD_FROM_SOURCE='1', MIRROR='ghcr.nju.edu.cn'))
+        self.assert_success(self.install(ZHIYAN_BUILD_FROM_SOURCE='1', MIRROR='ghcr.nju.edu.cn'))
         log = (self.root / 'docker.log').read_text()
         self.assertIn('build platform', log)
         self.assertNotIn('ghcr.nju.edu.cn', log)
 
     def test_source_build_persists_dev_compose_file(self):
-        self.assert_success(self.install(LOOPFORGE_BUILD_FROM_SOURCE='1'))
+        self.assert_success(self.install(ZHIYAN_BUILD_FROM_SOURCE='1'))
         self.assertIn('build platform', (self.root / 'docker.log').read_text())
         config = (self.root / '.env').read_text()
         self.assertEqual(config.count('COMPOSE_FILE='), 1)
@@ -557,7 +557,7 @@ esac
         self.assertIn('build platform', (self.root / 'docker.log').read_text())
 
     def test_start_switches_source_build_back_to_release(self):
-        self.assert_success(self.install(LOOPFORGE_BUILD_FROM_SOURCE='1'))
+        self.assert_success(self.install(ZHIYAN_BUILD_FROM_SOURCE='1'))
         (self.root / 'docker.log').unlink()
         result = subprocess.run([self.shell(), 'start.sh', 'release'], cwd=self.root, env=self.environ, text=True, capture_output=True, stdin=subprocess.DEVNULL, timeout=15)
         self.assert_success(result)
@@ -572,7 +572,7 @@ esac
         self.assertIn('./start.sh dev', result.stderr)
 
     def test_prebuilt_image_skips_build(self):
-        self.assert_success(self.install(LOOPFORGE_IMAGE='registry.example.test/loopforge:tested'))
+        self.assert_success(self.install(ZHIYAN_IMAGE='registry.example.test/zhiyan:tested'))
         log = (self.root / 'docker.log').read_text()
         self.assertIn('pull --policy missing platform mysql', log)
         self.assertNotIn('build platform', log)
@@ -602,7 +602,7 @@ if [[ "$*" == *'install'* ]]; then touch "$MOCK_PACKAGE_STATE/python3" "$MOCK_PA
             with self.subTest(manager=manager):
                 for item in state.iterdir():
                     item.unlink()
-                self.assert_success(self.install(BASH_ENV=str(shell_env), MOCK_PACKAGE_STATE=str(state), MOCK_PACKAGE_MANAGER=manager, LOOPFORGE_YES='1'))
+                self.assert_success(self.install(BASH_ENV=str(shell_env), MOCK_PACKAGE_STATE=str(state), MOCK_PACKAGE_MANAGER=manager, ZHIYAN_YES='1'))
                 self.assertTrue((state / 'python3').exists())
                 self.assertTrue((state / 'curl').exists())
                 log = (self.root / 'docker.log').read_text()
@@ -622,7 +622,7 @@ if [[ "$*" == *'install'* ]]; then touch "$MOCK_PACKAGE_STATE/python3" "$MOCK_PA
   builtin command "$@"
 }
 ''')
-        self.assert_success(self.install(BASH_ENV=str(shell_env), MOCK_PYTHON_READY=str(ready), LOOPFORGE_YES='1'))
+        self.assert_success(self.install(BASH_ENV=str(shell_env), MOCK_PYTHON_READY=str(ready), ZHIYAN_YES='1'))
         self.assertIn('brew install python3', (self.root / 'docker.log').read_text())
 
     def mock_compose_install(self, fail_download=False):
@@ -637,7 +637,7 @@ if [[ "${!#}" == */docker-compose ]]; then touch "$MOCK_COMPOSE_INSTALLED"; fi
 ''')
         home = self.root / 'home'
         home.mkdir()
-        return dict(HOME=str(home), MOCK_COMPOSE_MISSING='1', MOCK_COMPOSE_INSTALLED=str(self.root / 'compose-installed'), LOOPFORGE_YES='1')
+        return dict(HOME=str(home), MOCK_COMPOSE_MISSING='1', MOCK_COMPOSE_INSTALLED=str(self.root / 'compose-installed'), ZHIYAN_YES='1')
 
     def test_missing_compose_is_installed_where_root_and_sudo_docker_find_it(self):
         values = self.mock_compose_install()
@@ -677,41 +677,41 @@ if [[ "${!#}" == */docker-compose ]]; then touch "$MOCK_COMPOSE_INSTALLED"; fi
 
     def test_declining_compose_install_does_not_start_deployment(self):
         values = self.mock_compose_install()
-        values['LOOPFORGE_YES'] = '0'
+        values['ZHIYAN_YES'] = '0'
         result = self.install(**values)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Docker Compose is required', result.stderr)
         self.assertFalse((self.root / '.env').exists())
 
     def test_invalid_public_url_fails_before_build(self):
-        result = self.install(LOOPFORGE_PUBLIC_URL='javascript:alert(1)')
+        result = self.install(ZHIYAN_PUBLIC_URL='javascript:alert(1)')
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('up -d', (self.root / 'docker.log').read_text())
 
     def test_invalid_public_port_fails_before_build(self):
-        result = self.install(LOOPFORGE_PUBLIC_URL='https://team.example.test:invalid')
+        result = self.install(ZHIYAN_PUBLIC_URL='https://team.example.test:invalid')
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('up -d', (self.root / 'docker.log').read_text())
 
     def test_public_url_with_unsupported_subpath_fails_before_build(self):
-        result = self.install(LOOPFORGE_PUBLIC_URL='https://team.example.test/loopforge')
+        result = self.install(ZHIYAN_PUBLIC_URL='https://team.example.test/zhiyan')
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('up -d', (self.root / 'docker.log').read_text())
 
     def test_configuration_quotes_paths_without_shell_execution(self):
         data = str(self.root / 'spaces $(touch should-not-exist)')
-        self.assert_success(self.install(LOOPFORGE_DATA_DIR=data))
+        self.assert_success(self.install(ZHIYAN_DATA_DIR=data))
         self.assertTrue(Path(data, 'home').is_dir())
         self.assertFalse((self.root / 'should-not-exist').exists())
 
     def test_install_without_public_url_binds_all_interfaces_without_prompting(self):
-        self.environ.pop('LOOPFORGE_BIND')
-        result = self.install(LOOPFORGE_PUBLIC_URL='')
+        self.environ.pop('ZHIYAN_BIND')
+        result = self.install(ZHIYAN_PUBLIC_URL='')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn('Team URL', result.stdout)
         config = (self.root / '.env').read_text()
-        self.assertIn('LOOPFORGE_BIND=0.0.0.0', config)
-        self.assertIn("LOOPFORGE_PUBLIC_URL=''", config)
+        self.assertIn('ZHIYAN_BIND=0.0.0.0', config)
+        self.assertIn("ZHIYAN_PUBLIC_URL=''", config)
 
     def test_existing_empty_url_can_be_set_without_rotating_secrets(self):
         self.assert_success(self.install())
@@ -724,20 +724,20 @@ if [[ "${!#}" == */docker-compose ]]; then touch "$MOCK_COMPOSE_INSTALLED"; fi
     def test_team_url_rejects_loopback_and_listening_addresses(self):
         for url in ('http://127.0.0.1:8090', 'http://localhost:8090', 'http://0.0.0.0:8090', 'http://[::]:8090', 'http://169.254.1.2:8090'):
             with self.subTest(url=url):
-                result = self.install(LOOPFORGE_PUBLIC_URL=url)
+                result = self.install(ZHIYAN_PUBLIC_URL=url)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertNotIn('up -d', (self.root / 'docker.log').read_text())
 
 class AddressTests(unittest.TestCase):
     def test_public_url_and_loopback_proxy(self):
-        urls, note = address.access_addresses('8090', {'LOOPFORGE_BIND': '127.0.0.1', 'LOOPFORGE_PUBLIC_URL': 'https://team.example.test/'})
+        urls, note = address.access_addresses('8090', {'ZHIYAN_BIND': '127.0.0.1', 'ZHIYAN_PUBLIC_URL': 'https://team.example.test/'})
         self.assertEqual(urls, [('Access', 'https://team.example.test')])
         self.assertIn('reverse proxy', note)
 
     def test_ipv6_and_local_mode(self):
         with patch.object(address, 'container_host', return_value=False):
-            self.assertEqual(address.access_addresses('8090', {'LOOPFORGE_BIND': '2001:db8::1'})[0], [('LAN', 'http://[2001:db8::1]:8090')])
-            urls, note = address.access_addresses('8090', {'LOOPFORGE_BIND': '127.0.0.1'})
+            self.assertEqual(address.access_addresses('8090', {'ZHIYAN_BIND': '2001:db8::1'})[0], [('LAN', 'http://[2001:db8::1]:8090')])
+            urls, note = address.access_addresses('8090', {'ZHIYAN_BIND': '127.0.0.1'})
         self.assertEqual(urls, [('This machine', 'http://127.0.0.1:8090')])
         self.assertIn('Local access only', note)
 

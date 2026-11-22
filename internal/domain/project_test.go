@@ -4,19 +4,19 @@ import "testing"
 
 func TestRepositoryURLRequiresAHostAndSupportsManagedGit(t *testing.T) {
 	t.Setenv("AGENTFLOW_GONGFENG_HOST", "git.review.test:8443")
-	if _, ok := ParseRepositoryURL("Tencent/LoopForge"); ok {
+	if _, ok := ParseRepositoryURL("zhiyan/zhiyan"); ok {
 		t.Fatal("an unqualified repository was silently routed to a hosting provider")
 	}
-	github, ok := ParseRepositoryURL("github:Tencent/LoopForge")
-	if !ok || github.WebURL != "https://github.com/Tencent/LoopForge" {
+	github, ok := ParseRepositoryURL("github:zhiyan/zhiyan")
+	if !ok || github.WebURL != "https://github.com/zhiyan/zhiyan" {
 		t.Fatalf("GitHub reference = %+v, %v", github, ok)
 	}
 	managed, ok := ParseRepositoryURL("https://git.review.test:8443/group/repo/-/tree/main")
 	if !ok || managed.Project != "group/repo" || managed.CloneURL != "https://git.review.test:8443/group/repo.git" {
 		t.Fatalf("managed reference = %+v, %v", managed, ok)
 	}
-	refs := ParseGongfengMRs("https://git.review.test:8443/group/repo/-/merge_requests/7 https://github.com/Tencent/LoopForge/pull/8")
-	if len(refs) != 2 || refs[0].URL != "https://git.review.test:8443/group/repo/-/merge_requests/7" || refs[1].Project != "github:Tencent/LoopForge" {
+	refs := ParseGongfengMRs("https://git.review.test:8443/group/repo/-/merge_requests/7 https://github.com/zhiyan/zhiyan/pull/8")
+	if len(refs) != 2 || refs[0].URL != "https://git.review.test:8443/group/repo/-/merge_requests/7" || refs[1].Project != "github:zhiyan/zhiyan" {
 		t.Fatalf("review links = %+v", refs)
 	}
 }

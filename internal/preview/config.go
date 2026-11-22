@@ -113,7 +113,7 @@ func durationFromEnv(key string, fallback time.Duration) time.Duration {
 }
 
 // SplitPublicURL parses an optional preview serving origin such as
-// https://loopforge.example.com. Path and query are ignored; the gateway still
+// https://zhiyan.example.com. Path and query are ignored; the gateway still
 // serves /preview/{token}/ on that host.
 func SplitPublicURL(raw string) (scheme, host string, ok bool) {
 	raw = strings.TrimSpace(raw)

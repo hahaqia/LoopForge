@@ -69,7 +69,7 @@ func InferSOPLane(wf WorkflowDefinition) string {
 		(strings.Contains(hay, "设计") && !strings.Contains(hay, "需求开发")):
 		return SOPLaneDesign
 	case strings.Contains(hay, "generic-backend") || strings.Contains(hay, "后端交付") ||
-		strings.Contains(hay, "requirement-development") || strings.Contains(hay, "loopforge") ||
+		strings.Contains(hay, "requirement-development") || strings.Contains(hay, "zhiyan") ||
 		strings.Contains(hay, "需求开发"):
 		return SOPLaneBackend
 	case strings.Contains(hay, "issue-fix") || strings.Contains(hay, "缺陷修复") ||

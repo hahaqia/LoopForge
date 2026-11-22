@@ -8,8 +8,8 @@ import {createWorkflow,script,approval,startRun} from '../lib/fixtures.mjs';
 before(ensureProject);
 after(cleanup);
 
-test('separate account cannot access private conversations, edit workspaces or impersonate credentials',{skip:!process.env.LOOPFORGE_UNCONFIGURED_USER},async()=>{
-  const login=await fetch(cfg.base+'/api/auth/password',{method:'POST',headers:{Origin:cfg.base,'Content-Type':'application/json'},body:JSON.stringify({login:process.env.LOOPFORGE_UNCONFIGURED_USER,password:process.env.LOOPFORGE_UNCONFIGURED_PASSWORD||fs.readFileSync(process.env.LOOPFORGE_UNCONFIGURED_PASSWORD_FILE,'utf8').trim()})});
+test('separate account cannot access private conversations, edit workspaces or impersonate credentials',{skip:!process.env.ZHIYAN_UNCONFIGURED_USER},async()=>{
+  const login=await fetch(cfg.base+'/api/auth/password',{method:'POST',headers:{Origin:cfg.base,'Content-Type':'application/json'},body:JSON.stringify({login:process.env.ZHIYAN_UNCONFIGURED_USER,password:process.env.ZHIYAN_UNCONFIGURED_PASSWORD||fs.readFileSync(process.env.ZHIYAN_UNCONFIGURED_PASSWORD_FILE,'utf8').trim()})});
   assert.equal(login.status,200,'second account login');
   const identity=(await login.json()).user;
   const cookie=login.headers.get('set-cookie').split(';')[0];

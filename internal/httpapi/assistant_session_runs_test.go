@@ -13,7 +13,7 @@ import (
 
 func TestRunSessionDisplayTitleSaysWhatTheRunDoes(t *testing.T) {
 	started := time.Date(2026, 10, 22, 9, 36, 0, 0, time.UTC)
-	backend := repo.SidebarRunMeta{WorkflowName: "通用后端交付 SOP（LoopForge）", CreatedAt: started}
+	backend := repo.SidebarRunMeta{WorkflowName: "通用后端交付 SOP（智研工坊）", CreatedAt: started}
 	withInput := backend
 	withInput.Input = "\n## **在 agent-test 仓库**根目录的 README.md   末尾追加一行\n\n不要改其他文件"
 	cases := []struct {
@@ -46,10 +46,10 @@ func TestRunSessionDisplayTitleSaysWhatTheRunDoes(t *testing.T) {
 func TestRunSessionTitlesStayDistinct(t *testing.T) {
 	first := time.Date(2026, 11, 3, 2, 5, 0, 0, time.UTC)
 	metas := map[string]repo.SidebarRunMeta{
-		"run-product":  {WorkflowName: "通用产品交付 SOP（LoopForge）", CreatedAt: first},
-		"run-backend":  {WorkflowName: "通用后端交付 SOP（LoopForge）", CreatedAt: first.Add(time.Hour)},
-		"run-backend2": {WorkflowName: "通用后端交付 SOP（LoopForge）", CreatedAt: first.Add(2 * time.Hour)},
-		"run-other":    {WorkflowName: "通用后端交付 SOP（LoopForge）"},
+		"run-product":  {WorkflowName: "通用产品交付 SOP（智研工坊）", CreatedAt: first},
+		"run-backend":  {WorkflowName: "通用后端交付 SOP（智研工坊）", CreatedAt: first.Add(time.Hour)},
+		"run-backend2": {WorkflowName: "通用后端交付 SOP（智研工坊）", CreatedAt: first.Add(2 * time.Hour)},
+		"run-other":    {WorkflowName: "通用后端交付 SOP（智研工坊）"},
 	}
 	view := func(runID, title string, edited bool) runSessionView {
 		return runSessionView{assistantConversation: domain.AssistantSession{RunID: runID, TitleEdited: edited}, DisplayTitle: title}
@@ -102,8 +102,8 @@ func TestRunSessionTitlesStayDistinct(t *testing.T) {
 
 func TestShortWorkflowNameDropsPlatformSuffix(t *testing.T) {
 	for name, want := range map[string]string{
-		"通用后端交付 SOP（LoopForge）":  "通用后端交付",
-		"通用前端交付 SOP (LoopForge)": "通用前端交付",
+		"通用后端交付 SOP（智研工坊）":  "通用后端交付",
+		"通用前端交付 SOP (智研工坊)": "通用前端交付",
 		"产品交付 SOP":               "产品交付",
 		"SOP":                    "SOP",
 		"":                       "",
@@ -135,14 +135,14 @@ func TestAssistantSessionListDecoratesRunSessions(t *testing.T) {
 	t.Cleanup(func() { h.repo.DB.Exec("DELETE FROM issues WHERE id=?", issue.ID) })
 
 	empty := domain.Run{ID: prefix + "run-empty", Status: "waiting",
-		WorkflowSnapshot: domain.WorkflowDefinition{ID: "generic-backend-delivery", Name: "通用后端交付 SOP（LoopForge）"},
+		WorkflowSnapshot: domain.WorkflowDefinition{ID: "generic-backend-delivery", Name: "通用后端交付 SOP（智研工坊）"},
 		ExecutionContext: domain.TelemetryContext{ProjectID: prefix, IssueID: issue.ID, IssueNumber: 7, ResponsibleUserID: 555}}
 	putSessionListRun(t, h, empty)
-	putSessionListConversation(t, h, owner.ID, domain.AssistantSession{ID: repo.RunAssistantSessionID(empty.ID), RunID: empty.ID, ProjectID: prefix, Shared: true, Title: "通用后端交付 SOP（LoopForge）", UserID: owner.ID})
+	putSessionListConversation(t, h, owner.ID, domain.AssistantSession{ID: repo.RunAssistantSessionID(empty.ID), RunID: empty.ID, ProjectID: prefix, Shared: true, Title: "通用后端交付 SOP（智研工坊）", UserID: owner.ID})
 
 	used := domain.Run{ID: prefix + "run-used", Status: "running", WorkflowID: "generic-backend-delivery",
 		Input:            "在 agent-test 仓库根目录的 README.md 末尾追加一行\n不要改其他文件",
-		WorkflowSnapshot: domain.WorkflowDefinition{ID: "generic-backend-delivery", Name: "通用后端交付 SOP（LoopForge）"},
+		WorkflowSnapshot: domain.WorkflowDefinition{ID: "generic-backend-delivery", Name: "通用后端交付 SOP（智研工坊）"},
 		ExecutionContext: domain.TelemetryContext{ProjectID: prefix}}
 
 	// Retired 自由协作 runs never finish and have no nodes: named by their
@@ -173,7 +173,7 @@ func TestAssistantSessionListDecoratesRunSessions(t *testing.T) {
 	putSessionListConversation(t, h, owner.ID, domain.AssistantSession{ID: repo.RunAssistantSessionID(bare.ID), RunID: bare.ID, ProjectID: prefix, Shared: true, Title: "模拟90s流程", UserID: owner.ID})
 
 	renamed := domain.Run{ID: prefix + "run-renamed", Status: "succeeded",
-		WorkflowSnapshot: domain.WorkflowDefinition{ID: "generic-backend-delivery", Name: "通用后端交付 SOP（LoopForge）"},
+		WorkflowSnapshot: domain.WorkflowDefinition{ID: "generic-backend-delivery", Name: "通用后端交付 SOP（智研工坊）"},
 		ExecutionContext: domain.TelemetryContext{ProjectID: prefix}}
 	putSessionListRun(t, h, renamed)
 	putSessionListConversation(t, h, owner.ID, domain.AssistantSession{ID: repo.RunAssistantSessionID(renamed.ID), RunID: renamed.ID, ProjectID: prefix, Shared: true, Title: "我的交付", TitleEdited: true, UserID: owner.ID})

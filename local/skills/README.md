@@ -26,15 +26,15 @@ REQUIREMENT → DESIGN → IMPLEMENT → REVIEW → TEST → [KNOWLEDGE] → SUM
 
 ## 安装
 
-推荐使用 LoopForge Local 提供的统一 CLI。以下源码安装命令在仓库根目录执行；Portable edition 使用独立的 `skills` 命令组：
+推荐使用 智研工坊 Local 提供的统一 CLI。以下源码安装命令在仓库根目录执行；Portable edition 使用独立的 `skills` 命令组：
 
 ```bash
 pipx install ./local
-loopforge skills install codebuddy
-loopforge skills install codex
-loopforge skills install cursor
-loopforge skills install claude
-loopforge skills install hermes
+zhiyan skills install codebuddy
+zhiyan skills install codex
+zhiyan skills install cursor
+zhiyan skills install claude
+zhiyan skills install hermes
 ```
 
 Hermes Agent 使用项目级 `.hermes/skills/`，安装后在项目根目录执行
@@ -42,13 +42,13 @@ Hermes Agent 使用项目级 `.hermes/skills/`，安装后在项目根目录执�
 阶段通过公开的 `delegate_task` 工具创建独立子 Agent；缺少该工具时必须记录原因并降级为
 `single-context`。安装器不会改动 `~/.hermes/config.yaml` 或用户 profile。需要独立的
 状态、结果和审批命令时，可按 [`hermes-plugin/README.md`](../hermes-plugin/README.md)
-安装可选原生插件，使用 `/loopforge status|result|approve`；`/devflow` 仍是工作流入口。
+安装可选原生插件，使用 `/zhiyan status|result|approve`；`/devflow` 仍是工作流入口。
 
-`loopforge skills status/update/uninstall <host>` 和 `loopforge doctor` 使用
+`zhiyan skills status/update/uninstall <host>` 和 `zhiyan doctor` 使用
 `.devflow/install-state.json` 保护用户文件。下面的 adapter 命令只保留为开发和
 故障排查入口，不再是面向使用者的主安装方式。
 遇到旧 Skill 文件或软链接冲突时默认停止；确认替换后使用
-`loopforge skills install <host> --force`。
+`zhiyan skills install <host> --force`。
 
 ### CodeBuddy
 

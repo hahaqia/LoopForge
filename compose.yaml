@@ -1,19 +1,19 @@
-name: loopforge
+name: zhiyan
 services:
   mysql:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: loopforge
-      MYSQL_USER: loopforge
-      MYSQL_PASSWORD: ${LOOPFORGE_DB_PASSWORD:?Run scripts/configure.sh first}
-      MYSQL_ROOT_PASSWORD: ${LOOPFORGE_DB_ROOT_PASSWORD:?Run scripts/configure.sh first}
+      MYSQL_DATABASE: zhiyan
+      MYSQL_USER: zhiyan
+      MYSQL_PASSWORD: ${ZHIYAN_DB_PASSWORD:?Run scripts/configure.sh first}
+      MYSQL_ROOT_PASSWORD: ${ZHIYAN_DB_ROOT_PASSWORD:?Run scripts/configure.sh first}
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     ports:
-      - "127.0.0.1:${LOOPFORGE_MYSQL_PORT:-33315}:3306"
+      - "127.0.0.1:${ZHIYAN_MYSQL_PORT:-33315}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysqladmin ping -h 127.0.0.1 -u loopforge --silent"]
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysqladmin ping -h 127.0.0.1 -u zhiyan --silent"]
       interval: 2s
       timeout: 3s
       retries: 60
@@ -21,12 +21,12 @@ services:
     profiles: [platform]
     # Published release stack: never builds. Bump the pinned tag (here and in
     # AGENTFLOW_ISOLATED_IMAGE) with each release; source builds use compose.dev.yaml.
-    image: ${LOOPFORGE_IMAGE:-ghcr.io/tencent/loopforge:0.4.0}
+    image: ${ZHIYAN_IMAGE:-zhiyan-platform:local}
     ports:
-      - "${LOOPFORGE_BIND:-0.0.0.0}:${AGENTFLOW_HTTP_PORT:-8090}:8080"
+      - "${ZHIYAN_BIND:-0.0.0.0}:${AGENTFLOW_HTTP_PORT:-8090}:8080"
     environment:
       AGENTFLOW_HTTP_PORT: 8080
-      AGENTFLOW_MYSQL_DSN: loopforge:${LOOPFORGE_DB_PASSWORD}@tcp(mysql:3306)/loopforge
+      AGENTFLOW_MYSQL_DSN: zhiyan:${ZHIYAN_DB_PASSWORD}@tcp(mysql:3306)/zhiyan
       AGENTFLOW_SESSION_SECRET: ${AGENTFLOW_SESSION_SECRET:?Run scripts/configure.sh first}
       AGENTFLOW_AUTH_REQUIRED: "true"
       AGENTFLOW_ALLOW_SIGNUP: ${AGENTFLOW_ALLOW_SIGNUP:-true}
@@ -37,7 +37,7 @@ services:
       AGENTFLOW_MCP_TOKEN: ${AGENTFLOW_MCP_TOKEN:-}
       AGENTFLOW_GIT_SSH_KNOWN_HOSTS: ${AGENTFLOW_GIT_SSH_KNOWN_HOSTS:-}
       AGENTFLOW_ASSISTANT_SESSION_DIR: /data/assistant
-      AGENTFLOW_CONVERSATION_DIR: ${LOOPFORGE_DATA_DIR}/conversations
+      AGENTFLOW_CONVERSATION_DIR: ${ZHIYAN_DATA_DIR}/conversations
       AGENTFLOW_CLARIFY_SESSION_DIR: /data/clarify
       AGENTFLOW_BASELINE_ALIGN_EXECUTOR: ${AGENTFLOW_BASELINE_ALIGN_EXECUTOR:-}
       AGENTFLOW_SKIP_CODEBUDDY_INSTALL: ${AGENTFLOW_SKIP_CODEBUDDY_INSTALL:-}
@@ -45,21 +45,21 @@ services:
       AGENTFLOW_ASSISTANT_MODELS: ${AGENTFLOW_ASSISTANT_MODELS:-}
       AGENTFLOW_PREVIEW_PUBLIC_URL: ${AGENTFLOW_PREVIEW_PUBLIC_URL:-}
       AGENTFLOW_PLATFORM_MCP_URL: ${AGENTFLOW_PLATFORM_MCP_URL:-http://platform:8080}
-      AGENTFLOW_DOCKER_NETWORK: ${COMPOSE_PROJECT_NAME:-loopforge}_default
+      AGENTFLOW_DOCKER_NETWORK: ${COMPOSE_PROJECT_NAME:-zhiyan}_default
       AGENTFLOW_LOCAL_SANDBOX: docker
-      AGENTFLOW_ISOLATED_IMAGE: ${LOOPFORGE_IMAGE:-ghcr.io/tencent/loopforge:0.4.0}
-      HOME: ${LOOPFORGE_DATA_DIR:?Run scripts/configure.sh first}/home
+      AGENTFLOW_ISOLATED_IMAGE: ${ZHIYAN_IMAGE:-zhiyan-platform:local}
+      HOME: ${ZHIYAN_DATA_DIR:?Run scripts/configure.sh first}/home
       AGENTFLOW_RUNNER_BINARY: /app/bin/agentflow-runner-{os}-{arch}
       AGENTFLOW_GATE_MCP_BINARY: /app/bin/agentflow-gate-mcp-{os}-{arch}
       # Claude Code is not bundled; it is installed from npm here on first use.
-      AGENTFLOW_RUNTIME_CLI_DIR: ${LOOPFORGE_DATA_DIR}/cli
-    command: ["-workspaces", "${LOOPFORGE_DATA_DIR}/workspaces"]
+      AGENTFLOW_RUNTIME_CLI_DIR: ${ZHIYAN_DATA_DIR}/cli
+    command: ["-workspaces", "${ZHIYAN_DATA_DIR}/workspaces"]
     volumes:
       - platform-data:/data
       # Docker sandboxes bind workspace paths on the host, so the data
       # directory keeps the same absolute path inside the container.
-      - ${LOOPFORGE_DATA_DIR}:${LOOPFORGE_DATA_DIR}
-      - ${LOOPFORGE_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - ${ZHIYAN_DATA_DIR}:${ZHIYAN_DATA_DIR}
+      - ${ZHIYAN_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
     depends_on:
       mysql:
         condition: service_healthy

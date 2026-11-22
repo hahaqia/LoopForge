@@ -127,9 +127,10 @@ function runnerCopyCommand(btn,text,message){
 function renderRunnersView(){
   const list=$('#runnersList');if(!list)return;
   const host=location.host;
-  const httpsOrigin=`https://${host}`,httpOrigin=`http://${host}`;
-  const bindHTTPS=$('#bindHttpsOrigin'),bindHTTP=$('#bindHttpOrigin'),bindHost=$('#bindServerHost');
-  if(bindHTTPS)bindHTTPS.textContent=httpsOrigin;if(bindHTTP)bindHTTP.textContent=httpOrigin;if(bindHost)bindHost.textContent=host;
+  // 用页面自身的协议与端口：部署在明文 HTTP 上时不再先试 https 再打印 TLS 报错。
+  const origin=location.origin||`http://${host}`;
+  const bindScript=$('#bindScriptOrigin'),bindServer=$('#bindServerOrigin');
+  if(bindScript)bindScript.textContent=origin;if(bindServer)bindServer.textContent=origin;
   const tokenSpan=$('#bindToken');
   if(tokenSpan)tokenSpan.textContent=state.runnerBindCode?.code||'生成中…';
   const copyBtn=$('#copyBindCommand');
@@ -137,8 +138,8 @@ function renderRunnersView(){
     const text=$('#bindCliCommand')?.innerText||'';
     runnerCopyCommand(copyBtn,text,'已复制，10 分钟内有效');
   };
-  const uninstallHTTPS=$('#uninstallHttpsOrigin'),uninstallHTTP=$('#uninstallHttpOrigin');
-  if(uninstallHTTPS)uninstallHTTPS.textContent=httpsOrigin;if(uninstallHTTP)uninstallHTTP.textContent=httpOrigin;
+  const uninstallOrigin=$('#uninstallOrigin');
+  if(uninstallOrigin)uninstallOrigin.textContent=origin;
   const copyUnBtn=$('#copyUninstallCommand');
   if(copyUnBtn)copyUnBtn.onclick=(e)=>{
     const text=e.currentTarget.parentElement?.querySelector('pre')?.innerText||'';

@@ -179,7 +179,7 @@ func TestToolchainExecEnvUsesOnlyPublishedToolchain(t *testing.T) {
 	prefix := writeToolchainFixture(t)
 	cliDir := t.TempDir()
 	useToolchainFixture(t, prefix, cliDir)
-	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "loopforge:test")
+	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "zhiyan:test")
 	custom := &dockerSandbox{dockerfile: domain.DockerfileDefinition{Content: "FROM debian:bookworm\n"}}
 	if env := custom.toolchainExecEnv(); env != nil {
 		t.Fatalf("unpublished toolchain exposed: %q", env)

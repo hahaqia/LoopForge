@@ -42,7 +42,7 @@ function detectPython() {
 const python = detectPython()
 if (!python) {
   console.error(
-    "ERROR: loopforge requires Python 3.8 or newer. "
+    "ERROR: zhiyan requires Python 3.8 or newer. "
     + "Install Python and ensure python3, python, or py is available on PATH.",
   )
   process.exit(1)
@@ -64,7 +64,7 @@ const result = spawnSync(
 )
 
 if (result.error) {
-  console.error(`ERROR: failed to start loopforge: ${result.error.message}`)
+  console.error(`ERROR: failed to start zhiyan: ${result.error.message}`)
   process.exit(1)
 }
 if (result.signal) {

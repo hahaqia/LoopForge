@@ -21,19 +21,19 @@ import (
 // the official CLI's model-list command, and preserves refreshed credentials.
 // It never opens Codex/Claude credentials or invokes a billed model response.
 func TestWritebackProbeAntigravityLiveRefresh(t *testing.T) {
-	if os.Getenv("LOOPFORGE_PROBE_AGY_LIVE") != "1" {
+	if os.Getenv("ZHIYAN_PROBE_AGY_LIVE") != "1" {
 		t.Skip("explicit Antigravity live-auth opt-in required")
 	}
 	if goRuntime.GOOS != "darwin" {
 		t.Fatal("live probe currently requires the macOS Antigravity keychain")
 	}
-	binary := os.Getenv("LOOPFORGE_PROBE_AGY_BIN")
+	binary := os.Getenv("ZHIYAN_PROBE_AGY_BIN")
 	if !filepath.IsAbs(binary) {
-		t.Fatal("set LOOPFORGE_PROBE_AGY_BIN to the official absolute binary path")
+		t.Fatal("set ZHIYAN_PROBE_AGY_BIN to the official absolute binary path")
 	}
-	image := os.Getenv("LOOPFORGE_PROBE_AGY_DOCKER_IMAGE")
+	image := os.Getenv("ZHIYAN_PROBE_AGY_DOCKER_IMAGE")
 	if image == "" {
-		t.Fatal("set LOOPFORGE_PROBE_AGY_DOCKER_IMAGE to an existing credential-free official CLI image")
+		t.Fatal("set ZHIYAN_PROBE_AGY_DOCKER_IMAGE to an existing credential-free official CLI image")
 	}
 	docker, err := exec.LookPath("docker")
 	if err != nil {

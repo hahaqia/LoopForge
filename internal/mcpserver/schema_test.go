@@ -49,7 +49,7 @@ func TestPublicRepositoryToolSupportsGitHub(t *testing.T) {
 			t.Fatalf("misleading public tool description: %s", op.Description)
 		}
 		if err := ValidateToolInput(op, map[string]any{"body": map[string]any{
-			"projectId": "p", "repoUrl": "https://github.com/Tencent/LoopForge", "provider": "github",
+			"projectId": "p", "repoUrl": "https://github.com/zhiyan/zhiyan", "provider": "github",
 		}}); err != nil {
 			t.Fatalf("public GitHub tool call rejected: %v", err)
 		}

@@ -23,7 +23,7 @@ func DiscoverRunnerLoginModels(ctx context.Context, provider, binary string) ([]
 	if !ok {
 		return nil, fmt.Errorf("该 CLI 暂不支持获取账号模型")
 	}
-	root, err := os.MkdirTemp("", "loopforge-login-models-")
+	root, err := os.MkdirTemp("", "zhiyan-login-models-")
 	if err != nil {
 		return nil, fmt.Errorf("无法创建模型查询目录")
 	}
@@ -134,7 +134,7 @@ func antigravityLoginModels(output string) []domain.CLIModel {
 func codexLoginModels(send *json.Encoder, scanner *bufio.Scanner) []domain.CLIModel {
 	if send.Encode(map[string]any{
 		"id": 1, "method": "initialize",
-		"params": map[string]any{"clientInfo": map[string]string{"name": "loopforge", "version": "1.0.0"}},
+		"params": map[string]any{"clientInfo": map[string]string{"name": "zhiyan", "version": "1.0.0"}},
 	}) != nil || codexLoginResult(scanner, 1) == nil {
 		return nil
 	}
@@ -194,7 +194,7 @@ func codexLoginResult(scanner *bufio.Scanner, id int) json.RawMessage {
 }
 
 func claudeLoginModels(send *json.Encoder, scanner *bufio.Scanner) []domain.CLIModel {
-	const id = "loopforge-models"
+	const id = "zhiyan-models"
 	if send.Encode(map[string]any{
 		"type": "control_request", "request_id": id,
 		"request": map[string]string{"subtype": "initialize"},

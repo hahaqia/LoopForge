@@ -16,7 +16,7 @@ func TestDockerConversationUserIdentity(t *testing.T) {
 	}
 	image := os.Getenv("AGENTFLOW_DOCKER_CONVERSATION_IMAGE")
 	if image == "" {
-		image = "loopforge-cli-lab:local"
+		image = "zhiyan-cli-lab:local"
 	}
 	for _, tc := range []struct {
 		name, user string

@@ -260,7 +260,7 @@ export function branchCompareUrl(repository) {
     const raw = String(address || "");
     try { host = new URL(raw).host; } catch { host = /^git@([^:]+):/.exec(raw)?.[1] || ""; }
   }
-  const managed = globalThis.LoopForgeGongfengRepository(address, host);
+  const managed = globalThis.zhiyanGongfengRepository(address, host);
   if (!managed) return "";
   if (same) return `${managed.webUrl}/-/tree/${refPath(work)}`;
   return `${managed.webUrl}/-/compare/${refPath(base)}...${refPath(work)}`;
@@ -275,5 +275,5 @@ export function githubRepoPath(remote) {
 }
 
 export function gongfengProjectPath(remote) {
-  return globalThis.LoopForgeGongfengRepository(remote)?.project || "";
+  return globalThis.zhiyanGongfengRepository(remote)?.project || "";
 }

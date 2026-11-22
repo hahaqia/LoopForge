@@ -110,7 +110,7 @@ func (h *assistantHandlers) callAssistantPlatform(ctx context.Context, user doma
 		sort.Strings(names)
 		sort.Strings(reads)
 		sort.Strings(writes)
-		raw, _ := json.Marshal(ginH{"server": "agentflow", "name": "LoopForge", "tools": names, "readOnly": reads, "write": writes})
+		raw, _ := json.Marshal(ginH{"server": "agentflow", "name": "智研工坊", "tools": names, "readOnly": reads, "write": writes})
 		return string(raw), nil
 	}
 	op, ok := assistantPublicOperations[tool]

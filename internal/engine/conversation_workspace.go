@@ -322,7 +322,7 @@ func (e *Engine) ensureConversationWorkspace(ctx context.Context, id, token stri
 
 // ErrConversationWorkspaceBound means this process must not open a checkout
 // that a live instance still serves.
-var ErrConversationWorkspaceBound = errors.New("工作区绑定在其他 LoopForge 实例")
+var ErrConversationWorkspaceBound = errors.New("工作区绑定在其他 智研工坊 实例")
 
 // ErrConversationWorkspaceLost means the bound instance is gone and neither
 // the checkout nor a snapshot could be recovered. The workspace is already

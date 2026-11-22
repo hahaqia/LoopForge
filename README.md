@@ -1,19 +1,13 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/hero-en-dark.svg">
-    <img src="docs/assets/readme/hero-en.svg" alt="LoopForge — From idea to merged code. Chat with coding agents in sandboxed workspaces, run repeatable SOPs, and approve what ships." width="100%">
+    <img src="docs/assets/readme/hero-en.svg" alt="智研工坊 — From idea to merged code. Chat with coding agents in sandboxed workspaces, run repeatable SOPs, and approve what ships." width="100%">
   </picture>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Tencent/LoopForge/actions/workflows/platform.yml"><img src="https://img.shields.io/github/actions/workflow/status/Tencent/LoopForge/platform.yml?branch=main&label=CI&style=flat-square" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7b61ff?style=flat-square" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/self--hosted-Docker-526ce8?style=flat-square&logo=docker&logoColor=white" alt="Self-hosted with Docker">
-  <a href="https://github.com/Tencent/LoopForge/stargazers"><img src="https://img.shields.io/github/stars/Tencent/LoopForge?style=flat-square&color=f59e0b" alt="GitHub stars"></a>
-</p>
-
-<p align="center">
-  <a href="https://trendshift.io/repositories/300138?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-300138" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/300138" alt="Tencent%2FLoopForge | Trendshift" width="250" height="55"/></a>
 </p>
 
 <p align="center">
@@ -25,18 +19,14 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#how-sops-work">SOPs</a> ·
   <a href="#features">Features</a> ·
-  <a href="#loopforge-local">Local (Legacy)</a> ·
+  <a href="#zhiyan-local">Local (Legacy)</a> ·
   <a href="#faq">FAQ</a> ·
   <a href="#documentation">Docs</a>
 </p>
 
-https://github.com/user-attachments/assets/8af401d9-1aae-427c-b4bc-455c12d17beb
+**智研工坊** is a self-hosted workspace where your team ships software with coding agents. Describe what you need to **Main Bot** in chat: it opens a Docker sandbox, checks out your repositories, delegates to project roles, and opens the PR. When a way of working proves itself, save it as an **SOP** (a standard workflow of agents, scripts and human gates) so the next requirement is delivered the same way, with review and approval built in.
 
-<p align="center"><sub>80-second product tour (1080p, with sound).</sub></p>
-
-**LoopForge** is a self-hosted workspace where your team ships software with coding agents. Describe what you need to **Main Bot** in chat: it opens a Docker sandbox, checks out your repositories, delegates to project roles, and opens the PR. When a way of working proves itself, save it as an **SOP** (a standard workflow of agents, scripts and human gates) so the next requirement is delivered the same way, with review and approval built in.
-
-Coding-agent CLIs do the work: CodeBuddy, Codex, Claude Code, OpenCode, Cursor CLI, Antigravity, Kimi Code, Pi, DeepSeek Harness and ZCode. LoopForge adds the roles, sandboxes, checkpoints and history around them, all on your own infrastructure under the MIT license.
+Coding-agent CLIs do the work: CodeBuddy, Codex, Claude Code, OpenCode, Cursor CLI, Antigravity, Kimi Code, Pi, DeepSeek Harness and ZCode. 智研工坊 adds the roles, sandboxes, checkpoints and history around them, all on your own infrastructure under the MIT license.
 
 ## Two ways to work
 
@@ -52,13 +42,13 @@ Both paths track the same **requirements**, so every change, whether made in cha
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/chat-home-dark.svg">
-    <img src="docs/assets/readme/chat-home.svg" alt="The LoopForge chat workbench: a request is typed into the composer and the @ picker offers roles, skills, requirements and SOPs" width="100%">
+    <img src="docs/assets/readme/chat-home.svg" alt="The 智研工坊 chat workbench: a request is typed into the composer and the @ picker offers roles, skills, requirements and SOPs" width="100%">
   </picture>
 </p>
 
 <p align="center"><sub>The chat home. Type a request, <code>@</code> a role, skill, requirement, SOP or repository, and pick the executor, model and permission mode per conversation.</sub></p>
 
-## Why LoopForge
+## Why 智研工坊
 
 Ask a coding agent to "fix this bug" and the result depends on that run. It might skip the plan, forget the tests, review its own code, or stop halfway without anyone noticing. That's fine for a demo, but it isn't how a team ships.
 
@@ -70,17 +60,17 @@ Ask a coding agent to "fix this bug" and the result depends on that run. It migh
 
 ## Quick start
 
-Install **Git** and clone the repository first. The installer checks Docker, Compose, Python 3 and curl and offers to install missing components. Python/curl installation supports apt, dnf and yum on Linux; the Compose plugin supports x86_64/arm64 and verifies the official release SHA-256. macOS needs a working Python 3 and Docker Desktop; Homebrew can install missing components. Ordinary Linux users are supported through Docker group access or sudo. Set `LOOPFORGE_YES=1` to accept installation prompts. Package and image downloads require internet access.
+Install **Git** and clone the repository first. The installer checks Docker, Compose, Python 3 and curl and offers to install missing components. Python/curl installation supports apt, dnf and yum on Linux; the Compose plugin supports x86_64/arm64 and verifies the official release SHA-256. macOS needs a working Python 3 and Docker Desktop; Homebrew can install missing components. Ordinary Linux users are supported through Docker group access or sudo. Set `ZHIYAN_YES=1` to accept installation prompts. Package and image downloads require internet access.
 
 ```bash
-git clone https://github.com/Tencent/LoopForge.git
-cd LoopForge
+git clone <your-repository-url> 智研工坊
+cd 智研工坊
 ./start.sh
 ```
 
 `./start.sh` pulls the GHCR release image pinned in `compose.yaml` without building locally (`bash scripts/install.sh` does the same). It creates the MySQL and platform services, generates configuration and session secrets, and installs the built-in sandboxes, starter SOPs and welcome project. Host Go and Node.js installations are not required. Configure model API keys and GitHub authorization after startup. Use `./start.sh logs`, `stop`, `restart` or `pull` to manage it, and `./start.sh dev` to build the checkout from source.
 
-If downloads from `ghcr.io` stall, `./start.sh` and `./start.sh pull` time `ghcr.io` against the Nanjing University mirror [ghcr.nju.edu.cn](https://doc.nju.edu.cn/books/e1654/page/ghcr). Nanjing is used only when its manifest digest matches the digest just read from ghcr.io; the script pulls that digest and tags it back to the name pinned in `compose.yaml`, which trusts that host because the result is tagged with the official name. A missing official digest, a mismatch, or a failed mirror pull stays on `ghcr.io`. `MIRROR=ghcr.io` forces the upstream registry and `MIRROR=ghcr.nju.edu.cn` forces Nanjing; the choice is not written to `.env`. The GitHub Release records the digest; `docker image inspect --format '{{index .RepoDigests 0}}' ghcr.io/tencent/loopforge:<pin>` should show the same digest after `@`. `compose.yaml` stays unchanged. A Docker `registry-mirrors` entry such as `https://docker.nju.edu.cn` only accelerates Docker Hub and is not a value for `MIRROR`.
+If downloads from `ghcr.io` stall, `./start.sh` and `./start.sh pull` time `ghcr.io` against the Nanjing University mirror [ghcr.nju.edu.cn](https://doc.nju.edu.cn/books/e1654/page/ghcr). Nanjing is used only when its manifest digest matches the digest just read from ghcr.io; the script pulls that digest and tags it back to the name pinned in `compose.yaml`, which trusts that host because the result is tagged with the official name. A missing official digest, a mismatch, or a failed mirror pull stays on `ghcr.io`. `MIRROR=ghcr.io` forces the upstream registry and `MIRROR=ghcr.nju.edu.cn` forces Nanjing; the choice is not written to `.env`. The GitHub Release records the digest; `docker image inspect --format '{{index .RepoDigests 0}}' ghcr.io/tencent/zhiyan:<pin>` should show the same digest after `@`. `compose.yaml` stays unchanged. A Docker `registry-mirrors` entry such as `https://docker.nju.edu.cn` only accelerates Docker Hub and is not a value for `MIRROR`.
 
 ```bash
 ./start.sh
@@ -94,7 +84,7 @@ For GitLab, Gitea, Gogs and other Git hosts, [set up Git SSH](docs/deployment.md
 
 ### Try it without an API key
 
-New accounts join the **LoopForge demo project**, which includes an SOP made only of a script and a human gate:
+New accounts join the **智研工坊 demo project**, which includes an SOP made only of a script and a human gate:
 
 1. Switch to the demo project, open **Templates**, and open **Platform check · script & approval**.
 2. Click **Run SOP**. A real script writes a report, then the run waits for you at the approval step.
@@ -129,11 +119,11 @@ New accounts join the **LoopForge demo project**, which includes an SOP made onl
   The seven agent CLIs after Claude Code keep their model and MCP configuration in a private home directory per run. Antigravity can reuse the execution machine owner's account login in conversation workspaces and native or Docker SOP sandboxes. Its official CLI refreshes the credential copy, and the Runner saves the refreshed login back to its original local store. Gemini API keys use separate API billing. The other agent CLIs use the responsible user's own key and Base URL from personal settings, including on a connected execution machine. First-use installs need npm or provider access; [native deployments](docs/deployment.md#workers-and-runners) need the CLI for the executor you choose.
 - **WeCom notifications.** The image built from this Dockerfile includes `wecom-cli`; published images gain it with the next release. Native installations need to install it separately; see [Deployment](docs/deployment.md#native-development).
 - **GitHub is optional.** All built-in generic SOPs run without a repository: product SOPs deliver documents, and new frontend/backend projects deliver source files in the task workspace. Bug fixes still need source code and reproduction details. Connect a repository when you work on existing code or want PRs.
-- **Delivering to a repository.** Choose **Connect GitHub** in personal settings, approve the device code on GitHub and pick your repository (the LoopForge OAuth App is built in; no PAT required, manual PAT entry still works). Set executor credentials (or bind a local execution machine), then either run a project SOP or ask Main Bot to change the code and submit a PR/MR.
+- **Delivering to a repository.** Choose **Connect GitHub** in personal settings, approve the device code on GitHub and pick your repository (the 智研工坊 OAuth App is built in; no PAT required, manual PAT entry still works). Set executor credentials (or bind a local execution machine), then either run a project SOP or ask Main Bot to change the code and submit a PR/MR.
 - **Sandboxes.** In the default Compose installation, SOP runs and conversation workspaces both use Docker sandbox containers started through the host Docker socket. Default sandboxes reuse the installed runtime image, so nothing extra is built after installation; custom Dockerfiles still build their own images. Docker socket access grants control of the host daemon, so this setup is for trusted teams, not untrusted multi-tenant isolation. See [deployment boundaries](docs/deployment.md#accounts). Re-running the installer keeps your data.
 - **Accounts and access.** New installations listen on all interfaces (existing bind settings are kept) and are designed for a trusted team: signed-in users can read project data across the instance, and teammates can sign up from the login page (`AGENTFLOW_ALLOW_SIGNUP=false` in `.env` turns that off). Read the [account and access model](docs/deployment.md#accounts) before exposing it beyond your team.
 - **Remote access, HTTPS, separate workers.** See [Deployment](docs/deployment.md).
-- **Hacking on LoopForge itself?** `bash scripts/dev.sh` runs it natively (Go 1.26.11+).
+- **Hacking on 智研工坊 itself?** `bash scripts/dev.sh` runs it natively (Go 1.26.11+).
 
 </details>
 
@@ -149,7 +139,7 @@ An **SOP** is the workflow a delivery follows. Agents, scripts and people take p
 </p>
 
 <p align="center">
-  <img src="docs/assets/readme/designer-en.svg" alt="The LoopForge SOP designer showing the built-in bug-fix SOP, with the Independent review step selected and its role, executor and failure policy in the inspector" width="100%">
+  <img src="docs/assets/readme/designer-en.svg" alt="The 智研工坊 SOP designer showing the built-in bug-fix SOP, with the Independent review step selected and its role, executor and failure policy in the inspector" width="100%">
 </p>
 
 <p align="center"><sub>The SOP designer with the built-in bug-fix SOP. Each step picks a role; failed checks can send the work back to an earlier step.</sub></p>
@@ -165,7 +155,7 @@ An **SOP** is the workflow a delivery follows. Agents, scripts and people take p
 Each node declares its artifacts and dependencies, and the engine starts each step once its dependencies complete. Start from a built-in SOP, adapt its roles, rules and environment to your project, and publish versions as it evolves.
 
 <p align="center">
-  <img src="docs/assets/readme/run-approval-en.svg" alt="LoopForge run details: the report script has finished and the run waits at the human gate with approve, add-context and send-back actions" width="100%">
+  <img src="docs/assets/readme/run-approval-en.svg" alt="智研工坊 run details: the report script has finished and the run waits at the human gate with approve, add-context and send-back actions" width="100%">
 </p>
 
 <p align="center"><sub>A run waiting at a human gate: approve and continue, add context and rerun the step, or send the work back upstream.</sub></p>
@@ -193,11 +183,11 @@ Each node declares its artifacts and dependencies, and the engine starts each st
 
 <p align="center"><sub>Built-in SOPs are read-only blueprints; copy one into your project to run and edit it.</sub></p>
 
-## LoopForge Local
+## 智研工坊 Local
 
-> **Legacy.** Previously published versions of LoopForge Local (`loopforge-cli`) remain available. The [Local guide](docs/local/usage.md) covers installing a fixed version and keeping existing workflows and artifacts.
+> **Legacy.** Previously published versions of 智研工坊 Local (`zhiyan-cli`) remain available. The [Local guide](docs/local/usage.md) covers installing a fixed version and keeping existing workflows and artifacts.
 
-To use platform projects and SOPs from a coding assistant, [connect CodeBuddy to your LoopForge instance over MCP](docs/local/usage.md#connect-to-loopforge-with-mcp). Local continues to run its built-in workflows inside the coding assistant without a LoopForge server.
+To use platform projects and SOPs from a coding assistant, [connect CodeBuddy to your 智研工坊 instance over MCP](docs/local/usage.md#connect-to-zhiyan-with-mcp). Local continues to run its built-in workflows inside the coding assistant without a 智研工坊 server.
 
 | | Platform | Local (Legacy) |
 | --- | --- | --- |
@@ -218,10 +208,10 @@ No. Chat, documents and new projects run in the task workspace. Connect GitHub w
 Use chat to explore and iterate; Main Bot can still open a PR. Once you find a way of working you want every requirement to follow, with fixed reviewers, tests and sign-off, put it in an SOP. Main Bot can start, pause and take over SOP runs, so the two paths work together.
 
 **How is this different from Dify, n8n or Flowise?**
-Those are general-purpose AI and automation workflow builders. LoopForge is built for **software delivery with coding agents**: implementer and reviewer roles, Docker sandboxes with real repositories, GitHub delivery, human acceptance gates and run evidence.
+Those are general-purpose AI and automation workflow builders. 智研工坊 is built for **software delivery with coding agents**: implementer and reviewer roles, Docker sandboxes with real repositories, GitHub delivery, human acceptance gates and run evidence.
 
 **How is this different from using Claude Code, Codex, CodeBuddy or another coding CLI directly?**
-LoopForge doesn't replace them; it orchestrates them. Each agent step and each chat turn runs one of those CLIs. LoopForge adds what surrounds it: who does what, in which sandbox, in which order, with which checks, and who signs off.
+智研工坊 doesn't replace them; it orchestrates them. Each agent step and each chat turn runs one of those CLIs. 智研工坊 adds what surrounds it: who does what, in which sandbox, in which order, with which checks, and who signs off.
 
 **Is it safe to expose on the internet?**
 New installations listen on all interfaces and target a trusted team. Read the [account and access model](docs/deployment.md#accounts) and set up HTTPS before opening it up. Report vulnerabilities privately via the [security policy](SECURITY.md).
@@ -232,27 +222,15 @@ New installations listen on all interfaces and target a trusted team. Read the [
 | --- | --- |
 | Deploy, manage accounts, connect execution machines | [Deployment](docs/deployment.md) |
 | Understand chat workspaces, scheduled AI tasks and token pricing | [Conversation workspaces](docs/conversation-workspaces.md) · [AI scheduled tasks](docs/ai-scheduled-task-capabilities.md) · [Token pricing](docs/token-pricing.md) |
-| Maintain an existing Local installation | [LoopForge Local](docs/local/usage.md) · [Editions](docs/local/editions.md) |
+| Maintain an existing Local installation | [智研工坊 Local](docs/local/usage.md) · [Editions](docs/local/editions.md) |
 | Extend the platform or use the HTTP / MCP API | [Architecture](docs/architecture.md) · [API reference](docs/api/README.md) · [Shared schedules API](docs/api/shared-schedules.md) |
 | Contribute to the UI | [Frontend design conventions](design.md) (Chinese) |
 | Check functional coverage and release readiness | [Validation record](docs/validation.md) · [Acceptance matrix](docs/testing/acceptance-matrix.md) · [Release review](docs/release-readiness.md) |
-| Understand source provenance and maintenance | [Public scope](docs/open-source-scope.md) · [Upstream synchronization](docs/upstream-sync.md) |
-
-## Community
-
-Scan the QR code to join the LoopForge community group.
-
-<img src="docs/community-wecom-qr.png" alt="LoopForge community group QR code" width="200" />
+| Understand source provenance and maintenance | [Public scope](docs/open-source-scope.md) |
 
 ## Contributing
 
 Issues and PRs are welcome: share a use case, report a bug, or improve workflows, integrations and the platform experience. Start with the [contributing guide](CONTRIBUTING.md). Security issues go through the [security policy](SECURITY.md).
-
-If LoopForge is useful to you, a star helps others find it.
-
-<a href="https://star-history.com/#Tencent/LoopForge&Date">
-  <img src="https://api.star-history.com/svg?repos=Tencent/LoopForge&type=Date" alt="Star history" width="600">
-</a>
 
 ## License
 

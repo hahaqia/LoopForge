@@ -228,7 +228,7 @@ func runStartedLabel(t time.Time) string {
 // shortWorkflowName drops the platform suffix so the requirement leads the row.
 func shortWorkflowName(name string) string {
 	name = strings.TrimSpace(name)
-	for _, suffix := range []string{"（LoopForge）", "(LoopForge)"} {
+	for _, suffix := range []string{"（智研工坊）", "(智研工坊)"} {
 		name = strings.TrimSpace(strings.TrimSuffix(name, suffix))
 	}
 	name = strings.TrimSpace(strings.TrimSuffix(name, " SOP"))

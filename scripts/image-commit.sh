@@ -1,12 +1,12 @@
 #!/bin/sh
 # Stamp the commit for an image build.
 # Usage: image-commit.sh <context-dir> <output-file>
-# LOOPFORGE_COMMIT wins. Otherwise resolve .git/HEAD in the context.
+# ZHIYAN_COMMIT wins. Otherwise resolve .git/HEAD in the context.
 # Objects are not required; a missing or unreadable git dir writes nothing.
 set -eu
 ctx=${1:-.}
 out=${2:?}
-commit=${LOOPFORGE_COMMIT:-}
+commit=${ZHIYAN_COMMIT:-}
 if [ -z "$commit" ] && [ -f "$ctx/.git/HEAD" ]; then
   head=$(tr -d ' \t\r\n' < "$ctx/.git/HEAD")
   case "$head" in

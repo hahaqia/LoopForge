@@ -233,7 +233,7 @@ describe("sending while a reply runs", () => {
   test.each(["already running", "starts while opening", "finishes while opening"])(
     "follows the shared session's first CLI when another member's reply %s",
     async (phase) => {
-      localStorage.setItem("loopforge.assistant.conversation.1.model.s1",
+      localStorage.setItem("zhiyan.assistant.conversation.1.model.s1",
         JSON.stringify({ executor: "codebuddy", model: "m1" }));
       state.preferences = { steerOnSend: true };
       const actualChoice = { shared: true, executor: "codex", model: "codex:gpt-5", effort: "high" };

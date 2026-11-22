@@ -139,7 +139,7 @@ func TestStudioVscodePageStampsAssetsWithContentHash(t *testing.T) {
 }
 
 func TestStudioIndexInjectsAppDomain(t *testing.T) {
-	t.Setenv("AGENTFLOW_APP_DOMAIN", "loopforge-test.example.com")
+	t.Setenv("AGENTFLOW_APP_DOMAIN", "zhiyan-test.example.com")
 	root := t.TempDir()
 	s, err := repo.OpenTest()
 	if err != nil {
@@ -155,7 +155,7 @@ func TestStudioIndexInjectsAppDomain(t *testing.T) {
 	}
 	body, _ := io.ReadAll(rec.Body)
 	html := string(body)
-	want := `<meta name="agentflow-app-domain" content="loopforge-test.example.com"></head>`
+	want := `<meta name="agentflow-app-domain" content="zhiyan-test.example.com"></head>`
 	if !strings.Contains(html, want) {
 		t.Fatalf("expected injected domain meta %q, got snippet: %s", want, snippet(html, "agentflow-app-domain"))
 	}
@@ -166,14 +166,14 @@ func TestStudioIndexInjectsAppDomain(t *testing.T) {
 }
 
 func TestStudioPagesShowShortBuildCommit(t *testing.T) {
-	t.Setenv("LOOPFORGE_COMMIT", "60FC455aabbccddeeff001122334455667788990")
+	t.Setenv("ZHIYAN_COMMIT", "60FC455aabbccddeeff001122334455667788990")
 	static := fstest.MapFS{
 		"index.html":  {Data: []byte(`<html><head></head><body><div id="app"></div></body></html>`)},
 		"login.html":  {Data: []byte(`<html><body class="login-page"></body></html>`)},
 		"vscode.html": {Data: []byte(`<html><body><div id="workbench"></div></body></html>`)},
 	}
 	h := studioFileServer(static)
-	want := `class="loopforge-build" title="镜像版本 60fc455aabbccddeeff001122334455667788990">60fc455</span>`
+	want := `class="zhiyan-build" title="镜像版本 60fc455aabbccddeeff001122334455667788990">60fc455</span>`
 	for _, path := range []string{"/", "/login.html", "/vscode.html"} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
@@ -191,12 +191,12 @@ func TestStudioPagesShowShortBuildCommit(t *testing.T) {
 }
 
 func TestStudioPagesShowCommitBakedByDockerBuild(t *testing.T) {
-	t.Setenv("LOOPFORGE_COMMIT", "")
-	path := filepath.Join(t.TempDir(), "loopforge-commit")
+	t.Setenv("ZHIYAN_COMMIT", "")
+	path := filepath.Join(t.TempDir(), "zhiyan-commit")
 	if err := os.WriteFile(path, []byte("60fc455aabbccddeeff001122334455667788990\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("LOOPFORGE_COMMIT_FILE", path)
+	t.Setenv("ZHIYAN_COMMIT_FILE", path)
 	static := fstest.MapFS{
 		"index.html": {Data: []byte(`<html><body></body></html>`)},
 	}
@@ -208,7 +208,7 @@ func TestStudioPagesShowCommitBakedByDockerBuild(t *testing.T) {
 }
 
 func TestStudioPagesShowSHA256BuildCommit(t *testing.T) {
-	t.Setenv("LOOPFORGE_COMMIT", strings.Repeat("60fc455a", 8))
+	t.Setenv("ZHIYAN_COMMIT", strings.Repeat("60fc455a", 8))
 	static := fstest.MapFS{
 		"index.html": {Data: []byte(`<html><body></body></html>`)},
 	}
@@ -220,17 +220,17 @@ func TestStudioPagesShowSHA256BuildCommit(t *testing.T) {
 }
 
 func TestStudioPagesOmitUnsafeOrMissingBuildCommit(t *testing.T) {
-	t.Setenv("LOOPFORGE_COMMIT_FILE", filepath.Join(t.TempDir(), "missing"))
+	t.Setenv("ZHIYAN_COMMIT_FILE", filepath.Join(t.TempDir(), "missing"))
 	static := fstest.MapFS{
 		"index.html": {Data: []byte(`<html><body></body></html>`)},
 	}
 	h := studioFileServer(static)
 	for _, commit := range []string{"", "60fc45", "<img src=x onerror=alert(1)>", "60fc455;rm", "not-a-sha"} {
 		t.Run(commit, func(t *testing.T) {
-			t.Setenv("LOOPFORGE_COMMIT", commit)
+			t.Setenv("ZHIYAN_COMMIT", commit)
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-			if strings.Contains(rec.Body.String(), "loopforge-build") || strings.Contains(rec.Body.String(), "onerror") {
+			if strings.Contains(rec.Body.String(), "zhiyan-build") || strings.Contains(rec.Body.String(), "onerror") {
 				t.Fatalf("commit %q must not be rendered: %s", commit, rec.Body.String())
 			}
 		})

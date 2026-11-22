@@ -54,13 +54,13 @@ os.execv(os.environ['SCAN_TEST_CURL'], ['curl', *args])
         self.env = dict(os.environ, PATH=self.temp.name + os.pathsep + os.environ['PATH'],
                         SCAN_TEST_BASE=f'http://127.0.0.1:{self.server.server_port}',
                         SCAN_TEST_CURL=shutil.which('curl'))
-        self.env.pop('LOOPFORGE_GITLEAKS_TOKEN', None)
+        self.env.pop('ZHIYAN_GITLEAKS_TOKEN', None)
 
     def scan(self, script, token=None):
         self.requests.clear()
         env = self.env.copy()
         if token:
-            env['LOOPFORGE_GITLEAKS_TOKEN'] = token
+            env['ZHIYAN_GITLEAKS_TOKEN'] = token
         return subprocess.run(['bash', str(ROOT / script)], env=env,
                               capture_output=True, text=True, timeout=20)
 

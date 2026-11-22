@@ -2,10 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 root="$PWD"
-image="${LOOPFORGE_INSTALL_TEST_IMAGE:?Set LOOPFORGE_INSTALL_TEST_IMAGE to the locally built platform image}"
-task_dir=$(mktemp -d /tmp/loopforge-install-live.XXXXXX)
+image="${ZHIYAN_INSTALL_TEST_IMAGE:?Set ZHIYAN_INSTALL_TEST_IMAGE to the locally built platform image}"
+task_dir=$(mktemp -d /tmp/zhiyan-install-live.XXXXXX)
 chmod 755 "$task_dir"
-docker_socket="${LOOPFORGE_DOCKER_SOCKET:-/var/run/docker.sock}"
+docker_socket="${ZHIYAN_DOCKER_SOCKET:-/var/run/docker.sock}"
 cleanup() {
   for fixture in "$task_dir"/*; do
     [[ -f "$fixture/.env" ]] || continue
@@ -17,7 +17,7 @@ cleanup() {
 trap cleanup EXIT
 
 actors=(root nonroot without-compose)
-[[ -z "${LOOPFORGE_INSTALL_SUDO_TEST_IMAGE:-}" ]] || actors+=(sudo)
+[[ -z "${ZHIYAN_INSTALL_SUDO_TEST_IMAGE:-}" ]] || actors+=(sudo)
 for actor in "${actors[@]}"; do
   fixture="$task_dir/$actor"
   mkdir -p "$fixture/scripts" "$fixture/migrations/seed" "$fixture/user-home"
@@ -44,12 +44,12 @@ PY
     prefix=(docker run --rm --network host -v "$fixture:$fixture" -v "$docker_socket:$docker_socket" -v "$fixture/cli-plugins:/usr/local/lib/docker/cli-plugins" -w "$fixture" --entrypoint /usr/bin/env "$image")
   elif [[ "$actor" == sudo ]]; then
     chown -R 1000:1000 "$fixture"
-    prefix=(docker run --rm --network host --user 1000:1000 -v "$fixture:$fixture" -v "$docker_socket:$docker_socket" -v "${LOOPFORGE_TEST_COMPOSE_PLUGIN:-/usr/libexec/docker/cli-plugins/docker-compose}:/usr/local/lib/docker/cli-plugins/docker-compose:ro" -w "$fixture" --entrypoint /usr/bin/env "$LOOPFORGE_INSTALL_SUDO_TEST_IMAGE")
+    prefix=(docker run --rm --network host --user 1000:1000 -v "$fixture:$fixture" -v "$docker_socket:$docker_socket" -v "${ZHIYAN_TEST_COMPOSE_PLUGIN:-/usr/libexec/docker/cli-plugins/docker-compose}:/usr/local/lib/docker/cli-plugins/docker-compose:ro" -w "$fixture" --entrypoint /usr/bin/env "$ZHIYAN_INSTALL_SUDO_TEST_IMAGE")
     "${prefix[@]}" bash -c 'if docker info >/dev/null 2>&1; then exit 1; fi; sudo -n docker info >/dev/null'
   fi
   started=$SECONDS
   for attempt in first repeat; do
-    "${prefix[@]}" env HOME="$fixture/user-home" PATH=/usr/local/bin:/usr/bin:/bin LOOPFORGE_YES=1 COMPOSE_PROJECT_NAME="lf-install-${actor}-$$" LOOPFORGE_IMAGE="$image" LOOPFORGE_DATA_DIR="$fixture/data" LOOPFORGE_BIND=0.0.0.0 LOOPFORGE_PUBLIC_URL="http://192.0.2.10:$http_port" LOOPFORGE_DOCKER_SOCKET="$docker_socket" AGENTFLOW_HTTP_PORT="$http_port" LOOPFORGE_MYSQL_PORT="$mysql_port" bash "$fixture/scripts/install.sh" > "$fixture/$attempt.log" 2>&1 || { cat "$fixture/$attempt.log"; exit 1; }
+    "${prefix[@]}" env HOME="$fixture/user-home" PATH=/usr/local/bin:/usr/bin:/bin ZHIYAN_YES=1 COMPOSE_PROJECT_NAME="lf-install-${actor}-$$" ZHIYAN_IMAGE="$image" ZHIYAN_DATA_DIR="$fixture/data" ZHIYAN_BIND=0.0.0.0 ZHIYAN_PUBLIC_URL="http://192.0.2.10:$http_port" ZHIYAN_DOCKER_SOCKET="$docker_socket" AGENTFLOW_HTTP_PORT="$http_port" ZHIYAN_MYSQL_PORT="$mysql_port" bash "$fixture/scripts/install.sh" > "$fixture/$attempt.log" 2>&1 || { cat "$fixture/$attempt.log"; exit 1; }
     grep -q "Access: http://192.0.2.10:$http_port" "$fixture/$attempt.log"
     curl -fsS "http://127.0.0.1:$http_port/api/health" >/dev/null
     if [[ "$attempt" == first ]]; then

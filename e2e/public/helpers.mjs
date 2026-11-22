@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-export const password=()=>process.env.LOOPFORGE_TEST_PASSWORD || fs.readFileSync(process.env.LOOPFORGE_TEST_PASSWORD_FILE||new URL('../../.local/admin-password',import.meta.url),'utf8').trim();
+export const password=()=>process.env.ZHIYAN_TEST_PASSWORD || fs.readFileSync(process.env.ZHIYAN_TEST_PASSWORD_FILE||new URL('../../.local/admin-password',import.meta.url),'utf8').trim();
 
 // The global #projectSwitcher <select> owns the active project, but it is
 // drawn as a Harness trigger and the whole top bar is hidden on the chat home,
@@ -85,14 +85,14 @@ export const fitsFrame=locator=>locator.evaluate(el=>{
 let unconfiguredCookies=[];
 export async function signInUnconfigured(page){
   const {test,expect}=await import('@playwright/test');
-  test.skip(!process.env.LOOPFORGE_UNCONFIGURED_USER,'Provide an account without model or Git credentials');
+  test.skip(!process.env.ZHIYAN_UNCONFIGURED_USER,'Provide an account without model or Git credentials');
   if(unconfiguredCookies.length){
     await page.context().addCookies(unconfiguredCookies);
     await page.goto('/#/collaboration');
   }else{
-    const secret=process.env.LOOPFORGE_UNCONFIGURED_PASSWORD||fs.readFileSync(process.env.LOOPFORGE_UNCONFIGURED_PASSWORD_FILE,'utf8').trim();
+    const secret=process.env.ZHIYAN_UNCONFIGURED_PASSWORD||fs.readFileSync(process.env.ZHIYAN_UNCONFIGURED_PASSWORD_FILE,'utf8').trim();
     await page.goto('/login.html');
-    await page.locator('[name="login"]').fill(process.env.LOOPFORGE_UNCONFIGURED_USER);
+    await page.locator('[name="login"]').fill(process.env.ZHIYAN_UNCONFIGURED_USER);
     await page.locator('[name="password"]').fill(secret);
     const pending=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/auth/password'&&r.request().method()==='POST');
     await page.locator('#loginSubmit').click();

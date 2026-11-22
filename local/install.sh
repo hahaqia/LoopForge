@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 
-PROGRAM="loopforge installer"
-DEFAULT_REPOSITORY="Tencent/LoopForge"
-ASSET_NAME="loopforge-workflow.tar.gz"
+PROGRAM="zhiyan installer"
+DEFAULT_REPOSITORY="zhiyan/zhiyan"
+ASSET_NAME="zhiyan-workflow.tar.gz"
 
 fail() {
   printf '%s: %s\n' "$PROGRAM" "$*" >&2
@@ -12,7 +12,7 @@ fail() {
 
 usage() {
   cat <<'EOF'
-Install a LoopForge workflow directly into a project (no global CLI install).
+Install a 智研工坊 workflow directly into a project (no global CLI install).
 
 Usage:
   curl -fsSL <install.sh URL> | sh -s -- <host> [options]
@@ -30,18 +30,18 @@ Options:
   -h, --help                    Show this help
 
 Environment equivalents:
-  LOOPFORGE_REPOSITORY, LOOPFORGE_VERSION, LOOPFORGE_RELEASE_BASE_URL
+  ZHIYAN_REPOSITORY, ZHIYAN_VERSION, ZHIYAN_RELEASE_BASE_URL
 EOF
 }
 
 HOST=""
 EDITION="classic"
 PROJECT_ROOT="$(pwd)"
-VERSION="${LOOPFORGE_VERSION:-}"
-REPOSITORY="${LOOPFORGE_REPOSITORY:-$DEFAULT_REPOSITORY}"
-RELEASE_BASE_URL="${LOOPFORGE_RELEASE_BASE_URL:-}"
-GITHUB_URL="${LOOPFORGE_GITHUB_URL:-https://github.com}"
-GITHUB_API_URL="${LOOPFORGE_GITHUB_API_URL:-https://api.github.com}"
+VERSION="${ZHIYAN_VERSION:-}"
+REPOSITORY="${ZHIYAN_REPOSITORY:-$DEFAULT_REPOSITORY}"
+RELEASE_BASE_URL="${ZHIYAN_RELEASE_BASE_URL:-}"
+GITHUB_URL="${ZHIYAN_GITHUB_URL:-https://github.com}"
+GITHUB_API_URL="${ZHIYAN_GITHUB_API_URL:-https://api.github.com}"
 FORCE=0
 
 while [ "$#" -gt 0 ]; do
@@ -127,7 +127,7 @@ sha256_file() {
   fi
 }
 
-TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t loopforge)
+TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t zhiyan)
 trap 'rm -rf "$TMP_DIR"' EXIT HUP INT TERM
 
 if [ -z "$RELEASE_BASE_URL" ]; then
@@ -164,7 +164,7 @@ fi
 case "$RELEASE_BASE_URL" in
   https://*) ;;
   *)
-    [ "${LOOPFORGE_ALLOW_INSECURE:-0}" = "1" ] \
+    [ "${ZHIYAN_ALLOW_INSECURE:-0}" = "1" ] \
       || fail "release URL must use HTTPS"
     ;;
 esac
@@ -175,7 +175,7 @@ CHECKSUM_URL="$ARCHIVE_URL.sha256"
 ARCHIVE="$TMP_DIR/$ASSET_NAME"
 CHECKSUM="$ARCHIVE.sha256"
 
-printf 'Downloading LoopForge workflow from %s\n' "$ARCHIVE_URL"
+printf 'Downloading 智研工坊 workflow from %s\n' "$ARCHIVE_URL"
 download "$ARCHIVE_URL" "$ARCHIVE"
 download "$CHECKSUM_URL" "$CHECKSUM"
 
@@ -186,12 +186,12 @@ ACTUAL_SHA256=$(sha256_file "$ARCHIVE")
 [ "$ACTUAL_SHA256" = "$EXPECTED_SHA256" ] || fail "SHA-256 checksum mismatch"
 
 tar -tzf "$ARCHIVE" | awk '
-  $0 !~ /^loopforge-workflow(\/|$)/ { exit 1 }
+  $0 !~ /^zhiyan-workflow(\/|$)/ { exit 1 }
   $0 ~ /(^|\/)\.\.($|\/)/ { exit 1 }
 ' || fail "release archive contains an unsafe path"
 tar -xzf "$ARCHIVE" -C "$TMP_DIR"
 
-ASSET_ROOT="$TMP_DIR/loopforge-workflow"
+ASSET_ROOT="$TMP_DIR/zhiyan-workflow"
 [ -f "$ASSET_ROOT/src/devflow_cli/cli.py" ] || fail "release archive is missing the CLI core"
 [ -f "$ASSET_ROOT/skills/devflow/SKILL.md" ] || fail "release archive is missing workflow assets"
 

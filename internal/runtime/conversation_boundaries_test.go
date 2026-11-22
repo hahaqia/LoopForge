@@ -67,9 +67,9 @@ func TestConversationDockerAccessRejectsUnsafeOverrides(t *testing.T) {
 		}
 	}
 	t.Setenv("AGENTFLOW_CONVERSATION_RELAY_HOST", " relay.internal ")
-	t.Setenv("AGENTFLOW_CONVERSATION_DOCKER_NETWORK", " loopforge ")
+	t.Setenv("AGENTFLOW_CONVERSATION_DOCKER_NETWORK", " zhiyan ")
 	host, network, err := conversationDockerAccess(context.Background())
-	if err != nil || host != "relay.internal" || network != "loopforge" {
+	if err != nil || host != "relay.internal" || network != "zhiyan" {
 		t.Fatalf("explicit overrides = %q %q %v", host, network, err)
 	}
 }

@@ -89,7 +89,7 @@ func (h *projectsHandlers) projects(c *gin.Context) {
 			c.JSON(400, map[string]string{"error": err.Error()})
 			return
 		}
-		// A brand-new project starts with the built-in LoopForge backend
+		// A brand-new project starts with the built-in 智研工坊 backend
 		// delivery SOP when none was picked, so synced and newly created
 		// requirements run out of the box (see repo.bindDefaultWorkflow).
 		if isNew && strings.TrimSpace(v.WorkflowID) == "" {

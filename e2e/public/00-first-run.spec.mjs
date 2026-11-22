@@ -2,17 +2,17 @@ import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
 import {password, appReady, chat, composer, openHome, openExecutorSetup} from './helpers.mjs';
 
-// A brand-new installation, seen by someone who has never used LoopForge:
+// A brand-new installation, seen by someone who has never used 智研工坊:
 // first visit creates the administrator, the home page explains what to do
 // next, and a teammate can sign up on their own. Runs only against an empty
 // database because it consumes the one-time administrator setup.
 test.describe.configure({mode:'serial'});
-test.skip(process.env.LOOPFORGE_FRESH_INSTALL!=='1','Set LOOPFORGE_FRESH_INSTALL=1 against an installation with no accounts');
+test.skip(process.env.ZHIYAN_FRESH_INSTALL!=='1','Set ZHIYAN_FRESH_INSTALL=1 against an installation with no accounts');
 test.use({trace:'off',screenshot:'off'});
 
-const admin=process.env.LOOPFORGE_TEST_USER||'admin';
-const member=process.env.LOOPFORGE_UNCONFIGURED_USER||'first-run-member';
-const memberPassword=()=>process.env.LOOPFORGE_UNCONFIGURED_PASSWORD||(process.env.LOOPFORGE_UNCONFIGURED_PASSWORD_FILE?fs.readFileSync(process.env.LOOPFORGE_UNCONFIGURED_PASSWORD_FILE,'utf8').trim():'first-run-member-password');
+const admin=process.env.ZHIYAN_TEST_USER||'admin';
+const member=process.env.ZHIYAN_UNCONFIGURED_USER||'first-run-member';
+const memberPassword=()=>process.env.ZHIYAN_UNCONFIGURED_PASSWORD||(process.env.ZHIYAN_UNCONFIGURED_PASSWORD_FILE?fs.readFileSync(process.env.ZHIYAN_UNCONFIGURED_PASSWORD_FILE,'utf8').trim():'first-run-member-password');
 
 async function createAccount(page,login,secret){
   await page.locator('[name="login"]').fill(login);

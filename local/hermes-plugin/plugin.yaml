@@ -1,7 +1,7 @@
-name: loopforge
+name: zhiyan
 version: 0.1.0
-description: "LoopForge Local workflow controls for Hermes Agent"
-author: Tencent LoopForge
+description: "智研工坊 Local workflow controls for Hermes Agent"
+author: 智研工坊
 kind: standalone
 platforms:
   - linux

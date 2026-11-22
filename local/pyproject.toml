@@ -8,11 +8,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "devflow-workflow"
 version = "0.2.3"
-description = "LoopForge Local development workflows for CodeBuddy, Codex, Cursor, and Claude Code"
+description = "智研工坊 Local development workflows for CodeBuddy, Codex, Cursor, and Claude Code"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
-authors = [{name = "LoopForge Contributors"}]
+authors = [{name = "智研工坊 Contributors"}]
 keywords = ["ai-agents", "multi-agent", "coding-agent", "codex", "claude-code"]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -20,12 +20,12 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Tencent/LoopForge"
-Issues = "https://github.com/Tencent/LoopForge/issues"
-Changelog = "https://github.com/Tencent/LoopForge/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/zhiyan/zhiyan"
+Issues = "https://github.com/zhiyan/zhiyan/issues"
+Changelog = "https://github.com/zhiyan/zhiyan/blob/main/CHANGELOG.md"
 
 [project.scripts]
-loopforge = "devflow_cli.cli:main"
+zhiyan = "devflow_cli.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

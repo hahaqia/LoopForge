@@ -233,7 +233,7 @@ func TestAssistantNativeProviderGateway(t *testing.T) {
 						item = map[string]any{"id": "fc_fixture", "type": "function_call", "call_id": "call_fixture", "name": "read_demo", "namespace": "mcp__agentflow_session", "arguments": "{}", "status": "completed"}
 					}
 					if first {
-						item = map[string]any{"id": "fc_native", "type": "function_call", "call_id": "call_native", "name": "view_image", "arguments": `{"path":"/tmp/loopforge-no-native-read"}`, "status": "completed"}
+						item = map[string]any{"id": "fc_native", "type": "function_call", "call_id": "call_native", "name": "view_image", "arguments": `{"path":"/tmp/zhiyan-no-native-read"}`, "status": "completed"}
 					}
 					emit("response.created", map[string]any{"type": "response.created", "response": map[string]any{"id": "resp_fixture", "status": "in_progress", "output": []any{}}})
 					emit("response.output_item.added", map[string]any{"type": "response.output_item.added", "output_index": 0, "item": item})

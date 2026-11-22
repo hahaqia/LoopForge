@@ -136,7 +136,7 @@ func cliVersionFromOutput(provider, output string) string {
 func probeHostCLIVersion(ctx context.Context, sandbox *processSandbox, provider, binary string) string {
 	ctx, cancel := context.WithTimeout(ctx, cliVersionTimeout)
 	defer cancel()
-	home, err := os.MkdirTemp("", "loopforge-cli-version-")
+	home, err := os.MkdirTemp("", "zhiyan-cli-version-")
 	if err != nil {
 		return ""
 	}
@@ -201,7 +201,7 @@ func (s *dockerSandbox) probeCLIVersion(ctx context.Context, provider, binary st
 		args = append(args, "-e", "PATH="+path)
 	}
 	args = append(args, s.toolchainExecEnv()...)
-	args = append(args, id, "sh", "-c", dockerCLIVersionLaunch, "loopforge-cli-version",
+	args = append(args, id, "sh", "-c", dockerCLIVersionLaunch, "zhiyan-cli-version",
 		dockerConversationProcessSupervisor, dockerCLIVersionProbe, binary,
 		strconv.Itoa(int(cliVersionTimeout/time.Second)), dockerCLIVersionCommand)
 	return cliVersionFromOutput(provider, runCLIVersionProbe(exec.CommandContext(ctx, "docker", args...)))
@@ -211,7 +211,7 @@ func (s *dockerSandbox) probeCLIVersion(ctx context.Context, provider, binary st
 // container even if the Go client cancels its Docker connection. The existing
 // supervisor reaps detached descendants before the parent removes the directory.
 const dockerCLIVersionLaunch = toolchainPathSetup + dockerCLISharedPathSetup + `set -eu
-dir=$(mktemp -d /tmp/loopforge-cli-version.XXXXXXXX)
+dir=$(mktemp -d /tmp/zhiyan-cli-version.XXXXXXXX)
 trap 'rm -rf -- "$dir"' EXIT
 cd "$dir"
 python3 -I -c "$1" "$dir/probe.pid" python3 -I -c "$2" "$3" "$4" "$5"
@@ -231,7 +231,7 @@ with tempfile.TemporaryFile(dir=home) as output:
     resource.setrlimit(resource.RLIMIT_FSIZE, (8192, 8192))
     try:
         output_path="/proc/self/fd/"+str(output.fileno())
-        result=subprocess.run(["sh", "-lc", sys.argv[3], "loopforge-cli-version", sys.argv[1], home, output_path],
+        result=subprocess.run(["sh", "-lc", sys.argv[3], "zhiyan-cli-version", sys.argv[1], home, output_path],
                               env=env, pass_fds=(output.fileno(),), timeout=int(sys.argv[2]),
                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.TimeoutExpired:

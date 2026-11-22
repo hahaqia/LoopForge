@@ -12,7 +12,7 @@ from .targets import load
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(
-        prog="loopforge",
+        prog="zhiyan",
         description="安装和维护 DevFlow Classic / Portable 工作流",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )

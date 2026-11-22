@@ -521,7 +521,7 @@ func (h *assistantHandlers) bindWorkspaceGit(ctx context.Context, s *AgentToolSe
 	if user, ok := h.repo.User(s.User.ID); ok {
 		if login := strings.TrimSpace(user.LoginName); login != "" {
 			credentials.GitUserName = login
-			credentials.GitUserEmail = login + "@users.noreply.loopforge.invalid"
+			credentials.GitUserEmail = login + "@users.noreply.zhiyan.invalid"
 		}
 	}
 	if !slices.Contains(command.CredentialBindings, runtime.BindGitWorkspace) {
@@ -531,7 +531,7 @@ func (h *assistantHandlers) bindWorkspaceGit(ctx context.Context, s *AgentToolSe
 }
 
 func (h *assistantHandlers) testRunnerCLI(ctx context.Context, runnerID, provider string, runnerLogin bool, user domain.User) error {
-	root, err := os.MkdirTemp("", "loopforge-cli-test-")
+	root, err := os.MkdirTemp("", "zhiyan-cli-test-")
 	if err != nil {
 		return err
 	}

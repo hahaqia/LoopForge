@@ -26,7 +26,7 @@ ROUTE = [
 class ClassicCodeBuddyE2E(unittest.TestCase):
     def setUp(self):
         self.project = h.new_project(self)
-        h.loopforge("install", "codebuddy", "--project-root", self.project)
+        h.zhiyan("install", "codebuddy", "--project-root", self.project)
         self.state_path = h.seed_classic_run(self.project)
 
     def dispatch(self, sender, event, target):

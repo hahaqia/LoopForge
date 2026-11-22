@@ -6,11 +6,11 @@ import { test } from 'node:test';
 import { setupModelKeys } from '../setup-model-keys.mjs';
 
 const base = 'http://127.0.0.1:8090';
-const passwordEnv = 'LOOPFORGE_TEST_MODEL_KEYS_FIXTURE_PASSWORD';
+const passwordEnv = 'ZHIYAN_TEST_MODEL_KEYS_FIXTURE_PASSWORD';
 const password = 'fixture-password';
 
 function configFile(t, contents) {
-  const dir = mkdtempSync(join(tmpdir(), 'loopforge-model-keys-'));
+  const dir = mkdtempSync(join(tmpdir(), 'zhiyan-model-keys-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const file = join(dir, 'keys.json');
   writeFileSync(file, typeof contents === 'string' ? contents : JSON.stringify(contents), { mode: 0o600 });

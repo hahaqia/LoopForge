@@ -53,7 +53,7 @@ const STEPS = [
 
 const FALLBACK_ROLES = [
   {
-    id: "loopforge-requirement",
+    id: "zhiyan-requirement",
     name: "需求定型",
     description: "澄清需求边界与验收标准",
     prompt: "根据需求输入与代码库现状，确认目标、范围、排除项与验收标准，产出结构化需求说明与执行计划。\n\n任务输入：{{input}}",
@@ -61,7 +61,7 @@ const FALLBACK_ROLES = [
     artifactPath: "requirement-report.md",
   },
   {
-    id: "loopforge-design",
+    id: "zhiyan-design",
     name: "方案设计",
     description: "产出技术方案与实现计划",
     prompt: "分析受影响模块与调用链，设计接口、数据模型与最小改动方案，明确风险与验证范围。\n\n任务输入：{{input}}",
@@ -69,7 +69,7 @@ const FALLBACK_ROLES = [
     artifactPath: "tech-design.md",
   },
   {
-    id: "loopforge-implement",
+    id: "zhiyan-implement",
     name: "代码实现",
     description: "在工作分支实现并自测",
     prompt: "按方案与计划完成代码实现，运行受影响模块的单元测试并记录变更报告。\n\n任务输入：{{input}}",
@@ -77,7 +77,7 @@ const FALLBACK_ROLES = [
     artifactPath: "change-report.md",
   },
   {
-    id: "loopforge-review",
+    id: "zhiyan-review",
     name: "独立评审",
     description: "审查改动质量与规范",
     prompt: "独立审查代码改动的正确性、回归风险、安全边界与测试证据，给出评审结论。\n\n任务输入：{{input}}",
@@ -85,7 +85,7 @@ const FALLBACK_ROLES = [
     artifactPath: "review-report.md",
   },
   {
-    id: "loopforge-test",
+    id: "zhiyan-test",
     name: "测试验证",
     description: "运行测试并给出验收结论",
     prompt: "按验收标准执行自动化或回归测试，核对每条验收项并输出测试报告。\n\n任务输入：{{input}}",
@@ -93,7 +93,7 @@ const FALLBACK_ROLES = [
     artifactPath: "test-report.md",
   },
   {
-    id: "loopforge-mr",
+    id: "zhiyan-mr",
     name: "发起 MR",
     description: "推送分支并创建合并请求",
     prompt: "将工作分支推送到代码仓库，创建或更新 Pull Request 并整理变更摘要。\n\n任务输入：{{input}}",
@@ -101,7 +101,7 @@ const FALLBACK_ROLES = [
     artifactPath: "mr-body.md",
   },
   {
-    id: "loopforge-summary",
+    id: "zhiyan-summary",
     name: "交付汇总",
     description: "汇总产物与沉淀知识",
     prompt: "汇总本次交付的改动、验证结果与 MR 链接，提炼可复用的项目经验。\n\n任务输入：{{input}}",
@@ -111,13 +111,13 @@ const FALLBACK_ROLES = [
 ];
 
 const FALLBACK_NODES = [
-  { id: "requirement", name: "需求定型", type: "agent", agentId: "loopforge-requirement", metricStage: "clarification" },
-  { id: "design", name: "方案设计", type: "agent", agentId: "loopforge-design", metricStage: "development" },
-  { id: "implement", name: "代码实现", type: "agent", agentId: "loopforge-implement", metricStage: "development" },
-  { id: "review", name: "独立评审", type: "agent", agentId: "loopforge-review", metricStage: "testing" },
-  { id: "test", name: "测试验证", type: "agent", agentId: "loopforge-test", metricStage: "testing" },
-  { id: "mr", name: "发起 MR", type: "agent", agentId: "loopforge-mr", metricStage: "development" },
-  { id: "summary", name: "交付汇总", type: "agent", agentId: "loopforge-summary", metricStage: "none" },
+  { id: "requirement", name: "需求定型", type: "agent", agentId: "zhiyan-requirement", metricStage: "clarification" },
+  { id: "design", name: "方案设计", type: "agent", agentId: "zhiyan-design", metricStage: "development" },
+  { id: "implement", name: "代码实现", type: "agent", agentId: "zhiyan-implement", metricStage: "development" },
+  { id: "review", name: "独立评审", type: "agent", agentId: "zhiyan-review", metricStage: "testing" },
+  { id: "test", name: "测试验证", type: "agent", agentId: "zhiyan-test", metricStage: "testing" },
+  { id: "mr", name: "发起 MR", type: "agent", agentId: "zhiyan-mr", metricStage: "development" },
+  { id: "summary", name: "交付汇总", type: "agent", agentId: "zhiyan-summary", metricStage: "none" },
 ];
 
 const BRANCH_OPTIONS = [
@@ -564,9 +564,9 @@ function parseGitHubRepo(raw) {
 
 // Explicit SSH keeps its transport. Managed HTTPS links use the configured host.
 export function parseGongfengRepo(raw, host = "") {
-  return globalThis.LoopForgeGitSSH(raw) ||
-    globalThis.LoopForgeGongfengRepository(raw, host) ||
-    globalThis.LoopForgeGitHTTPS(raw) ||
+  return globalThis.zhiyanGitSSH(raw) ||
+    globalThis.zhiyanGongfengRepository(raw, host) ||
+    globalThis.zhiyanGitHTTPS(raw) ||
     parseGitHubRepo(raw);
 }
 
@@ -1076,7 +1076,7 @@ export default function QuickAccessWizard({
   const hasGit = gitHubReady || gongfengReady || Boolean(storedUser?.gitSshKeyConfigured || storedUser?.gitHttpCredentialsConfigured);
   const sshKeysLoaded = sshCredentials.userId === user?.id && sshCredentials.keys !== null;
   const hasSSHKey = (remote) => sshKeysLoaded && !sshCredentials.error && sshCredentials.keys.some(
-    (key) => globalThis.LoopForgeGitSSHHost(key.host) === remote?.host,
+    (key) => globalThis.zhiyanGitSSHHost(key.host) === remote?.host,
   );
   const gitAccess = (repo) => {
     if (repo?.provider === "ssh") return { label: "Git SSH", ready: hasSSHKey(repo) };

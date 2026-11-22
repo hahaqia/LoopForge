@@ -653,7 +653,7 @@ func TestNewProjectDefaultsToGenericBackendDeliverySOP(t *testing.T) {
 	h := New(s, engine.New(s, runtime.NewManager(filepath.Join(t.TempDir(), "workspaces"))), tracker.NewService(), "", "")
 	created := requestJSON[domain.Project](t, h, http.MethodPost, "/api/projects", domain.Project{ID: "fresh", Key: "FRESH", Name: "Fresh"}, http.StatusOK)
 	if created.WorkflowID != repo.GenericBackendDeliveryWorkflowID {
-		t.Fatalf("new project should default to the LoopForge SOP, got %q", created.WorkflowID)
+		t.Fatalf("new project should default to the 智研工坊 SOP, got %q", created.WorkflowID)
 	}
 	assertProjectHasDefaultTrackerMCPs(t, s, "fresh")
 	// 显式指定或修改 SOP 不被覆盖。

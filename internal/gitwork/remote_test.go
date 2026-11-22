@@ -10,7 +10,7 @@ import (
 
 func TestValidateRemoteURL(t *testing.T) {
 	for _, raw := range []string{
-		"https://github.com/Tencent/LoopForge.git",
+		"https://github.com/zhiyan/zhiyan.git",
 		"http://git.example.com/a/b.git",
 		"ssh://git@git.example.com:22/a/b.git",
 		"git://git.example.com/a/b.git",

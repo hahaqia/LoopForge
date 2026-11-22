@@ -79,7 +79,7 @@ describe("conversation hooks", () => {
   });
 
   test("switches Main Bot to another CLI and sends its executor", async () => {
-    localStorage.removeItem("loopforge.assistant.executor");
+    localStorage.removeItem("zhiyan.assistant.executor");
     const { result } = renderHook(() => useChat());
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect(result.current.executor).toBe("codebuddy");
@@ -98,12 +98,12 @@ describe("conversation hooks", () => {
     );
     act(() => result.current.setExecutor("codebuddy"));
     expect(result.current.model).toBe("m1");
-    localStorage.removeItem("loopforge.assistant.executor");
+    localStorage.removeItem("zhiyan.assistant.executor");
   });
 
   test("restores the CLI and model saved by an earlier version", async () => {
-    localStorage.setItem("loopforge.assistant.executor", "codex");
-    localStorage.setItem("loopforge.assistant.model.codex", "gpt-5");
+    localStorage.setItem("zhiyan.assistant.executor", "codex");
+    localStorage.setItem("zhiyan.assistant.model.codex", "gpt-5");
     const { result } = renderHook(() => useChat());
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect(result.current.executor).toBe("codex");
@@ -527,7 +527,7 @@ describe("conversation hooks", () => {
     } finally {
       view.unmount();
       apiMock.mockImplementation(original);
-      localStorage.removeItem("loopforge.assistant.executor");
+      localStorage.removeItem("zhiyan.assistant.executor");
     }
   });
 
@@ -578,9 +578,9 @@ describe("conversation hooks", () => {
       view.unmount();
       apiMock.mockImplementation(originalAPI);
       writeMock.mockImplementation(originalWrite);
-      localStorage.removeItem("loopforge.assistant.executor");
-      localStorage.removeItem("loopforge.assistant.model.agy");
-      localStorage.removeItem("loopforge.assistant.effort.agy.claude-sonnet-5-5-medium");
+      localStorage.removeItem("zhiyan.assistant.executor");
+      localStorage.removeItem("zhiyan.assistant.model.agy");
+      localStorage.removeItem("zhiyan.assistant.effort.agy.claude-sonnet-5-5-medium");
       history.replaceState({}, "", "/");
     }
   });
@@ -623,9 +623,9 @@ describe("conversation hooks", () => {
       view.unmount();
       apiMock.mockImplementation(originalAPI);
       writeMock.mockImplementation(originalWrite);
-      localStorage.removeItem("loopforge.assistant.executor");
-      localStorage.removeItem("loopforge.assistant.model.agy");
-      localStorage.removeItem("loopforge.assistant.effort.agy.gemini-3.8-flash-low");
+      localStorage.removeItem("zhiyan.assistant.executor");
+      localStorage.removeItem("zhiyan.assistant.model.agy");
+      localStorage.removeItem("zhiyan.assistant.effort.agy.gemini-3.8-flash-low");
     }
   });
 
@@ -675,10 +675,10 @@ describe("conversation hooks", () => {
     } finally {
       apiMock.mockImplementation(originalAPI);
       writeMock.mockImplementation(originalWrite);
-      localStorage.removeItem("loopforge.assistant.executor");
-      localStorage.removeItem("loopforge.assistant.model.agy");
-      localStorage.removeItem("loopforge.assistant.effort.agy.gemini-a-high");
-      localStorage.removeItem("loopforge.assistant.effort.agy.claude-b-medium");
+      localStorage.removeItem("zhiyan.assistant.executor");
+      localStorage.removeItem("zhiyan.assistant.model.agy");
+      localStorage.removeItem("zhiyan.assistant.effort.agy.gemini-a-high");
+      localStorage.removeItem("zhiyan.assistant.effort.agy.claude-b-medium");
     }
   });
 
@@ -796,7 +796,7 @@ describe("conversation hooks", () => {
     [false, "请先在个人配置中配置自己的 CodeBuddy API Key"],
     [true, "当前 CLI 暂无可用模型，请在个人配置中获取或添加模型。"],
   ])("blocks sends without a usable CodeBuddy model (key configured: %s)", async (configured, message) => {
-    localStorage.removeItem("loopforge.assistant.executor");
+    localStorage.removeItem("zhiyan.assistant.executor");
     const original = apiMock.getMockImplementation();
     const user = { id: 1, loginName: "tester", codeBuddyApiKeyConfigured: configured };
     apiMock.mockImplementation((path, options) => {
@@ -821,7 +821,7 @@ describe("conversation hooks", () => {
   });
 
   test("reloads the model list if a CodeBuddy key was added in another tab", async () => {
-    localStorage.removeItem("loopforge.assistant.executor");
+    localStorage.removeItem("zhiyan.assistant.executor");
     const original = apiMock.getMockImplementation();
     const user = { id: 1, loginName: "tester" };
     let configured = false;
@@ -856,7 +856,7 @@ describe("conversation hooks", () => {
     ["first available model", "codebuddy:default", { executor: "codebuddy", model: "retired" }, "default", "m1", ""],
     ["explicitly selected model", "m1", { executor: "codebuddy", model: "m3" }, "m2", "m1", ""],
   ])("uses the %s when reopening and regenerating an old conversation", async (_name, savedModel, preferences, catalogDefault, expectedModel, expectedEffort) => {
-    localStorage.removeItem("loopforge.assistant.executor");
+    localStorage.removeItem("zhiyan.assistant.executor");
     const original = apiMock.getMockImplementation();
     const saved = {
       id: "s1", projectId: "p1", executor: "codebuddy", model: savedModel,
@@ -886,7 +886,7 @@ describe("conversation hooks", () => {
   });
 
   test("without an own key chat is limited to the administrator's shared models", async () => {
-    localStorage.removeItem("loopforge.assistant.executor");
+    localStorage.removeItem("zhiyan.assistant.executor");
     const original = apiMock.getMockImplementation();
     apiMock.mockImplementation(async (path, options) => {
       if (path === "/api/auth/current") return { user: { id: 1, loginName: "tester", codeBuddyApiKeyConfigured: false } };
@@ -915,7 +915,7 @@ describe("conversation hooks", () => {
   });
 
   test("restores model and effort choices in fresh chats and across catalog sources", async () => {
-    localStorage.setItem("loopforge.assistant.model.codebuddy", "default");
+    localStorage.setItem("zhiyan.assistant.model.codebuddy", "default");
     const original = apiMock.getMockImplementation();
     let personalCodexCatalog = false;
     apiMock.mockImplementation(async (path, options) => {
@@ -1080,7 +1080,7 @@ describe("conversation hooks", () => {
   });
 
   test("an open conversation keeps its model and effort when the model is missing from the picker", async () => {
-    localStorage.removeItem("loopforge.assistant.executor");
+    localStorage.removeItem("zhiyan.assistant.executor");
     const original = apiMock.getMockImplementation();
     const codexSession = {
       id: "s9", title: "Codex 会话", projectId: "p1", executor: "codex", model: "codex:gpt-5.6-sol", effort: "high",
@@ -1107,7 +1107,7 @@ describe("conversation hooks", () => {
       expect(result.current).toMatchObject({ model: "codex:gpt-5.6-sol", effort: "" });
     } finally {
       apiMock.mockImplementation(original);
-      localStorage.removeItem("loopforge.assistant.executor");
+      localStorage.removeItem("zhiyan.assistant.executor");
     }
   });
 

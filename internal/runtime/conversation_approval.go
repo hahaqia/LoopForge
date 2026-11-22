@@ -86,11 +86,11 @@ func InstallConversationApproval(root, provider string, command CommandSpec) (Co
 		// including an interpreter that is missing or crashed.
 		command.AgentCLI.ApprovalCommand = launch + " || exit 2"
 	case AgentCLIPi:
-		if err := writeAgentCLIFile(home, ".pi/agent/extensions/loopforge-approval.ts", []byte(conversationPiApproval)); err != nil {
+		if err := writeAgentCLIFile(home, ".pi/agent/extensions/zhiyan-approval.ts", []byte(conversationPiApproval)); err != nil {
 			return command, err
 		}
 	case AgentCLIOpenCode:
-		if err := writeAgentCLIFile(home, ".config/opencode/plugins/loopforge-approval.js", []byte(conversationOpenCodeApproval)); err != nil {
+		if err := writeAgentCLIFile(home, ".config/opencode/plugins/zhiyan-approval.js", []byte(conversationOpenCodeApproval)); err != nil {
 			return command, err
 		}
 	case AgentCLICursor:
@@ -100,7 +100,7 @@ func InstallConversationApproval(root, provider string, command CommandSpec) (Co
 			return command, err
 		}
 	case AgentCLIAntigravity:
-		agyHooks := map[string]any{"loopforge-approval": map[string]any{"PreToolUse": []any{map[string]any{"matcher": ".*", "hooks": []any{map[string]any{"type": "command", "command": launch + " agy", "timeout": conversationApprovalHookWatchdog}}}}}}
+		agyHooks := map[string]any{"zhiyan-approval": map[string]any{"PreToolUse": []any{map[string]any{"matcher": ".*", "hooks": []any{map[string]any{"type": "command", "command": launch + " agy", "timeout": conversationApprovalHookWatchdog}}}}}}
 		data, _ := json.Marshal(agyHooks)
 		if err := writeAgentCLIFile(home, ".gemini/config/hooks.json", data); err != nil {
 			return command, err
@@ -111,7 +111,7 @@ func InstallConversationApproval(root, provider string, command CommandSpec) (Co
 		if err := os.WriteFile(path, []byte(conversationDSHApproval), 0600); err != nil {
 			return command, err
 		}
-		patch, _ := json.Marshal([]any{map[string]any{"insert": []any{map[string]any{"id": "loopforge-native-approval", "name": path}}}})
+		patch, _ := json.Marshal([]any{map[string]any{"insert": []any{map[string]any{"id": "zhiyan-native-approval", "name": path}}}})
 		patchFile := filepath.Join(root, "dsh-approval.json")
 		if err := os.WriteFile(patchFile, patch, 0600); err != nil {
 			return command, err
@@ -228,7 +228,7 @@ export default function(pi) {
 }
 `
 const conversationOpenCodeApproval = conversationApprovalJS + `
-export const LoopForgeApproval=async()=>({"tool.execute.before":async(input,output)=>{await approve(input.tool,output.args)}});
+export const zhiyanApproval=async()=>({"tool.execute.before":async(input,output)=>{await approve(input.tool,output.args)}});
 `
 const conversationDSHApproval = conversationApprovalJS + `
 export const inject=["tools"];

@@ -55,7 +55,7 @@ func TestResolveGitIdentityUsesResponsibleUserLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := resolveGitIdentity(s, 22)
-	if got.name != "example-admin" || got.email != "example-admin@users.noreply.loopforge.invalid" {
+	if got.name != "example-admin" || got.email != "example-admin@users.noreply.zhiyan.invalid" {
 		t.Fatalf("resolveGitIdentity = %q <%s>", got.name, got.email)
 	}
 	if got := resolveGitIdentity(s, 999); got != (gitIdentity{}) {

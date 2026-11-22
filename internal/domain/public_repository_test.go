@@ -3,9 +3,9 @@ package domain
 import "testing"
 
 func TestPublicRepositoryAndPullRequestIdentity(t *testing.T) {
-	for _, raw := range []string{"https://github.com/Tencent/LoopForge", "git@github.com:Tencent/LoopForge.git", "github:Tencent/LoopForge", "https://github.com/Tencent/LoopForge/tree/main"} {
+	for _, raw := range []string{"https://github.com/zhiyan/zhiyan", "git@github.com:zhiyan/zhiyan.git", "github:zhiyan/zhiyan", "https://github.com/zhiyan/zhiyan/tree/main"} {
 		got, ok := ParseRepositoryURL(raw)
-		if !ok || got.Project != "github:Tencent/LoopForge" || got.CloneURL != "https://github.com/Tencent/LoopForge.git" {
+		if !ok || got.Project != "github:zhiyan/zhiyan" || got.CloneURL != "https://github.com/zhiyan/zhiyan.git" {
 			t.Fatalf("%s: %+v %v", raw, got, ok)
 		}
 	}
@@ -14,8 +14,8 @@ func TestPublicRepositoryAndPullRequestIdentity(t *testing.T) {
 			t.Fatalf("invalid reference accepted: %s %+v", raw, got)
 		}
 	}
-	p, n, u, ok := ParseGongfengMR("Delivered https://github.com/Tencent/LoopForge/pull/123")
-	if !ok || p != "github:Tencent/LoopForge" || n != 123 || u != "https://github.com/Tencent/LoopForge/pull/123" {
+	p, n, u, ok := ParseGongfengMR("Delivered https://github.com/zhiyan/zhiyan/pull/123")
+	if !ok || p != "github:zhiyan/zhiyan" || n != 123 || u != "https://github.com/zhiyan/zhiyan/pull/123" {
 		t.Fatalf("PR: %s %d %s %v", p, n, u, ok)
 	}
 }

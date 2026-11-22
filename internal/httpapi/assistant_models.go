@@ -86,7 +86,7 @@ func discoverCodeBuddyModels(ctx context.Context, environment, apiKey string) []
 	if err != nil {
 		return nil
 	}
-	dir, err := os.MkdirTemp("", "loopforge-models-")
+	dir, err := os.MkdirTemp("", "zhiyan-models-")
 	if err != nil {
 		return nil
 	}

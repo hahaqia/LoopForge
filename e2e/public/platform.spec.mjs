@@ -4,7 +4,7 @@ import {password, appReady, switchProject, openSettingsPage} from './helpers.mjs
 
 async function signIn(page){
   await page.goto('/login.html');
-  await page.locator('[name="login"]').fill(process.env.LOOPFORGE_TEST_USER || 'admin');
+  await page.locator('[name="login"]').fill(process.env.ZHIYAN_TEST_USER || 'admin');
   await page.locator('[name="password"]').fill(password());
   await page.locator('button[type="submit"]').click();
   await appReady(page);
@@ -79,7 +79,7 @@ test('real script artifacts survive UI approval and execution continues',async({
   expect(telemetry.ok(),await telemetry.text()).toBe(true);
   const artifact=detail.artifacts.find(a=>a.name==='welcome');expect(artifact).toBeTruthy();
   const content=await page.request.get(`/api/runs/${run.id}/artifacts/${encodeURIComponent(artifact.id)}`);
-  expect(await content.text()).toContain('LoopForge');
+  expect(await content.text()).toContain('智研工坊');
   await page.goto(`/#/runs/${encodeURIComponent(run.id)}`);
   await page.locator('[data-run-node="approve"]').click();
   const decision=page.locator('#runDetail .approval-callout.human');

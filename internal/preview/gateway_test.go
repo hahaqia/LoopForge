@@ -110,9 +110,9 @@ func TestRoutedBundleScansEachArchiveOnce(t *testing.T) {
 }
 
 func TestStrayNavigationTargetReturnsToPreview(t *testing.T) {
-	svc := &Service{cfg: Config{PublicHost: "loopforge.example.com"}}
+	svc := &Service{cfg: Config{PublicHost: "zhiyan.example.com"}}
 	token := strings.Repeat("ab", 16)
-	page := "https://loopforge.example.com/preview/" + token + "/skills"
+	page := "https://zhiyan.example.com/preview/" + token + "/skills"
 	navigate := func(referer string) map[string]string {
 		return map[string]string{"Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "same-origin", "Referer": referer}
 	}
@@ -121,17 +121,17 @@ func TestStrayNavigationTargetReturnsToPreview(t *testing.T) {
 		headers                    map[string]string
 		want                       string
 	}{
-		{"location.href to a root path", "GET", "/login?next=%2Fskills", "loopforge.example.com", navigate(page), "/preview/" + token + "/login?next=%2Fskills"},
-		{"link to the site root", "GET", "/", "loopforge.example.com", navigate(page), "/preview/" + token + "/"},
-		{"form post", "POST", "/api/login", "loopforge.example.com", navigate(page), "/preview/" + token + "/api/login"},
-		{"plain HTTP without fetch metadata", "GET", "/plugins", "loopforge.example.com", map[string]string{"Accept": "text/html,application/xhtml+xml", "Referer": "http://loopforge.example.com/preview/" + token + "/"}, "/preview/" + token + "/plugins"},
-		{"proxy rewrote Host", "GET", "/plugins", "127.0.0.1:8080", map[string]string{"Accept": "text/html", "Referer": "http://loopforge.example.com/preview/" + token + "/"}, "/preview/" + token + "/plugins"},
-		{"subresource", "GET", "/logo.png", "loopforge.example.com", map[string]string{"Sec-Fetch-Mode": "no-cors", "Sec-Fetch-Site": "same-origin", "Referer": page}, ""},
-		{"api call without fetch metadata", "GET", "/api/runs", "loopforge.example.com", map[string]string{"Accept": "application/json", "Referer": page}, ""},
-		{"other site posing as a preview page", "GET", "/", "loopforge.example.com", map[string]string{"Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "cross-site", "Referer": "https://evil.example/preview/" + token + "/"}, ""},
-		{"other host without fetch metadata", "GET", "/", "loopforge.example.com", map[string]string{"Accept": "text/html", "Referer": "http://evil.example/preview/" + token + "/"}, ""},
-		{"platform page", "GET", "/", "loopforge.example.com", navigate("https://loopforge.example.com/#/runs/r1"), ""},
-		{"typed into the address bar", "GET", "/", "loopforge.example.com", map[string]string{"Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none"}, ""},
+		{"location.href to a root path", "GET", "/login?next=%2Fskills", "zhiyan.example.com", navigate(page), "/preview/" + token + "/login?next=%2Fskills"},
+		{"link to the site root", "GET", "/", "zhiyan.example.com", navigate(page), "/preview/" + token + "/"},
+		{"form post", "POST", "/api/login", "zhiyan.example.com", navigate(page), "/preview/" + token + "/api/login"},
+		{"plain HTTP without fetch metadata", "GET", "/plugins", "zhiyan.example.com", map[string]string{"Accept": "text/html,application/xhtml+xml", "Referer": "http://zhiyan.example.com/preview/" + token + "/"}, "/preview/" + token + "/plugins"},
+		{"proxy rewrote Host", "GET", "/plugins", "127.0.0.1:8080", map[string]string{"Accept": "text/html", "Referer": "http://zhiyan.example.com/preview/" + token + "/"}, "/preview/" + token + "/plugins"},
+		{"subresource", "GET", "/logo.png", "zhiyan.example.com", map[string]string{"Sec-Fetch-Mode": "no-cors", "Sec-Fetch-Site": "same-origin", "Referer": page}, ""},
+		{"api call without fetch metadata", "GET", "/api/runs", "zhiyan.example.com", map[string]string{"Accept": "application/json", "Referer": page}, ""},
+		{"other site posing as a preview page", "GET", "/", "zhiyan.example.com", map[string]string{"Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "cross-site", "Referer": "https://evil.example/preview/" + token + "/"}, ""},
+		{"other host without fetch metadata", "GET", "/", "zhiyan.example.com", map[string]string{"Accept": "text/html", "Referer": "http://evil.example/preview/" + token + "/"}, ""},
+		{"platform page", "GET", "/", "zhiyan.example.com", navigate("https://zhiyan.example.com/#/runs/r1"), ""},
+		{"typed into the address bar", "GET", "/", "zhiyan.example.com", map[string]string{"Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none"}, ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -166,7 +166,7 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const routedCode = ` + shim(true) + `;
 const staticCode = ` + shim(false) + `;
-const origin = 'https://loopforge.test';
+const origin = 'https://zhiyan.test';
 const prefix = '` + prefix + `';
 const other = '/preview/' + 'cd'.repeat(16);
 

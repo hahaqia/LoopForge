@@ -71,7 +71,7 @@ const assistantCodexGuard = `import json,sys
 event=json.load(sys.stdin)
 name=event.get("tool_name", "")
 if not name.startswith("mcp__agentflow_session__"):
-    print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Use the LoopForge session MCP tools; native tools are disabled in Main Bot."}}))
+    print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Use the 智研工坊 session MCP tools; native tools are disabled in Main Bot."}}))
     sys.exit(2)
 `
 
@@ -167,7 +167,7 @@ func assistantCodexEvent(line string) (string, []assistantStreamEvent) {
 }
 
 func runAlternateAssistantCLI(ctx context.Context, req assistantCLIRequest, user domain.User, onEvent func(assistantStreamEvent)) (string, string, error) {
-	dir, err := os.MkdirTemp("", "loopforge-assistant-"+req.Executor+"-")
+	dir, err := os.MkdirTemp("", "zhiyan-assistant-"+req.Executor+"-")
 	if err != nil {
 		return "", "", err
 	}

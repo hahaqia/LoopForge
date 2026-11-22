@@ -16,15 +16,15 @@ func TestConversationCLISetupUsesSandboxProxy(t *testing.T) {
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("AGENTFLOW_RUNTIME_CLI_DIR", "")
 	argsPath := filepath.Join(t.TempDir(), "setup-args")
-	t.Setenv("LOOPFORGE_TEST_SETUP_ARGS", argsPath)
+	t.Setenv("ZHIYAN_TEST_SETUP_ARGS", argsPath)
 	docker := writeScript(t, `#!/bin/sh
 set -eu
 case "$*" in
   *"id -u; id -g"*) printf '1000\n1000\n' ;;
-  *loopforge-cli-available*) exit 127 ;;
-  *"loopforge-cli-setup"*)
-    printf '%s\n' "$@" > "$LOOPFORGE_TEST_SETUP_ARGS" ;;
-  *loopforge-cli-verify*) printf '/opt/loopforge/conversation-cli/.local/bin/agy\n' ;;
+  *zhiyan-cli-available*) exit 127 ;;
+  *"zhiyan-cli-setup"*)
+    printf '%s\n' "$@" > "$ZHIYAN_TEST_SETUP_ARGS" ;;
+  *zhiyan-cli-verify*) printf '/opt/zhiyan/conversation-cli/.local/bin/agy\n' ;;
 esac
 `)
 	if err := os.Symlink(docker, filepath.Join(bin, "docker")); err != nil {
@@ -63,8 +63,8 @@ func TestConversationScriptInstallerRetriesDownload(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			bin := t.TempDir()
 			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-			t.Setenv("LOOPFORGE_TEST_DOWNLOAD_MARKER", filepath.Join(t.TempDir(), "first-attempt"))
-			t.Setenv("LOOPFORGE_TEST_DOWNLOAD_FAILURE", tc.fail)
+			t.Setenv("ZHIYAN_TEST_DOWNLOAD_MARKER", filepath.Join(t.TempDir(), "first-attempt"))
+			t.Setenv("ZHIYAN_TEST_DOWNLOAD_FAILURE", tc.fail)
 			curl := writeScript(t, `#!/bin/sh
 set -eu
 while [ "$#" -gt 0 ]; do
@@ -72,11 +72,11 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 echo "download attempted" >&2
-if [ -e "$LOOPFORGE_TEST_DOWNLOAD_MARKER" ] && [ "$LOOPFORGE_TEST_DOWNLOAD_FAILURE" = once ]; then
+if [ -e "$ZHIYAN_TEST_DOWNLOAD_MARKER" ] && [ "$ZHIYAN_TEST_DOWNLOAD_FAILURE" = once ]; then
   printf '%s' complete > "$output"
   exit 0
 fi
-touch "$LOOPFORGE_TEST_DOWNLOAD_MARKER"
+touch "$ZHIYAN_TEST_DOWNLOAD_MARKER"
 printf '%s' incomplete > "$output"
 echo "curl: (35) SSL routines::wrong version number" >&2
 exit 35

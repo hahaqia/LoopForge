@@ -194,8 +194,8 @@ func TestBindRunnerRepositoriesPreservesMultiRepositoryLayout(t *testing.T) {
 		},
 	}
 	invocation := &domain.RunnerInvocation{}
-	bindRunnerRepositories(invocation, run, "example-admin", "example-admin@users.noreply.loopforge.invalid")
-	if invocation.GitUserName != "example-admin" || invocation.GitUserEmail != "example-admin@users.noreply.loopforge.invalid" {
+	bindRunnerRepositories(invocation, run, "example-admin", "example-admin@users.noreply.zhiyan.invalid")
+	if invocation.GitUserName != "example-admin" || invocation.GitUserEmail != "example-admin@users.noreply.zhiyan.invalid" {
 		t.Fatalf("runner git identity = %q <%s>", invocation.GitUserName, invocation.GitUserEmail)
 	}
 	if len(invocation.Repositories) != 2 {

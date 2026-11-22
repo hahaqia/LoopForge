@@ -8,7 +8,7 @@ test('GitHub authorization has a separate manual token path',async({page},info)=
   page.on('pageerror',error=>errors.push(error.message));
   page.on('response',response=>{if(response.status()>=500)failed.push(response.status()+' '+response.url())});
   await page.goto('/login.html');
-  await page.locator('[name="login"]').fill(process.env.LOOPFORGE_TEST_USER||'admin');
+  await page.locator('[name="login"]').fill(process.env.ZHIYAN_TEST_USER||'admin');
   await page.locator('[name="password"]').fill(password());
   await page.locator('#loginSubmit').click();
   await appReady(page);

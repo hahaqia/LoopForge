@@ -1,4 +1,4 @@
-"""Hermes Agent command plugin for LoopForge Local.
+"""Hermes Agent command plugin for 智研工坊 Local.
 
 The plugin deliberately keeps its state in the current project.  It calls the
 same ``workflow_state.py`` contract as the ``devflow`` Skill and never reads or
@@ -29,7 +29,7 @@ def _project_root() -> Path:
     process working directory and makes the behavior testable.
     """
 
-    override = os.environ.get("LOOPFORGE_PROJECT_ROOT")
+    override = os.environ.get("ZHIYAN_PROJECT_ROOT")
     if override:
         return Path(override).resolve()
     try:
@@ -47,8 +47,8 @@ def _workflow_script(root: Path) -> Path:
     path = root / ".hermes" / "skills" / "devflow" / "scripts" / "workflow_state.py"
     if not path.is_file():
         raise RuntimeError(
-            "LoopForge Skill is not installed in this project; run "
-            "`loopforge skills install hermes` first."
+            "智研工坊 Skill is not installed in this project; run "
+            "`zhiyan skills install hermes` first."
         )
     return path
 
@@ -94,12 +94,12 @@ def _record(root: Path, slug: Optional[str] = None) -> Optional[Tuple[Path, dict
     try:
         return path, json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Cannot read LoopForge state: {path}: {exc}") from exc
+        raise RuntimeError(f"Cannot read 智研工坊 state: {path}: {exc}") from exc
 
 
 def _render(record: Optional[Tuple[Path, dict]]) -> str:
     if record is None:
-        return "No LoopForge task found in this project."
+        return "No 智研工坊 task found in this project."
     path, state = record
     completed = [
         name
@@ -143,7 +143,7 @@ def _handle(raw: str) -> str:
     root = _project_root()
     if command == "help":
         return (
-            "Usage: /loopforge start <request> | status [slug] | result [slug] | "
+            "Usage: /zhiyan start <request> | status [slug] | result [slug] | "
             "approve [stage] | help"
         )
     if command == "status":
@@ -151,7 +151,7 @@ def _handle(raw: str) -> str:
     record = _record(root, value or None) if command == "result" else _record(root)
     if command == "result":
         if record is None:
-            return "No LoopForge task found in this project."
+            return "No 智研工坊 task found in this project."
         _path, state = record
         files = _result_files(root, state.get("task_slug", ""))
         listing = "\n\nArtifact files:\n" + "\n".join(f"- {item}" for item in files)
@@ -159,7 +159,7 @@ def _handle(raw: str) -> str:
     script = _workflow_script(root)
     if command == "approve":
         if record is None:
-            return "No LoopForge task is waiting for approval."
+            return "No 智研工坊 task is waiting for approval."
         state_path, state = record
         stage = value.upper() if value else state.get("awaiting_approval")
         if not stage:
@@ -172,7 +172,7 @@ def _handle(raw: str) -> str:
         _run(root, script, *args)
         return f"Approved {stage}. Resume the Hermes workflow to continue."
     if not value:
-        return "A request is required: /loopforge start <request>"
+        return "A request is required: /zhiyan start <request>"
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")[:48] or "hermes-task"
     state_path = root / "artifacts" / slug / "workflow-state.json"
     output = _run(
@@ -195,7 +195,7 @@ def _handle(raw: str) -> str:
         "hermes-main",
     )
     return (
-        f"LoopForge task initialized: {slug}\nRequest: {value}\nState: {state_path}\n"
+        f"智研工坊 task initialized: {slug}\nRequest: {value}\nState: {state_path}\n"
         f"{output}\nExecution mode: the Hermes adapter will use delegate_task when available "
         "and record a single-context fallback with its reason when it is not. "
         "Continue with /devflow or resume the task in Hermes."
@@ -206,8 +206,8 @@ def register(ctx) -> None:
     """Register the command on Hermes' documented PluginContext surface."""
 
     ctx.register_command(
-        "loopforge",
+        "zhiyan",
         _handle,
-        description="Start, inspect, and approve LoopForge Local workflows",
+        description="Start, inspect, and approve 智研工坊 Local workflows",
         args_hint="[start <request>|status [slug]|result [slug]|approve [stage]|help]",
     )

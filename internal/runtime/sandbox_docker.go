@@ -251,7 +251,7 @@ func (s *dockerSandbox) prepareSOPCLI(ctx context.Context, command CommandSpec) 
 		args = append(args, "-e", "PATH="+path)
 	}
 	args = append(append(args, s.toolchainExecEnv()...), s.name)
-	args = append(args, dockerWorkspaceExecArgv([]string{"sh", "-c", dockerCLIProbe, "loopforge-cli-probe", spec.Binary})...)
+	args = append(args, dockerWorkspaceExecArgv([]string{"sh", "-c", dockerCLIProbe, "zhiyan-cli-probe", spec.Binary})...)
 	output, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
 	if err == nil {
 		return command, "", nil

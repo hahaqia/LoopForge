@@ -25,7 +25,7 @@ func TestGitIdentityAndStageUntracked(t *testing.T) {
 	_, _ = exec.Command("git", "-C", dir, "config", "user.name", "").CombinedOutput()
 	_, _ = exec.Command("git", "-C", dir, "config", "user.email", "").CombinedOutput()
 	EnsureIdentity(context.Background(), dir)
-	if out, err := exec.Command("git", "-C", dir, "config", "user.name").Output(); err != nil || strings.TrimSpace(string(out)) != "LoopForge" {
+	if out, err := exec.Command("git", "-C", dir, "config", "user.name").Output(); err != nil || strings.TrimSpace(string(out)) != "智研工坊" {
 		t.Fatalf("name = %q, %v", out, err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "keep.go"), []byte("package keep"), 0o600); err != nil {

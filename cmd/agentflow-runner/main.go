@@ -27,7 +27,7 @@ func main() {
 	if runtime.RunGitHelperCLI(os.Args[1:]) {
 		return
 	}
-	server := flag.String("server", "", "LoopForge server URL, e.g. https://workflow.example.com (or AGENTFLOW_SERVER_URL)")
+	server := flag.String("server", "", "智研工坊 server URL, e.g. https://workflow.example.com (or AGENTFLOW_SERVER_URL)")
 	token := flag.String("token", "", "runner bootstrap token (or AGENTFLOW_RUNNER_BOOTSTRAP_TOKEN)")
 	name := flag.String("name", "", "runner display name (default: hostname)")
 	statePath := flag.String("state", "", "state file path (default: ~/.agentflow-runner/state.json)")

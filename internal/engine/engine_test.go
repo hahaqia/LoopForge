@@ -819,7 +819,7 @@ func TestPrepareRepositoryAppliesResponsibleUserGitIdentityOnCloneAndResume(t *t
 	mustGit(t, "", "clone", "--bare", source, remote)
 
 	repository := domain.RepositoryContext{RepositoryID: "skillhub", CloneURL: remote, BaseBranch: "master", WorkBranch: "feature/identity"}
-	ctx := withGitIdentity(context.Background(), "example-admin", "example-admin@users.noreply.loopforge.invalid")
+	ctx := withGitIdentity(context.Background(), "example-admin", "example-admin@users.noreply.zhiyan.invalid")
 	if err := prepareRepository(ctx, workspace, repository); err != nil {
 		t.Fatal(err)
 	}
@@ -834,7 +834,7 @@ func TestPrepareRepositoryAppliesResponsibleUserGitIdentityOnCloneAndResume(t *t
 	if got := gitOutput("config", "--local", "user.name"); got != "example-admin" {
 		t.Fatalf("user.name = %q", got)
 	}
-	if got := gitOutput("config", "--local", "user.email"); got != "example-admin@users.noreply.loopforge.invalid" {
+	if got := gitOutput("config", "--local", "user.email"); got != "example-admin@users.noreply.zhiyan.invalid" {
 		t.Fatalf("user.email = %q", got)
 	}
 
@@ -848,7 +848,7 @@ func TestPrepareRepositoryAppliesResponsibleUserGitIdentityOnCloneAndResume(t *t
 	}
 	mustGit(t, workspace, "add", "fix.txt")
 	mustGit(t, workspace, "commit", "-m", "fix")
-	if got := gitOutput("log", "-1", "--format=%an <%ae>"); got != "example-admin <example-admin@users.noreply.loopforge.invalid>" {
+	if got := gitOutput("log", "-1", "--format=%an <%ae>"); got != "example-admin <example-admin@users.noreply.zhiyan.invalid>" {
 		t.Fatalf("commit author = %q", got)
 	}
 }

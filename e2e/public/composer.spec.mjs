@@ -58,7 +58,7 @@ test('the configured home composer sends a real model reply and reloads its save
   test.setTimeout(300_000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/login.html');
-  await page.locator('[name="login"]').fill(process.env.LOOPFORGE_TEST_USER||'admin');
+  await page.locator('[name="login"]').fill(process.env.ZHIYAN_TEST_USER||'admin');
   await page.locator('[name="password"]').fill(adminPassword());
   await page.locator('button[type="submit"]').click();
   await appReady(page);

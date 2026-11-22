@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 source scripts/docker-access.sh
 
 mysql_query() {
-  docker_access compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --batch --skip-column-names -u loopforge loopforge'
+  docker_access compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --batch --skip-column-names -u zhiyan zhiyan'
 }
 
 for entry in 'run_telemetry adapter' 'run_logs level'; do

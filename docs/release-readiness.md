@@ -45,5 +45,5 @@ An additional full-suite run exposed a preview-test race: the preview becomes re
 
 ### Existing pull requests
 
-- [PR #46](https://github.com/Tencent/LoopForge/pull/46) was closed as superseded by [PR #48](https://github.com/Tencent/LoopForge/pull/48). The replacement uses the audited master export, public adapters, MIT packaging and the existing workflow under `local/`; closure does not imply its commits were merged.
-- [PR #47](https://github.com/Tencent/LoopForge/pull/47) was closed after the owner explicitly retired its separate workspace redesign and room-crew proposal. Only its language/theme mechanism is reused. Closure records that product decision; it does not claim parity with its room mentions, quoted replies, crew planning or crew-to-draft-SOP features, and those features need no follow-up port.
+- [PR #46](https://github.com/zhiyan/zhiyan/pull/46) was closed as superseded by [PR #48](https://github.com/zhiyan/zhiyan/pull/48). The replacement uses the audited master export, public adapters, MIT packaging and the existing workflow under `local/`; closure does not imply its commits were merged.
+- [PR #47](https://github.com/zhiyan/zhiyan/pull/47) was closed after the owner explicitly retired its separate workspace redesign and room-crew proposal. Only its language/theme mechanism is reused. Closure records that product decision; it does not claim parity with its room mentions, quoted replies, crew planning or crew-to-draft-SOP features, and those features need no follow-up port.

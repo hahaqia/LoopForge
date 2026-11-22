@@ -21,24 +21,24 @@ const read=app.match(/function readThemePreference\(\)\{[\s\S]*?catch\{return'li
 const keys=app.match(/const THEME_KEY=[^;]*?,themeMedia/)[0].replace(/,themeMedia$/,';');
 function check(name,ok){if(!ok)throw new Error(name)}
 
-let s=storage({'loopforge.theme.v3':'dark'}),c=ctx(s);
+let s=storage({'zhiyan.theme.v3':'dark'}),c=ctx(s);
 vm.runInContext(boot,c);
 check('first paint uses the earlier key',c.document.documentElement.dataset.theme==='dark');
-check('boot script does not write',s.data.get('loopforge.theme.v3')==='dark'&&!s.data.has('agentflow.theme.v3'));
+check('boot script does not write',s.data.get('zhiyan.theme.v3')==='dark'&&!s.data.has('agentflow.theme.v3'));
 vm.runInContext(keys+read+';globalThis.out=readThemePreference()',c);
-check('app migrates the earlier key',c.out==='dark'&&s.data.get('agentflow.theme.v3')==='dark'&&!s.data.has('loopforge.theme.v3'));
+check('app migrates the earlier key',c.out==='dark'&&s.data.get('agentflow.theme.v3')==='dark'&&!s.data.has('zhiyan.theme.v3'));
 
-s=storage({'agentflow.theme.v3':'light','loopforge.theme.v3':'dark'});c=ctx(s);
+s=storage({'agentflow.theme.v3':'light','zhiyan.theme.v3':'dark'});c=ctx(s);
 vm.runInContext(boot,c);
 check('current key wins at first paint',c.document.documentElement.dataset.theme==='light');
 vm.runInContext(keys+read+';globalThis.out=readThemePreference()',c);
-check('current key wins and the earlier key is cleared',c.out==='light'&&!s.data.has('loopforge.theme.v3'));
+check('current key wins and the earlier key is cleared',c.out==='light'&&!s.data.has('zhiyan.theme.v3'));
 
-s=storage({'loopforge.theme.v3':'bogus'});c=ctx(s);
+s=storage({'zhiyan.theme.v3':'bogus'});c=ctx(s);
 vm.runInContext(boot,c);
 check('invalid earlier value falls back to light',c.document.documentElement.dataset.theme==='light');
 vm.runInContext(keys+read+';globalThis.out=readThemePreference()',c);
-check('invalid earlier value is dropped',c.out==='light'&&!s.data.has('loopforge.theme.v3')&&!s.data.has('agentflow.theme.v3'));
+check('invalid earlier value is dropped',c.out==='light'&&!s.data.has('zhiyan.theme.v3')&&!s.data.has('agentflow.theme.v3'));
 
 const login=fs.readFileSync('login.js','utf8'),bootJS=fs.readFileSync('boot.js','utf8');
 check('login writes the shared key',login.includes("localStorage.setItem('agentflow.theme.v3', next)"));

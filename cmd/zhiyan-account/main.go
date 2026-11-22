@@ -1,4 +1,4 @@
-// loopforge-account explicitly provisions a local account. It never runs on
+// zhiyan-account explicitly provisions a local account. It never runs on
 // service startup. Read the password from stdin so it does not enter argv.
 package main
 

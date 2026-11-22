@@ -79,12 +79,12 @@ def url_for(host, port):
 
 def access_addresses(port, environ=os.environ, public_ip=''):
     """Return ([(label, url)], note) for the addresses users can open."""
-    bind = environ.get('LOOPFORGE_BIND', '0.0.0.0')
-    public = environ.get('LOOPFORGE_PUBLIC_URL', '').rstrip('/')
+    bind = environ.get('ZHIYAN_BIND', '0.0.0.0')
+    public = environ.get('ZHIYAN_PUBLIC_URL', '').rstrip('/')
     if public:
         parsed = urlsplit(public)
         if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('', '/'):
-            raise ValueError('LOOPFORGE_PUBLIC_URL must be an HTTP(S) URL without credentials, query or fragment')
+            raise ValueError('ZHIYAN_PUBLIC_URL must be an HTTP(S) URL without credentials, query or fragment')
         parsed.port
         try:
             address = ipaddress.ip_address(parsed.hostname)
@@ -98,7 +98,7 @@ def access_addresses(port, environ=os.environ, public_ip=''):
             return [('Access', public)], 'Loopback binding: the public URL requires a reverse proxy on this server.'
         return [('Access', public)], 'Allow the service port in the cloud security group/firewall, or route it through your HTTPS reverse proxy.'
     if bind in ('127.0.0.1', 'localhost', '::1'):
-        return [('This machine', url_for(bind, port))], 'Local access only. Set LOOPFORGE_BIND=0.0.0.0 and LOOPFORGE_PUBLIC_URL in .env for team access.'
+        return [('This machine', url_for(bind, port))], 'Local access only. Set ZHIYAN_BIND=0.0.0.0 and ZHIYAN_PUBLIC_URL in .env for team access.'
     if container_host():
         return [], 'Installation is inside a container; open the host IP and published port.'
     if bind not in ('0.0.0.0', '::', '[::]'):
@@ -128,13 +128,13 @@ def access_addresses(port, environ=os.environ, public_ip=''):
 
 def prepare_address(port, environ=os.environ):
     access_addresses(port, environ)
-    public = environ.get('LOOPFORGE_PUBLIC_URL', '').rstrip('/')
+    public = environ.get('ZHIYAN_PUBLIC_URL', '').rstrip('/')
     if public:
         config = Path('.env')
         lines = config.read_text().splitlines()
-        replacement = 'LOOPFORGE_PUBLIC_URL='+shlex.quote(public)
-        updated = [replacement if line.startswith('LOOPFORGE_PUBLIC_URL=') else line for line in lines]
-        if not any(line.startswith('LOOPFORGE_PUBLIC_URL=') for line in lines):
+        replacement = 'ZHIYAN_PUBLIC_URL='+shlex.quote(public)
+        updated = [replacement if line.startswith('ZHIYAN_PUBLIC_URL=') else line for line in lines]
+        if not any(line.startswith('ZHIYAN_PUBLIC_URL=') for line in lines):
             updated.append(replacement)
         if updated != lines:
             with config.open('w') as handle:
@@ -148,12 +148,12 @@ if __name__ == '__main__':
         except (ValueError, EOFError) as error:
             sys.exit(str(error))
         sys.exit(0)
-    detect = not os.environ.get('LOOPFORGE_PUBLIC_URL') and os.environ.get('LOOPFORGE_BIND', '0.0.0.0') in ('0.0.0.0', '::', '[::]') and not container_host()
+    detect = not os.environ.get('ZHIYAN_PUBLIC_URL') and os.environ.get('ZHIYAN_BIND', '0.0.0.0') in ('0.0.0.0', '::', '[::]') and not container_host()
     addresses, note = access_addresses(sys.argv[1], public_ip=detect_public_ipv4() if detect else '')
-    print('\n✓ LoopForge is running')
+    print('\n✓ 智研工坊 is running')
     width = max((len(label) for label, _ in addresses), default=0)
     for label, address in addresses:
         print(f'  {label + ":":<{width + 1}} {address}')
     if not addresses:
-        print(f'  Listening on {os.environ.get("LOOPFORGE_BIND", "0.0.0.0")}:{sys.argv[1]}; open http://SERVER_IP:{sys.argv[1]}.')
+        print(f'  Listening on {os.environ.get("ZHIYAN_BIND", "0.0.0.0")}:{sys.argv[1]}; open http://SERVER_IP:{sys.argv[1]}.')
     print(f'  {note}')

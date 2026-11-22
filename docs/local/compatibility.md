@@ -1,6 +1,6 @@
 # Agent Compatibility and Verification
 
-本文针对 LoopForge Local；源码路径和开发命令均以 `local/` 为起点。
+本文针对 智研工坊 Local；源码路径和开发命令均以 `local/` 为起点。
 
 ## 支持面
 
@@ -12,7 +12,7 @@
 | Claude Code | `.claude/` 完整包 | `.claude/skills` + 两个执行器 |
 | Pi | 无（Portable only） | `.pi/skills` + `subagent` adapter（需 `npm:pi-subagents`） |
 | DeepSeek Harness | 无（Portable only） | `.dsh/skills` + `subagent` adapter（DSH base 默认提供） |
-| Hermes Agent | 无（Portable only） | `.hermes/skills` + `delegate_task` adapter；首次使用需 `hermes skills trust .`；可选 `hermes-plugin/` 提供 `/loopforge` 控制命令 |
+| Hermes Agent | 无（Portable only） | `.hermes/skills` + `delegate_task` adapter；首次使用需 `hermes skills trust .`；可选 `hermes-plugin/` 提供 `/zhiyan` 控制命令 |
 
 Classic 的 Cursor/Claude 目录是生成产物；Portable 的事实只保存在 `skills/`。
 两者只共享显式行为合同和测试，不共享宿主运行文件。

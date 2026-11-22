@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-const prefix = "loopforge.assistant.";
+const prefix = "zhiyan.assistant.";
 
 export function readComposerPreference(name) {
   try {

@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-MIT. Copyright (C) 2026 Tencent. This directory is an optional LoopForge tool; the repository root [`LICENSE`](../../LICENSE) applies.
+MIT. Copyright (C) 2026 Tencent. This directory is an optional 智研工坊 tool; the repository root [`LICENSE`](../../LICENSE) applies.
 
 A [start.spring.io](https://start.spring.io/)-style service: pick Tencent Cloud products and **real resources**, then download a scoped Python MCP project.
 
@@ -10,7 +10,7 @@ Resource IDs go into the generated `config.yaml`. Tool arguments use alias enums
 
 Supported products: Redis, CDB, TDSQL-C, TKE (TKEX), CLS, COS. The first release is read-only. COS lists buckets and objects and reads object metadata; it does not download object bodies.
 
-This tool is not installed by `loopforge install`. Run it from this directory or pull the published image.
+This tool is not installed by `zhiyan install`. Run it from this directory or pull the published image.
 
 ## Run locally
 
@@ -33,11 +33,11 @@ cd web && npm run dev       # UI :5173, proxies /api
 
 ## Docker
 
-LoopForge Local `local-vX.Y.Z` releases also publish this image to GHCR (same version as the CLI):
+智研工坊 Local `local-vX.Y.Z` releases also publish this image to GHCR (same version as the CLI):
 
 ```bash
-docker pull ghcr.io/tencent/loopforge-tcmcp:0.2.1
-docker run --rm -p 127.0.0.1:8088:8088 ghcr.io/tencent/loopforge-tcmcp:0.2.1
+docker pull ghcr.io/tencent/zhiyan-tcmcp:0.2.1
+docker run --rm -p 127.0.0.1:8088:8088 ghcr.io/tencent/zhiyan-tcmcp:0.2.1
 ```
 
 Build from this directory (Node builds the UI; Python serves the API and `web/dist`):

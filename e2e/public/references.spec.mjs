@@ -14,7 +14,7 @@ for(const variant of [
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.setViewportSize({width:variant.width,height:variant.height});
     await page.addInitScript(({lang,theme})=>{
-      localStorage.setItem('loopforge.lang',lang);localStorage.setItem('agentflow.theme.v3',theme);
+      localStorage.setItem('zhiyan.lang',lang);localStorage.setItem('agentflow.theme.v3',theme);
     },variant);
     await signInUnconfigured(page);
     await switchProject(page,'welcome');

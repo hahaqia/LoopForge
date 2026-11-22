@@ -10,7 +10,7 @@ func TestWithFallbackIdentity(t *testing.T) {
 	ctx := context.Background()
 	args := []string{"commit", "-q", "-m", "msg"}
 
-	t.Run("missing identity gets LoopForge prefix", func(t *testing.T) {
+	t.Run("missing identity gets 智研工坊 prefix", func(t *testing.T) {
 		workspace := t.TempDir()
 		t.Setenv("HOME", t.TempDir())
 		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
@@ -19,7 +19,7 @@ func TestWithFallbackIdentity(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := withFallbackIdentity(ctx, workspace, args)
-		want := append([]string{"-c", "user.name=LoopForge", "-c", "user.email=loopforge@local"}, args...)
+		want := append([]string{"-c", "user.name=智研工坊", "-c", "user.email=zhiyan@local"}, args...)
 		if !slices.Equal(got, want) {
 			t.Fatalf("withFallbackIdentity() = %q, want %q", got, want)
 		}

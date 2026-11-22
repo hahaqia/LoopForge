@@ -215,7 +215,7 @@ func (m *runnerLoginManager) entry(source runnerLoginSource) (*runnerLoginEntry,
 			if err != nil {
 				return nil, "", err
 			}
-			root = filepath.Join(cache, "LoopForge", "runner-auth")
+			root = filepath.Join(cache, "智研工坊", "runner-auth")
 		}
 	}
 	if err := os.MkdirAll(root, 0700); err != nil {

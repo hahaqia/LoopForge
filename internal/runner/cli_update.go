@@ -87,7 +87,7 @@ func (d *Daemon) applyNativeCLIUpdate(ctx context.Context, rt domain.RunnerRunti
 	if d.updateReady.Load() || d.runnerExecutionActive() {
 		return domain.RunnerMaintenanceResult{Status: "failed", Message: "机器上有运行中的工作，请空闲后重试"}
 	}
-	dir, err := os.MkdirTemp("", "loopforge-cli-update-")
+	dir, err := os.MkdirTemp("", "zhiyan-cli-update-")
 	if err != nil {
 		return domain.RunnerMaintenanceResult{Status: "failed", Message: "无法创建 CLI 更新目录"}
 	}

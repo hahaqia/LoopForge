@@ -13,23 +13,23 @@ sys.path.insert(0, str(ROOT / 'tests/e2e'))
 import harness
 
 
-@unittest.skipUnless(os.environ.get('LOOPFORGE_LIVE_TESTS') == '1', 'set LOOPFORGE_LIVE_TESTS=1 to spend model credits')
+@unittest.skipUnless(os.environ.get('ZHIYAN_LIVE_TESTS') == '1', 'set ZHIYAN_LIVE_TESTS=1 to spend model credits')
 class LiveCodeBuddy(unittest.TestCase):
     def run_edition(self, edition):
         binary = shutil.which('codebuddy')
         self.assertTrue(binary, 'Install CodeBuddy Code first')
         key = os.environ.get('CODEBUDDY_API_KEY', '').strip()
-        if not key and os.environ.get('LOOPFORGE_TEST_KEY_FILE'):
-            key = Path(os.environ['LOOPFORGE_TEST_KEY_FILE']).read_text().strip()
-        self.assertTrue(key, 'Provide CODEBUDDY_API_KEY or LOOPFORGE_TEST_KEY_FILE')
+        if not key and os.environ.get('ZHIYAN_TEST_KEY_FILE'):
+            key = Path(os.environ['ZHIYAN_TEST_KEY_FILE']).read_text().strip()
+        self.assertTrue(key, 'Provide CODEBUDDY_API_KEY or ZHIYAN_TEST_KEY_FILE')
         project = harness.new_project(self)
-        harness.loopforge('install', 'codebuddy', '--edition', edition, '--project-root', project)
+        harness.zhiyan('install', 'codebuddy', '--edition', edition, '--project-root', project)
         env = dict(os.environ, CODEBUDDY_API_KEY=key)
         for name in ('CODEBUDDY_BASE_URL','ANTHROPIC_API_KEY','ANTHROPIC_AUTH_TOKEN','OPENAI_API_KEY','OPENAI_BASE_URL'):
             env.pop(name,None)
-        env['CODEBUDDY_INTERNET_ENVIRONMENT'] = os.environ.get('LOOPFORGE_CODEBUDDY_ENVIRONMENT', '')
+        env['CODEBUDDY_INTERNET_ENVIRONMENT'] = os.environ.get('ZHIYAN_CODEBUDDY_ENVIRONMENT', '')
         env['CODEBUDDY_CONFIG_DIR'] = str(project / '.test-codebuddy-config')
-        model = os.environ.get('LOOPFORGE_TEST_MODEL', 'deepseek-v4.1-flash')
+        model = os.environ.get('ZHIYAN_TEST_MODEL', 'deepseek-v4.1-flash')
         entry = '/start-devflow' if edition == 'classic' else '/devflow'
         prompt = entry + ' 本地小任务 live-slugify：修复 slugify.py，使 check_slugify.py 中两个现有测试通过。按 small/SOLO 流程执行并保存状态与总结。只在本项目内工作，不安装依赖、不访问外部网站、不提交 Git。执行 python3 -m unittest check_slugify 验证。'
         if edition == 'classic':
@@ -54,7 +54,7 @@ class LiveCodeBuddy(unittest.TestCase):
         # Optional local diagnostics contain only the reply and saved workflow
         # state, never the environment or raw CLI transcript. They help tell a
         # genuine failure from an intentional request for human confirmation.
-        diagnostic_dir = os.environ.get('LOOPFORGE_TEST_DIAGNOSTICS')
+        diagnostic_dir = os.environ.get('ZHIYAN_TEST_DIAGNOSTICS')
         if diagnostic_dir:
             target = Path(diagnostic_dir)
             target.mkdir(parents=True, exist_ok=True, mode=0o700)

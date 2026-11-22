@@ -17,7 +17,7 @@ for(const variant of [
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.setViewportSize({width:variant.width,height:variant.height});
     await page.addInitScript(({lang,theme})=>{
-      localStorage.setItem('loopforge.lang',lang);
+      localStorage.setItem('zhiyan.lang',lang);
       localStorage.setItem('agentflow.theme.v3',theme);
     },variant);
     await signInUnconfigured(page);
@@ -101,7 +101,7 @@ test('the home composer asks a real model with one click',async({page})=>{
   test.setTimeout(300_000);
   const {password}=await import('./helpers.mjs');
   await page.goto('/login.html');
-  await page.locator('[name="login"]').fill(process.env.LOOPFORGE_TEST_USER||'admin');
+  await page.locator('[name="login"]').fill(process.env.ZHIYAN_TEST_USER||'admin');
   await page.locator('[name="password"]').fill(password());
   await page.locator('#loginSubmit').click();
   await appReady(page);
@@ -129,7 +129,7 @@ for(const variant of [
   test(`repository setup explains the missing token and aligns its checkbox: ${variant.name}`,async({page},info)=>{
     await page.setViewportSize({width:variant.width,height:variant.height});
     await page.addInitScript(({lang,theme})=>{
-      localStorage.setItem('loopforge.lang',lang);localStorage.setItem('agentflow.theme.v3',theme);
+      localStorage.setItem('zhiyan.lang',lang);localStorage.setItem('agentflow.theme.v3',theme);
     },variant);
     await signInUnconfigured(page);
     const identity=(await page.request.get('/api/auth/current').then(r=>r.json())).user;
@@ -161,7 +161,7 @@ for(const variant of [
       await expect(modal.locator('#repositoryCredentialHint')).toHaveAttribute('data-configured','false');
       if(variant.lang==='en')await expect(modal.locator('#repositoryCredentialHint')).not.toContainText(/[\u3400-\u9fff]/);
       await page.screenshot({path:info.outputPath(`repository-${variant.name}.png`)});
-      await modal.locator('[name="repoUrl"]').fill('https://github.com/example/loopforge-e2e-fixture');
+      await modal.locator('[name="repoUrl"]').fill('https://github.com/example/zhiyan-e2e-fixture');
       const saved=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname==='/api/repositories');
       await modal.locator('button[type="submit"]').click();
       const response=await saved;expect(response.ok()).toBe(true);repositoryId=(await response.json()).id;

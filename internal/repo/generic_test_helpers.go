@@ -83,7 +83,7 @@ func testBackendGenericTemplate() GenericTemplate {
 	}
 	return GenericTemplate{
 		Workflow: domain.WorkflowDefinition{
-			ID: GenericBackendDeliveryWorkflowID, Name: "通用后端交付 SOP（LoopForge）",
+			ID: GenericBackendDeliveryWorkflowID, Name: "通用后端交付 SOP（智研工坊）",
 			Version: 1, Revision: 1, Status: "published", Owner: "平台",
 			Description:      "测试用通用后端 SOP",
 			SandboxProfileID: GenericDockerSandboxID, Generic: true,
@@ -103,7 +103,7 @@ func testBackendGenericTemplate() GenericTemplate {
 		},
 		Agents: outAgents,
 		Rules: []domain.RuleDefinition{
-			{ID: GenericRuleCore, Name: "LoopForge 核心", Content: "follow the stored template"},
+			{ID: GenericRuleCore, Name: "智研工坊 核心", Content: "follow the stored template"},
 			{ID: GenericRuleBackendProfile, Name: "后端画像", Content: "backend delivery"},
 		},
 		Skills: []domain.SkillDefinition{

@@ -32,9 +32,9 @@ import (
 // and all non-loopback networking. This does not validate a real provider's
 // policy, model inference, or the proposed identity oracle.
 func TestManagedLoginOfficialCodex(t *testing.T) {
-	binary := os.Getenv("LOOPFORGE_PROBE_CODEX_BIN")
+	binary := os.Getenv("ZHIYAN_PROBE_CODEX_BIN")
 	if binary == "" {
-		t.Skip("set LOOPFORGE_PROBE_CODEX_BIN to explicitly test an official binary with fake auth")
+		t.Skip("set ZHIYAN_PROBE_CODEX_BIN to explicitly test an official binary with fake auth")
 	}
 	if goRuntime.GOOS != "darwin" || !filepath.IsAbs(binary) {
 		t.Fatal("this opt-in probe requires macOS sandbox-exec and an absolute binary path")
@@ -97,7 +97,7 @@ func TestManagedLoginOfficialCodex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ca := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "LoopForge fake issuer CA"},
+	ca := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "智研工坊 fake issuer CA"},
 		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
 		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature}
 	caDER, err := x509.CreateCertificate(rand.Reader, ca, ca, caKey.Public(), caKey)
@@ -222,7 +222,7 @@ func TestManagedLoginOfficialCodex(t *testing.T) {
 		return nil
 	}
 	if err := send.Encode(map[string]any{"id": 1, "method": "initialize", "params": map[string]any{
-		"clientInfo": map[string]string{"name": "loopforge-isolated-writeback-probe", "version": "0.1.0"},
+		"clientInfo": map[string]string{"name": "zhiyan-isolated-writeback-probe", "version": "0.1.0"},
 	}}); err != nil {
 		t.Fatal(err)
 	}

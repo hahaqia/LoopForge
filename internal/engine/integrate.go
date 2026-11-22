@@ -188,13 +188,13 @@ func integrateMRTitle(r domain.Run, rc domain.RepositoryContext, work, integrate
 		if def == "" {
 			def = work
 		}
-		return fmt.Sprintf("LoopForge: 对齐 %s → %s", def, integrate)
+		return fmt.Sprintf("智研工坊: 对齐 %s → %s", def, integrate)
 	}
 	label := integrationCommitLabel(r)
 	if label == "" || label == "scheduled SOP work" {
-		return fmt.Sprintf("LoopForge: %s → %s", work, integrate)
+		return fmt.Sprintf("智研工坊: %s → %s", work, integrate)
 	}
-	return fmt.Sprintf("LoopForge: %s → %s", label, integrate)
+	return fmt.Sprintf("智研工坊: %s → %s", label, integrate)
 }
 
 func integrateMRDescription(r domain.Run, work, integrate string) string {

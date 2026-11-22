@@ -29,7 +29,7 @@ def events(project, kind):
 class PortableWorkflowE2E(unittest.TestCase):
     def install(self, host="claude"):
         project = h.new_project(self)
-        h.loopforge("skills", "install", host, "--project-root", project)
+        h.zhiyan("skills", "install", host, "--project-root", project)
         return project
 
     def assert_delivered(self, project):
@@ -43,7 +43,7 @@ class PortableWorkflowE2E(unittest.TestCase):
             capture_output=True, text=True,
         )
         self.assertEqual(0, verify.returncode, verify.stderr)
-        self.assertIn("OK", h.loopforge_validate(project))
+        self.assertIn("OK", h.zhiyan_validate(project))
         self.assertEqual("user file that must survive\n",
                          (project / "USER_NOTES.md").read_text(encoding="utf-8"))
         return state

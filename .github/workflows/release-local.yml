@@ -70,7 +70,7 @@ jobs:
           echo "version=${package_version}" >> "$GITHUB_OUTPUT"
           echo "tag=${release_tag}" >> "$GITHUB_OUTPUT"
           owner="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
-          image="ghcr.io/${owner}/loopforge-tcmcp"
+          image="ghcr.io/${owner}/zhiyan-tcmcp"
           sha="$(git rev-parse --short HEAD)"
           tags="${image}:${package_version}"$'\n'"${image}:sha-${sha}"
           if [[ "${package_version}" != *-* ]]; then
@@ -158,18 +158,18 @@ jobs:
           VERSION: ${{ steps.package.outputs.version }}
           TAG: ${{ steps.package.outputs.tag }}
         run: |
-          release_args=(--title "LoopForge Local v${VERSION}" --generate-notes --latest=false)
+          release_args=(--title "智研工坊 Local v${VERSION}" --generate-notes --latest=false)
           if [[ "$VERSION" == *-* ]]; then
             release_args+=(--prerelease)
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" \
-              dist/release/loopforge-workflow.tar.gz \
-              dist/release/loopforge-workflow.tar.gz.sha256 \
+              dist/release/zhiyan-workflow.tar.gz \
+              dist/release/zhiyan-workflow.tar.gz.sha256 \
               --clobber
           else
             gh release create "$TAG" \
-              dist/release/loopforge-workflow.tar.gz \
-              dist/release/loopforge-workflow.tar.gz.sha256 \
+              dist/release/zhiyan-workflow.tar.gz \
+              dist/release/zhiyan-workflow.tar.gz.sha256 \
               "${release_args[@]}"
           fi

@@ -189,12 +189,12 @@ func verifyOffWorkBranch(ctx context.Context, workspace, branch string, requireE
 	return nil
 }
 
-// withFallbackIdentity prefixes args with the LoopForge commit identity when
+// withFallbackIdentity prefixes args with the 智研工坊 commit identity when
 // the checkout has no user.email configured, so commits and rebases made on
 // the work branch never fail for a missing author.
 func withFallbackIdentity(ctx context.Context, workspace string, args []string) []string {
 	if email, _ := C(ctx, workspace, "config", "user.email"); strings.TrimSpace(email) == "" {
-		return append([]string{"-c", "user.name=LoopForge", "-c", "user.email=loopforge@local"}, args...)
+		return append([]string{"-c", "user.name=智研工坊", "-c", "user.email=zhiyan@local"}, args...)
 	}
 	return args
 }

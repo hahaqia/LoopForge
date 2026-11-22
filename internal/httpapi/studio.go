@@ -43,9 +43,9 @@ func stampStudioIndex(static fs.FS, raw []byte) []byte {
 	return []byte(html)
 }
 
-// defaultBuildCommitFile is written by docker build from the LOOPFORGE_COMMIT
+// defaultBuildCommitFile is written by docker build from the ZHIYAN_COMMIT
 // build-arg, or from git HEAD when none was passed.
-const defaultBuildCommitFile = "/app/loopforge-commit"
+const defaultBuildCommitFile = "/app/zhiyan-commit"
 
 // buildCommit is the git SHA baked into a published image. A short label in
 // the corner is enough to tell two images apart.
@@ -64,10 +64,10 @@ func buildCommit() (short, full string) {
 }
 
 func commitSource() string {
-	if raw := strings.TrimSpace(os.Getenv("LOOPFORGE_COMMIT")); raw != "" {
+	if raw := strings.TrimSpace(os.Getenv("ZHIYAN_COMMIT")); raw != "" {
 		return raw
 	}
-	path := strings.TrimSpace(os.Getenv("LOOPFORGE_COMMIT_FILE"))
+	path := strings.TrimSpace(os.Getenv("ZHIYAN_COMMIT_FILE"))
 	if path == "" {
 		path = defaultBuildCommitFile
 	}
@@ -86,7 +86,7 @@ func injectBuildCommit(html string) string {
 	// Inline style: login and vscode pages do not share the workbench stylesheet.
 	// The CSP allows style-src 'unsafe-inline' and forbids inline scripts.
 	label := fmt.Sprintf(
-		`<style>.loopforge-build{position:fixed;right:12px;bottom:8px;z-index:35;margin:0;font:11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;color:#7c7c82;user-select:text}</style><span class="loopforge-build" title="%s">%s</span></body>`,
+		`<style>.zhiyan-build{position:fixed;right:12px;bottom:8px;z-index:35;margin:0;font:11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;color:#7c7c82;user-select:text}</style><span class="zhiyan-build" title="%s">%s</span></body>`,
 		htmlpkg.EscapeString("镜像版本 "+full),
 		htmlpkg.EscapeString(short),
 	)

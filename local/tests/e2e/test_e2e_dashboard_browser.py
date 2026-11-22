@@ -7,8 +7,8 @@ health, plus the empty and load-failure states. All requests that leave
 127.0.0.1 (for example web fonts) are blocked, so the page must work offline.
 
 Skipped when the ``playwright`` Python package is not installed, unless
-``LOOPFORGE_E2E_BROWSER=1`` (set in CI), in which case a missing browser fails.
-Screenshots go to ``$LOOPFORGE_E2E_ARTIFACTS`` when set.
+``ZHIYAN_E2E_BROWSER=1`` (set in CI), in which case a missing browser fails.
+Screenshots go to ``$ZHIYAN_E2E_ARTIFACTS`` when set.
 """
 
 import json
@@ -24,13 +24,13 @@ try:
 except ImportError:  # pragma: no cover - depends on the environment
     sync_playwright = None
 
-REQUIRED = os.environ.get("LOOPFORGE_E2E_BROWSER") == "1"
+REQUIRED = os.environ.get("ZHIYAN_E2E_BROWSER") == "1"
 
 
 def setUpModule():
     if sync_playwright is None:
         if REQUIRED:
-            raise RuntimeError("LOOPFORGE_E2E_BROWSER=1 but the playwright package is not installed")
+            raise RuntimeError("ZHIYAN_E2E_BROWSER=1 but the playwright package is not installed")
         raise unittest.SkipTest("playwright is not installed (pip install playwright && playwright install chromium)")
 
 
@@ -39,7 +39,7 @@ class DashboardBrowserE2E(unittest.TestCase):
     def setUpClass(cls):
         cls.playwright = sync_playwright().start()
         cls.browser = cls.playwright.chromium.launch()
-        cls.shots = Path(os.environ.get("LOOPFORGE_E2E_ARTIFACTS") or tempfile.mkdtemp(prefix="loopforge-e2e-shots-"))
+        cls.shots = Path(os.environ.get("ZHIYAN_E2E_ARTIFACTS") or tempfile.mkdtemp(prefix="zhiyan-e2e-shots-"))
         cls.shots.mkdir(parents=True, exist_ok=True)
 
     @classmethod
@@ -49,7 +49,7 @@ class DashboardBrowserE2E(unittest.TestCase):
 
     def setUp(self):
         self.project = h.new_project(self, with_sample=False)
-        h.loopforge("install", "codebuddy", "--project-root", self.project)
+        h.zhiyan("install", "codebuddy", "--project-root", self.project)
         self.state_path = h.seed_classic_run(self.project)
 
     def open(self, directory):

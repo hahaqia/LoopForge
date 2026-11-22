@@ -11,7 +11,7 @@ import (
 )
 
 func TestGetReturnURLRejectsForeignHosts(t *testing.T) {
-	h := &authHandlers{deps: &deps{authClient: auth.NewClient(auth.Config{AppDomain: "loopforge.example.com"})}}
+	h := &authHandlers{deps: &deps{authClient: auth.NewClient(auth.Config{AppDomain: "zhiyan.example.com"})}}
 
 	cases := []struct {
 		returnURL string
@@ -20,12 +20,12 @@ func TestGetReturnURLRejectsForeignHosts(t *testing.T) {
 		{"https://lf.test/#/dashboard", "https://lf.test/#/dashboard"},
 		{"https://LF.test:8443/x?y=1", "https://LF.test:8443/x?y=1"},
 		{"/#/settings", "http://lf.test/#/settings"},
-		{"https://loopforge.example.com/a", "https://loopforge.example.com/a"},
-		{"https://studio.loopforge.example.com/a", "https://studio.loopforge.example.com/a"},
+		{"https://zhiyan.example.com/a", "https://zhiyan.example.com/a"},
+		{"https://studio.zhiyan.example.com/a", "https://studio.zhiyan.example.com/a"},
 		{"https://attacker.example/sso-landing", "http://lf.test/"},
 		{"http://www.qq.com_521_qq_diao_yu_wangzhan_789.com", "http://lf.test/"},
 		{"https://lf.test.attacker.example/", "http://lf.test/"},
-		{"https://evilloopforge.example.com/", "http://lf.test/"},
+		{"https://evilzhiyan.example.com/", "http://lf.test/"},
 		{"https://lf.test@attacker.example/", "http://lf.test/"},
 		{"//attacker.example/", "http://lf.test/"},
 		{"/\\attacker.example/", "http://lf.test/"},
@@ -53,11 +53,11 @@ func TestAuthCurrentLoginURLDoesNotEmbedForeignReturnURL(t *testing.T) {
 		PaaSID:    "app",
 		AppToken:  "token",
 		LoginURL:  "https://passport.example.com/signin",
-		AppDomain: "loopforge.example.com",
+		AppDomain: "zhiyan.example.com",
 	})
 	handler, _ := newTestAuthServer(t, authClient)
 
-	req := httptest.NewRequest(http.MethodGet, "http://loopforge.example.com/api/auth/current?return_url=https://attacker.example/sso-landing", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://zhiyan.example.com/api/auth/current?return_url=https://attacker.example/sso-landing", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

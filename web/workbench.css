@@ -989,7 +989,7 @@ html[data-theme='dark'] #workbenchHost .avatar-ai { background: linear-gradient(
   #workbenchHost .pg-table.issues .pt-head > :nth-child(n+4), #workbenchHost .pg-table.issues .pt-row > :nth-child(n+4) { display: none; }
 }
 
-/* Embedded in the classic LoopForge shell. */
+/* Embedded in the classic 智研工坊 shell. */
 #workbenchHost .embedded .sb-heading { flex: 1; padding: 0 4px; font-size: 13px; font-weight: 650; color: var(--text-2); }
 #workbenchHost .embedded .sb-top { min-height: 48px; }
 

@@ -61,7 +61,7 @@ function readAccounts(file) {
         update.agentCliCredentials ??= {};
         update.agentCliCredentials[provider] = { apiKey };
       } else {
-        throw new Error(`${label} has an unsupported provider ID. Use a LoopForge CLI ID.`);
+        throw new Error(`${label} has an unsupported provider ID. Use a 智研工坊 CLI ID.`);
       }
       keyCount++;
     }

@@ -15,8 +15,8 @@ if ! curl -fsSL --retry 4 --retry-delay 2 --retry-max-time 120 \
   # The API redirects to the same pinned asset when the release edge is down.
   {
     printf '%s\n' 'Accept: application/octet-stream'
-    if [[ -n "${LOOPFORGE_GITLEAKS_TOKEN:-}" ]]; then
-      printf 'Authorization: Bearer %s\n' "$LOOPFORGE_GITLEAKS_TOKEN"
+    if [[ -n "${ZHIYAN_GITLEAKS_TOKEN:-}" ]]; then
+      printf 'Authorization: Bearer %s\n' "$ZHIYAN_GITLEAKS_TOKEN"
     fi
   } | curl -fsSL --retry 4 --retry-delay 2 --retry-max-time 120 \
     --connect-timeout 15 --max-time 60 --header @- \
@@ -37,4 +37,4 @@ for name in set(paths):
 PY
 # Gitleaks replaces its report path. Use a disposable regular file, never a
 # device such as /dev/null (running as root could replace that device).
-"$scan_dir/gitleaks" dir "$scan_dir/source" --config "$PWD/.gitleaks.toml" --no-banner --redact --report-format json --report-path "${LOOPFORGE_SCAN_REPORT:-$scan_dir/report.json}" --exit-code 1
+"$scan_dir/gitleaks" dir "$scan_dir/source" --config "$PWD/.gitleaks.toml" --no-banner --redact --report-format json --report-path "${ZHIYAN_SCAN_REPORT:-$scan_dir/report.json}" --exit-code 1

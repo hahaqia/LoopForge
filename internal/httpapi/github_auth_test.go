@@ -45,8 +45,8 @@ func githubTestHandler(t *testing.T) (*githubHandlers, int64) {
 func githubTestContext(userID int64, method, endpoint, body string) (*gin.Context, *httptest.ResponseRecorder) {
 	recorder := httptest.NewRecorder()
 	current, _ := gin.CreateTestContext(recorder)
-	current.Request = httptest.NewRequest(method, "http://loopforge.test"+endpoint, strings.NewReader(body))
-	current.Request.Header.Set("Origin", "http://loopforge.test")
+	current.Request = httptest.NewRequest(method, "http://zhiyan.test"+endpoint, strings.NewReader(body))
+	current.Request.Header.Set("Origin", "http://zhiyan.test")
 	current.Request.Header.Set("Content-Type", "application/json")
 	if userID > 0 {
 		current.Request = current.Request.WithContext(context.WithValue(current.Request.Context(), requestUserContextKey{}, &auth.User{ID: userID, LoginName: "github-owner"}))
@@ -110,7 +110,7 @@ func TestGitHubApplicationConfiguration(t *testing.T) {
 		expected     int
 	}{
 		{"https://other.test", `{"clientId":"Iv1.otherapplication"}`, http.StatusForbidden},
-		{"http://loopforge.test", `{"clientId":"bad secret"}`, http.StatusBadRequest},
+		{"http://zhiyan.test", `{"clientId":"bad secret"}`, http.StatusBadRequest},
 	} {
 		current, recorder = githubTestContext(userID, http.MethodPut, "/api/auth/github/config", scenario.body)
 		current.Request.Header.Set("Origin", scenario.origin)

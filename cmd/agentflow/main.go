@@ -329,10 +329,10 @@ func main() {
 	}
 	serve := func() error { return srv.Serve(mainLn) }
 	if role != "worker" && *tlsCert != "" && *tlsKey != "" {
-		log.Printf("LoopForge %s listening on https://%s", role, displayAddr)
+		log.Printf("智研工坊 %s listening on https://%s", role, displayAddr)
 		serve = func() error { return srv.ServeTLS(mainLn, *tlsCert, *tlsKey) }
 	} else {
-		log.Printf("LoopForge %s listening on http://%s", role, displayAddr)
+		log.Printf("智研工坊 %s listening on http://%s", role, displayAddr)
 	}
 	signalReady(readyStatus)
 	if err := serve(); err != nil && err != http.ErrServerClosed && !handedOver.Load() {

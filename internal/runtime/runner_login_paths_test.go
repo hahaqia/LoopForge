@@ -19,7 +19,7 @@ import (
 // real tasks. The CLI fixture forces renewal and then plants an untrusted token
 // in its HOME; only the manager's issuer response may reach the host.
 func TestManagedLoginRuntimePaths(t *testing.T) {
-	if os.Getenv("LOOPFORGE_PROBE_AUTH_SANDBOXES") != "1" {
+	if os.Getenv("ZHIYAN_PROBE_AUTH_SANDBOXES") != "1" {
 		t.Skip("opt in to real native/Docker sandboxes with fake credentials")
 	}
 	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "python:3.13-alpine")
@@ -56,7 +56,7 @@ func TestManagedLoginRuntimePaths(t *testing.T) {
 					source, _, renewed := managedLoginFixture(t, provider)
 					login, _ := runnerLoginSpec(provider)
 					t.Setenv(login.configEnv, filepath.Dir(source.path))
-					commandEnv := map[string]string{"LOOPFORGE_FAKE_SOURCE": source.path}
+					commandEnv := map[string]string{"ZHIYAN_FAKE_SOURCE": source.path}
 					var exchanges atomic.Int32
 					previous := nativeRunnerLogins
 					nativeRunnerLogins = &runnerLoginManager{stateDir: t.TempDir(), refresh: func(context.Context, string, []byte) ([]byte, error) { exchanges.Add(1); return renewed, nil }}
@@ -155,7 +155,7 @@ func TestManagedLoginRuntimePaths(t *testing.T) {
 
 const managedAuthCLIFixture = `import json,os,sys,urllib.request
 try:
- open(os.environ['LOOPFORGE_FAKE_SOURCE']).read()
+ open(os.environ['ZHIYAN_FAKE_SOURCE']).read()
 except OSError:
  pass
 else:

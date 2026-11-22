@@ -25,8 +25,8 @@ if ! curl -fsSL --retry 4 --retry-delay 2 --retry-max-time 120 \
   # The API redirects to the same pinned asset when the release edge is down.
   {
     printf '%s\n' 'Accept: application/octet-stream'
-    if [[ -n "${LOOPFORGE_GITLEAKS_TOKEN:-}" ]]; then
-      printf 'Authorization: Bearer %s\n' "$LOOPFORGE_GITLEAKS_TOKEN"
+    if [[ -n "${ZHIYAN_GITLEAKS_TOKEN:-}" ]]; then
+      printf 'Authorization: Bearer %s\n' "$ZHIYAN_GITLEAKS_TOKEN"
     fi
   } | curl -fsSL --retry 4 --retry-delay 2 --retry-max-time 120 \
     --connect-timeout 15 --max-time 60 --header @- \

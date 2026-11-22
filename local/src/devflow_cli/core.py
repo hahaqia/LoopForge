@@ -71,7 +71,7 @@ def asset_root() -> Path:
     for candidate in candidates:
         if (candidate / "skills/devflow/SKILL.md").is_file() and (candidate / ".codebuddy").is_dir():
             return candidate.resolve()
-    raise DevFlowError("找不到 DevFlow 安装资产；请从源码目录运行或重新安装 loopforge CLI 包")
+    raise DevFlowError("找不到 DevFlow 安装资产；请从源码目录运行或重新安装 zhiyan CLI 包")
 
 
 def load_state(project: Path) -> dict:
@@ -218,7 +218,7 @@ def validate_choice(host: str, edition: str) -> None:
     if host not in hosts_for(edition):
         available = [item for item in EDITIONS if host in hosts_for(item)]
         hint = (
-            f"；Pi 只有 Portable，请运行: loopforge skills install {host}"
+            f"；Pi 只有 Portable，请运行: zhiyan skills install {host}"
             if host == "pi" and "portable" in available
             else f"；{host} 可用 edition: {', '.join(available)}"
         )

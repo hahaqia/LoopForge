@@ -1,8 +1,8 @@
-"""Shared helpers for the LoopForge E2E suite.
+"""Shared helpers for the 智研工坊 E2E suite.
 
 By default the suite tests what users actually install: it builds the npm
 tarball once (``npm pack``), installs it into a throw-away prefix and drives the
-resulting ``loopforge`` binary. Set ``LOOPFORGE_E2E_SOURCE=1`` to run the CLI
+resulting ``zhiyan`` binary. Set ``ZHIYAN_E2E_SOURCE=1`` to run the CLI
 straight from ``src/`` for a faster local loop.
 """
 
@@ -47,14 +47,14 @@ def run(argv, cwd=None, check=True, env=None):
     return result
 
 
-def loopforge_command():
+def zhiyan_command():
     """Return argv prefix for the CLI under test (installed from the npm tarball)."""
-    if os.environ.get("LOOPFORGE_E2E_SOURCE") == "1":
+    if os.environ.get("ZHIYAN_E2E_SOURCE") == "1":
         return [sys.executable, "-m", "devflow_cli.cli"]
     if "argv" not in _PACKAGE:
         if not shutil.which("npm"):
-            raise unittest.SkipTest("npm is required; set LOOPFORGE_E2E_SOURCE=1 to skip packaging")
-        workdir = Path(tempfile.mkdtemp(prefix="loopforge-e2e-pkg-"))
+            raise unittest.SkipTest("npm is required; set ZHIYAN_E2E_SOURCE=1 to skip packaging")
+        workdir = Path(tempfile.mkdtemp(prefix="zhiyan-e2e-pkg-"))
         _PACKAGE["dir"] = workdir
         atexit.register(shutil.rmtree, str(workdir), True)  # shared by all test modules
         packed = json.loads(run(
@@ -63,23 +63,23 @@ def loopforge_command():
         tarball = workdir / packed[0]["filename"]
         prefix = workdir / "prefix"
         run(["npm", "install", "--global", "--prefix", prefix, tarball])
-        binary = prefix / "bin" / "loopforge"
+        binary = prefix / "bin" / "zhiyan"
         if not binary.exists():
-            raise AssertionError("npm package did not install a loopforge binary")
+            raise AssertionError("npm package did not install a zhiyan binary")
         _PACKAGE["argv"] = [binary]
     return list(_PACKAGE["argv"])
 
 
-def loopforge(*args, cwd=None, check=True):
+def zhiyan(*args, cwd=None, check=True):
     env = _env()
-    if os.environ.get("LOOPFORGE_E2E_SOURCE") == "1":
+    if os.environ.get("ZHIYAN_E2E_SOURCE") == "1":
         env["PYTHONPATH"] = str(REPO / "src")
-    return run(loopforge_command() + list(args), cwd=cwd, check=check, env=env)
+    return run(zhiyan_command() + list(args), cwd=cwd, check=check, env=env)
 
 
 def new_project(test_case, with_sample=True):
     """Create a throw-away git repo that looks like a user's project."""
-    root = Path(tempfile.mkdtemp(prefix="loopforge-e2e-project-"))
+    root = Path(tempfile.mkdtemp(prefix="zhiyan-e2e-project-"))
     test_case.addCleanup(shutil.rmtree, str(root), True)
     if with_sample:
         for item in (FIXTURES / "sample_project").glob("*.py"):
@@ -150,7 +150,7 @@ def run_workflow(project, *args, check=True):
     )
 
 
-def loopforge_validate(project, slug="e2e-task", host_skills=None):
+def zhiyan_validate(project, slug="e2e-task", host_skills=None):
     """Run the installed ``workflow_state.py validate`` for a finished task."""
     project = Path(project)
     state = project / "artifacts" / slug / "workflow-state.json"

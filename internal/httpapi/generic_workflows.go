@@ -78,7 +78,7 @@ func (h *catalogHandlers) cloneGenericTemplateAgents(workflowID, projectID strin
 		return nil, fmt.Errorf("generic template %q not found", workflowID)
 	}
 	now := time.Now().UTC()
-	// LoopForge rules and skills ship with the template: clone them into the
+	// 智研工坊 rules and skills ship with the template: clone them into the
 	// project first so the role bindings can be remapped onto real assets.
 	ruleRemap, err := h.cloneGenericTemplateRules(template.Rules, projectID, now)
 	if err != nil {

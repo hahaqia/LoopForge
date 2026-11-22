@@ -183,8 +183,8 @@ func TestConversationPlatformRefreshesPersistentApprovalExtensions(t *testing.T)
 		t.Skip("python3 unavailable")
 	}
 	for provider, path := range map[string]string{
-		AgentCLIPi:          "home/.pi/agent/extensions/loopforge-approval.ts",
-		AgentCLIOpenCode:    "home/.config/opencode/plugins/loopforge-approval.js",
+		AgentCLIPi:          "home/.pi/agent/extensions/zhiyan-approval.ts",
+		AgentCLIOpenCode:    "home/.config/opencode/plugins/zhiyan-approval.js",
 		AgentCLICursor:      "home/.cursor/hooks.json",
 		AgentCLIAntigravity: "home/.gemini/config/hooks.json",
 	} {

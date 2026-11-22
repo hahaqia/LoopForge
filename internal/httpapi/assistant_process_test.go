@@ -394,7 +394,7 @@ func TestConversationProcessRetriesBusyRunner(t *testing.T) {
 
 // This input represents one JSON line containing an attachment path and base64 data.
 func TestConversationImageInputChunkPreservesRemotePathAndUTF8(t *testing.T) {
-	const root = "/loopforge/source/session"
+	const root = "/zhiyan/source/session"
 	for name, part := range map[string]string{"path": root, "UTF8": "图"} {
 		t.Run(name, func(t *testing.T) {
 			input := strings.Repeat("x", maxConversationInputChunk-1) + part + strings.Repeat("z", maxConversationInputChunk)

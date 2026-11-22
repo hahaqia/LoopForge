@@ -375,7 +375,7 @@ func TestToolchainCLIExecEnvOnlyForCustomImages(t *testing.T) {
 	prefix := writeToolchainFixture(t)
 	cliDir := t.TempDir()
 	useToolchainFixture(t, prefix, cliDir)
-	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "loopforge-runtime:test")
+	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "zhiyan-runtime:test")
 
 	platform := &dockerSandbox{dockerfile: domain.DockerfileDefinition{Content: IsolatedDockerfile}}
 	if env, err := platform.toolchainCLIExecEnv("fakecli"); err != nil || env != nil {

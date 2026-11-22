@@ -44,7 +44,7 @@ def access_token(kind, generation):
 def certificates(root):
     ca_config = root / "ca.cnf"
     ca_config.write_text("[req]\nprompt=no\ndistinguished_name=dn\nx509_extensions=ca\n"
-                         "[dn]\nCN=LoopForge isolated fake CA\n[ca]\n"
+                         "[dn]\nCN=智研工坊 isolated fake CA\n[ca]\n"
                          "basicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\n")
     extensions = root / "leaf.ext"
     extensions.write_text("basicConstraints=critical,CA:FALSE\n"
@@ -344,7 +344,7 @@ class Child:
 
     def exercise(self, broker):
         if self.kind == "codex":
-            self.rpc("initialize", {"clientInfo": {"name": "loopforge-external-auth-probe", "version": "0.1.0"},
+            self.rpc("initialize", {"clientInfo": {"name": "zhiyan-external-auth-probe", "version": "0.1.0"},
                                     "capabilities": {"experimentalApi": True}}, 1, broker)
             self.send({"method": "initialized"})
             self.rpc("account/login/start", {"type": "chatgptAuthTokens", "accessToken": access_token("codex", 0),

@@ -38,24 +38,24 @@ class InstallMatrixE2E(unittest.TestCase):
                 with self.subTest(edition=edition, host=host):
                     project = h.new_project(self, with_sample=False)
                     before = h.files_under(project)
-                    out = h.loopforge(*install_args(edition, host), "--project-root", project).stdout
+                    out = h.zhiyan(*install_args(edition, host), "--project-root", project).stdout
                     self.assertIn(h.entrypoint_for(edition, host), out)
                     for relative in entry_files(edition, host):
                         self.assertTrue((project / relative).is_file(), relative)
 
                     status_cmd = ["skills", "status", host] if edition == "portable" else ["status", host]
-                    rows = json.loads(h.loopforge(*status_cmd, "--project-root", project, "--json").stdout)
+                    rows = json.loads(h.zhiyan(*status_cmd, "--project-root", project, "--json").stdout)
                     self.assertEqual(1, len(rows), rows)
                     self.assertEqual((edition, 0, 0), (rows[0]["edition"], rows[0]["missing"], rows[0]["changed"]))
-                    self.assertIn("healthy", h.loopforge("doctor", "--project-root", project).stdout)
+                    self.assertIn("healthy", h.zhiyan("doctor", "--project-root", project).stdout)
 
                     self.assert_no_runtime_logs(project)
                     self.assert_markdown_links_resolve(project)
 
-                    update = h.loopforge(*install_args(edition, host, "update"), "--project-root", project).stdout
+                    update = h.zhiyan(*install_args(edition, host, "update"), "--project-root", project).stdout
                     self.assertIn("written=0", update)
 
-                    h.loopforge(*install_args(edition, host, "uninstall"), "--project-root", project)
+                    h.zhiyan(*install_args(edition, host, "uninstall"), "--project-root", project)
                     self.assertEqual(before, h.files_under(project))
 
     def assert_no_runtime_logs(self, project):
@@ -79,18 +79,18 @@ class InstallMatrixE2E(unittest.TestCase):
     def test_classic_is_rejected_for_portable_only_host(self):
         project = h.new_project(self, with_sample=False)
         before = h.files_under(project)
-        result = h.loopforge("install", "pi", "--project-root", project, check=False)
+        result = h.zhiyan("install", "pi", "--project-root", project, check=False)
         self.assertNotEqual(0, result.returncode)
         self.assertEqual(before, h.files_under(project))
 
     def test_second_edition_for_same_host_requires_force(self):
         project = h.new_project(self, with_sample=False)
-        h.loopforge("install", "claude", "--project-root", project)
+        h.zhiyan("install", "claude", "--project-root", project)
         before = h.files_under(project)
-        result = h.loopforge("skills", "install", "claude", "--project-root", project, check=False)
+        result = h.zhiyan("skills", "install", "claude", "--project-root", project, check=False)
         self.assertNotEqual(0, result.returncode)
         self.assertEqual(before, h.files_under(project))
-        h.loopforge("skills", "install", "claude", "--project-root", project, "--force")
+        h.zhiyan("skills", "install", "claude", "--project-root", project, "--force")
         self.assertTrue((project / ".claude/skills/devflow/SKILL.md").is_file())
         self.assertFalse((project / ".claude/commands/start-devflow.md").exists())
 

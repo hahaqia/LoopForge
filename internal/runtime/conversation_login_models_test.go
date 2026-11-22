@@ -33,7 +33,7 @@ if [ "$1" = auth ] && [ "$2" = status ]; then
   exit
 fi
 read -r request; case "$request" in *'"subtype":"initialize"'*) ;; *) exit 2 ;; esac
-printf '%s\n' '{"type":"control_response","response":{"subtype":"success","request_id":"loopforge-models","response":{"models":[{"value":"fixture-model","displayName":"Fixture Model","supportsEffort":true,"supportedEffortLevels":["high","xhigh"]},{"value":"legacy"},{"value":"no-effort","supportsEffort":false}]}}}'
+printf '%s\n' '{"type":"control_response","response":{"subtype":"success","request_id":"zhiyan-models","response":{"models":[{"value":"fixture-model","displayName":"Fixture Model","supportsEffort":true,"supportedEffortLevels":["high","xhigh"]},{"value":"legacy"},{"value":"no-effort","supportsEffort":false}]}}}'
 `},
 	}
 	for _, tc := range tests {

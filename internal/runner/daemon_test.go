@@ -312,10 +312,10 @@ func TestConfigureRepositoryGitIdentityOverridesStaleLocalConfig(t *testing.T) {
 			t.Fatalf("git %v: %v: %s", args, err, output)
 		}
 	}
-	if err := configureRepositoryGitIdentity(context.Background(), repository, "example-admin", "example-admin@users.noreply.loopforge.invalid"); err != nil {
+	if err := configureRepositoryGitIdentity(context.Background(), repository, "example-admin", "example-admin@users.noreply.zhiyan.invalid"); err != nil {
 		t.Fatal(err)
 	}
-	for key, want := range map[string]string{"user.name": "example-admin", "user.email": "example-admin@users.noreply.loopforge.invalid"} {
+	for key, want := range map[string]string{"user.name": "example-admin", "user.email": "example-admin@users.noreply.zhiyan.invalid"} {
 		output, err := exec.Command("git", "-C", repository, "config", "--local", key).Output()
 		if err != nil || strings.TrimSpace(string(output)) != want {
 			t.Fatalf("%s = %q, want %q (err=%v)", key, output, want, err)

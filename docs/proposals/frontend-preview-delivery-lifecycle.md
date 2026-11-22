@@ -380,10 +380,10 @@ Runner 离线时，preview 显示“等待执行机器上线”。超过 finaliz
 未配置 wildcard DNS 的部署不能使用 `https://<token>.preview.example.com/`。当前 MVP 使用同 Host 路径：
 
 ```text
-https://loopforge.example.com/preview/<session-token>/
+https://zhiyan.example.com/preview/<session-token>/
 ```
 
-不要再引入 `AGENTFLOW_PREVIEW_ENABLED`、`AGENTFLOW_PREVIEW_ROOT`、`AGENTFLOW_PREVIEW_BASE_DOMAIN`。预览默认开启；静态包进 MySQL；`AGENTFLOW_PREVIEW_PUBLIC_URL` 只覆盖对外 origin（例如反代后的 `https://loopforge.example.com`）。
+不要再引入 `AGENTFLOW_PREVIEW_ENABLED`、`AGENTFLOW_PREVIEW_ROOT`、`AGENTFLOW_PREVIEW_BASE_DOMAIN`。预览默认开启；静态包进 MySQL；`AGENTFLOW_PREVIEW_PUBLIC_URL` 只覆盖对外 origin（例如反代后的 `https://zhiyan.example.com`）。
 
 预览 HTML 仍是不可信内容。用短期 token、CSP `sandbox` + `connect-src`、以及运行时拦截 fetch/XHR 来约束它能访问的后端。主站 API 不在预览 token 路径下。
 

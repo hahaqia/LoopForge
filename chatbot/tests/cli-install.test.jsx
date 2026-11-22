@@ -62,7 +62,7 @@ test("stays on automatic install when a reload finds the download still running"
 });
 
 test("a reload shows automatic install before the status request returns", () => {
-  sessionStorage.setItem("loopforge.cli-install.opencode", "installing");
+  sessionStorage.setItem("zhiyan.cli-install.opencode", "installing");
   vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
   render(
     <CLIInstallAction text="OpenCode（opencode）没有安装在当前服务器上。安装后即可在对话里使用。" />,

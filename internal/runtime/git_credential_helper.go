@@ -109,7 +109,7 @@ func readGitCredentialAttrs(in io.Reader) map[string]string {
 func requestGitCredential(ctx context.Context, protocol, host, caller string) (gitCredentialReply, error) {
 	gateway := strings.TrimSpace(os.Getenv(SessionGatewayEnv))
 	if gateway == "" {
-		return gitCredentialReply{}, errors.New("not running in a LoopForge workspace turn")
+		return gitCredentialReply{}, errors.New("not running in a 智研工坊 workspace turn")
 	}
 	body, _ := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": gitCredentialMethod,

@@ -91,14 +91,14 @@ func TestResolveClaudeCodePrefersPathAndRequiresInstallDir(t *testing.T) {
 func TestDockerSandboxRunsOnDemandClaudeCodeFromMountedDirectory(t *testing.T) {
 	root := t.TempDir()
 	log := filepath.Join(t.TempDir(), "docker.log")
-	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "loopforge-platform:tested")
+	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "zhiyan-platform:tested")
 	t.Setenv("AGENTFLOW_RUNTIME_CLI_DIR", root)
 	t.Setenv("NPM_TEST_LOG", filepath.Join(t.TempDir(), "npm.log"))
 	t.Setenv("DOCKER_TEST_LOG", log)
 	useFakeCommands(t, map[string]string{"npm": fakeNPM, "docker": `#!/bin/sh
 printf '%s\n' "$*" >> "$DOCKER_TEST_LOG"
 case "$*" in
-  "image inspect loopforge-platform:tested") exit 0 ;;
+  "image inspect zhiyan-platform:tested") exit 0 ;;
   "inspect "*) echo 'Error: No such container' >&2; exit 1 ;;
   "exec "*) echo /workspace ;;
 esac
@@ -139,7 +139,7 @@ esac
 func TestDockerSandboxInstallsNPMAgentCLIBeforeExec(t *testing.T) {
 	root := t.TempDir()
 	log := filepath.Join(t.TempDir(), "npm.log")
-	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "loopforge-platform:tested")
+	t.Setenv("AGENTFLOW_ISOLATED_IMAGE", "zhiyan-platform:tested")
 	t.Setenv("AGENTFLOW_RUNTIME_CLI_DIR", root)
 	t.Setenv("NPM_TEST_LOG", log)
 	t.Setenv("NPM_TEST_BIN", "pi")

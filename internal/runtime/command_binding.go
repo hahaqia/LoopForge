@@ -72,7 +72,7 @@ func bindCommand(ctx context.Context, sandbox Sandbox, workspace string, command
 	if command.Provider == "codebuddy" {
 		// Every conversation and workspace gets its own CLI home, and CodeBuddy
 		// downloads its built-in plugin marketplaces (about 71 MB) into each one.
-		// LoopForge writes skills and agents itself and installs no plugins.
+		// 智研工坊 writes skills and agents itself and installs no plugins.
 		bound.environment["CODEBUDDY_SKIP_BUILTIN_MARKETPLACE"] = "1"
 	}
 	// Validate every private-home component before any credential binding can

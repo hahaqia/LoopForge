@@ -307,7 +307,7 @@ func TestMCPSetupInstructionsAreEmbedded(t *testing.T) {
 		}
 	}
 	if strings.Contains(text, "AgentFlow") {
-		t.Fatal("MCP setup instructions should name the product LoopForge, not AgentFlow")
+		t.Fatal("MCP setup instructions should name the product 智研工坊, not AgentFlow")
 	}
 	embedSource, err := os.ReadFile("embed.go")
 	if err != nil {
@@ -348,16 +348,21 @@ func TestAccessGuideIsTheSingleOnboardingEntry(t *testing.T) {
 	}
 }
 
-func TestRunnerBindCommandBootstrapsWithProtocolFallback(t *testing.T) {
+func TestRunnerBindCommandDownloadsBeforeRunning(t *testing.T) {
 	html, err := os.ReadFile("index.html")
 	if err != nil {
 		t.Fatal(err)
 	}
 	page := string(html)
-	for _, want := range []string{"https://", "http://", "bindHttpsOrigin", "bindHttpOrigin", "--server", "bindServerHost"} {
+	// The command downloads the installer first: piping curl into `bash -s` withholds
+	// the terminal from the script (sudo prompts) and executes a truncated download.
+	for _, want := range []string{"runners/install.sh", "-o /tmp/zhiyan-bind.sh", "bash /tmp/zhiyan-bind.sh", "--server", "bindScriptOrigin", "bindServerOrigin", "bindToken", "uninstallOrigin"} {
 		if !strings.Contains(page, want) {
 			t.Fatalf("runner bind command is missing %q", want)
 		}
+	}
+	if strings.Contains(page, "bash -s --") {
+		t.Fatal("runner bind command must not pipe the installer into bash -s")
 	}
 }
 
@@ -369,7 +374,7 @@ func TestRenderUserBadgeScope(t *testing.T) {
 	script := `
 const fs = require("fs");
 const appCode = fs.readFileSync("` + appBundlePath(t) + `", "utf8");
-global.window = { location: { href: "http://loopforge.example.com/", pathname: "/", search: "", hash: "", hostname: "loopforge.example.com" } };
+global.window = { location: { href: "http://zhiyan.example.com/", pathname: "/", search: "", hash: "", hostname: "zhiyan.example.com" } };
 global.sessionStorage = { _s: {}, getItem(k){return this._s[k]||null;}, setItem(k,v){this._s[k]=String(v);}, removeItem(k){delete this._s[k];} };
 const makeEl = () => ({
   classList: { add(){}, remove(){} },
@@ -428,11 +433,11 @@ const cases = [
   [{isGuest:true, hostname:"localhost", loginUrl}, false],
   [{isGuest:true, hostname:"127.0.0.1", loginUrl}, false],
   [{isGuest:true, hostname:"[::1]", loginUrl}, false],
-  [{isGuest:true, hostname:"loopforge.example.com", loginUrl}, false],
-  [{isGuest:true, hostname:"loopforge.example.com", loginUrl}, false],
-  [{isGuest:true, hostname:"loopforge.example.com", loginUrl, bypassAutoAuth:true}, false],
-  [{isGuest:true, hostname:"loopforge.example.com", loginUrl, authErr:"exchange_failed"}, false],
-  [{isGuest:false, hostname:"loopforge.example.com", loginUrl}, false],
+  [{isGuest:true, hostname:"zhiyan.example.com", loginUrl}, false],
+  [{isGuest:true, hostname:"zhiyan.example.com", loginUrl}, false],
+  [{isGuest:true, hostname:"zhiyan.example.com", loginUrl, bypassAutoAuth:true}, false],
+  [{isGuest:true, hostname:"zhiyan.example.com", loginUrl, authErr:"exchange_failed"}, false],
+  [{isGuest:false, hostname:"zhiyan.example.com", loginUrl}, false],
 ];
 for (const [input, want] of cases) {
   const got = shouldAutoSSORedirect(input);
@@ -986,7 +991,7 @@ const assert = require('node:assert/strict');
 const code = require('node:fs').readFileSync('` + appBundlePath(t) + `', 'utf8');
 const state = { data: {} };
 eval(require('node:fs').readFileSync('app/git-ssh.js', 'utf8'));
-assert.equal(globalThis.LoopForgeGongfengRepository('Tencent/LoopForge', 'git.review.test'), null);
+assert.equal(globalThis.zhiyanGongfengRepository('zhiyan/zhiyan', 'git.review.test'), null);
 eval(code.slice(code.indexOf('function parseGongfengRepoURL(raw){'), code.indexOf('function fillRepositoryFromLink(')));
 const web = parseGongfengRepoURL('https://git.example.com/example/agent-flow');
 assert.equal(web.project, 'example/agent-flow');
@@ -2183,10 +2188,10 @@ const end = code.indexOf('async function resolvePreviewSessionURL(');
 assert.ok(start >= 0 && end > start);
 eval(code.slice(start, end));
 
-global.window = { location: { href: 'https://loopforge-test.example.com/runs', protocol: 'https:' } };
-assert.equal(previewCandidateHttpsURL('http://loopforge-test.example.com/preview/token/'), 'https://loopforge-test.example.com/preview/token/');
-assert.equal(previewCandidateHttpsURL('http://loopforge-test.example.com:80/preview/token/'), 'https://loopforge-test.example.com/preview/token/');
-assert.equal(previewCandidateHttpsURL('https://loopforge-test.example.com/preview/token/'), 'https://loopforge-test.example.com/preview/token/');
+global.window = { location: { href: 'https://zhiyan-test.example.com/runs', protocol: 'https:' } };
+assert.equal(previewCandidateHttpsURL('http://zhiyan-test.example.com/preview/token/'), 'https://zhiyan-test.example.com/preview/token/');
+assert.equal(previewCandidateHttpsURL('http://zhiyan-test.example.com:80/preview/token/'), 'https://zhiyan-test.example.com/preview/token/');
+assert.equal(previewCandidateHttpsURL('https://zhiyan-test.example.com/preview/token/'), 'https://zhiyan-test.example.com/preview/token/');
 assert.equal(previewCandidateHttpsURL(''), '');
 `
 	out, err := exec.Command(node, "-e", script).CombinedOutput()

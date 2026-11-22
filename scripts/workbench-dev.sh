@@ -12,7 +12,7 @@ mkdir -p "$STATE/workspaces" "$STATE/cli"
 
 if ! docker ps --format '{{.Names}}' | grep -qx lf-workbench-mysql; then
   docker start lf-workbench-mysql >/dev/null 2>&1 || docker run -d --name lf-workbench-mysql \
-    -p "127.0.0.1:$MYSQL_PORT:3306" -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=loopforge mysql:8.4 >/dev/null
+    -p "127.0.0.1:$MYSQL_PORT:3306" -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=zhiyan mysql:8.4 >/dev/null
   until docker exec lf-workbench-mysql mysql -uroot -proot -e 'SELECT 1' >/dev/null 2>&1; do sleep 1; done
 fi
 
@@ -24,7 +24,7 @@ if [ -f "$STATE/server.pid" ]; then
 fi
 
 cd "$ROOT"
-AGENTFLOW_MYSQL_DSN="root:root@tcp(127.0.0.1:$MYSQL_PORT)/loopforge?parseTime=true&charset=utf8mb4" \
+AGENTFLOW_MYSQL_DSN="root:root@tcp(127.0.0.1:$MYSQL_PORT)/zhiyan?parseTime=true&charset=utf8mb4" \
 AGENTFLOW_HTTP_PORT="$PORT" AGENTFLOW_AUTH_REQUIRED=false AGENTFLOW_SCHEDULER_ENABLED=false \
 AGENTFLOW_LOCAL_LOGIN_USER="${AGENTFLOW_LOCAL_LOGIN_USER:-local}" AGENTFLOW_PREVIEW_LOCAL_LOGIN=1 \
 AGENTFLOW_MANAGED_CLI_ROOT="$STATE/cli" AGENTFLOW_SESSION_SECRET="${LF_SESSION_SECRET:-lf-workbench-preview}" \

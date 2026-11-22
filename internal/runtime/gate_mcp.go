@@ -41,7 +41,7 @@ func materializeGateMCP(workspace, configRoot, binaryRel, resultPath, driver str
 	}
 	return domain.MCPServerDefinition{
 		ID:        gateMCPServerID,
-		Name:      "LoopForge Gate",
+		Name:      "智研工坊 Gate",
 		Transport: "stdio",
 		Command:   filepath.ToSlash(binaryRel),
 		Environment: map[string]string{

@@ -10,7 +10,7 @@ if rg --hidden -n \
   -g '!.git/**' \
   -g '!scripts/validate.sh' \
   "$ROOT_DIR"; then
-  echo "Legacy public repository name found; use Tencent/LoopForge." >&2
+  echo "Legacy public repository name found; use zhiyan/zhiyan." >&2
   exit 1
 fi
 if rg --hidden -n -i \
@@ -165,7 +165,7 @@ python3 "$ROOT_DIR/skills/devflow/scripts/validate_config.py"
 
 echo "[6/6] Checking public structure"
 for path in README.md LICENSE scripts/prepare-notices.py \
-  AGENTS.md CLAUDE.md pyproject.toml package.json bin/loopforge.mjs install.sh \
+  AGENTS.md CLAUDE.md pyproject.toml package.json bin/zhiyan.mjs install.sh \
   .codebuddy/README.md .codebuddy/settings.json .codebuddy/settings.local.json \
   .codex/README.md .cursor/README.md .claude/README.md \
   .codex/skills/devflow-codex/SKILL.md skills/README.md skills/devflow/SKILL.md \

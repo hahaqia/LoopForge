@@ -143,7 +143,7 @@ def run_project_tests(root):
 class WorkflowContractE2E(unittest.TestCase):
     def install(self, host, with_sample=False):
         project = h.new_project(self, with_sample=with_sample)
-        h.loopforge("skills", "install", host, "--project-root", project)
+        h.zhiyan("skills", "install", host, "--project-root", project)
         return project
 
     def isolated_medium(self, host, slug):

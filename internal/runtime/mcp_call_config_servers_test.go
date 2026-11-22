@@ -47,7 +47,7 @@ func TestMCPCallConfigServersEmptyMarshalsAsArray(t *testing.T) {
 }
 
 func TestMCPCallConfigServersCarriesIdentityEnvironmentAndWorkingDirectory(t *testing.T) {
-	t.Setenv("LOOPFORGE_TEST_MCP_CALL_TOKEN", "tok-123")
+	t.Setenv("ZHIYAN_TEST_MCP_CALL_TOKEN", "tok-123")
 	servers := []domain.MCPServerDefinition{
 		{
 			ID:               "mcp-github-1",
@@ -57,8 +57,8 @@ func TestMCPCallConfigServersCarriesIdentityEnvironmentAndWorkingDirectory(t *te
 			WorkingDirectory: "tools/../srv",
 			Environment: map[string]string{
 				"PLAIN":   "value",
-				"TOKEN":   "Bearer ${secret:LOOPFORGE_TEST_MCP_CALL_TOKEN}",
-				"MISSING": "${secret:LOOPFORGE_TEST_MCP_CALL_UNSET}",
+				"TOKEN":   "Bearer ${secret:ZHIYAN_TEST_MCP_CALL_TOKEN}",
+				"MISSING": "${secret:ZHIYAN_TEST_MCP_CALL_UNSET}",
 			},
 		},
 		{

@@ -25,7 +25,7 @@ const toolchainEnv = "AGENTFLOW_TOOLCHAIN"
 var (
 	toolchainNodePrefix = "/usr/local"
 	toolchainPythonDir  = "/app/python"
-	toolchainCommitFile = "/app/loopforge-commit"
+	toolchainCommitFile = "/app/zhiyan-commit"
 )
 
 // toolchainPathSetup appends the mounted toolchain to PATH when exec passed it

@@ -32,8 +32,8 @@ test('list paging, catalog visibility, URL safety, and workflow helpers return c
       visible:[catalogOwned('project-1'),catalogForeign('other'),catalogShared('other',true),catalogVisible('other',true)],
       urls:[safeURL('https://example.com/a'),safeURL('javascript:alert(1)')],
       colors:[safeColor('#abc'),safeColor('red')],
-      unconfigured:(state.appDomain='',isOAHost('loopforge.example.com')),
-      hosts:[isLoopbackHost('127.0.0.1'),(state.appDomain='loopforge.example.com',isOAHost('loopforge.example.com')),shouldAutoSSORedirect({isGuest:true,hostname:'loopforge.example.com',bypassAutoAuth:false,authErr:'',loginUrl:'https://login'})]
+      unconfigured:(state.appDomain='',isOAHost('zhiyan.example.com')),
+      hosts:[isLoopbackHost('127.0.0.1'),(state.appDomain='zhiyan.example.com',isOAHost('zhiyan.example.com')),shouldAutoSSORedirect({isGuest:true,hostname:'zhiyan.example.com',bypassAutoAuth:false,authErr:'',loginUrl:'https://login'})]
     };
   })()`);
   assert.equal(JSON.stringify(result.page), JSON.stringify([1, 3, 0, 20, 1]));
@@ -198,7 +198,7 @@ test('boot exchanges an authentication callback, cleans the URL, and loads the s
   app.router.get('/api/auth/exchange?code=oauth-code', {
     user: { id: 9, loginName: 'oauth-user', isGuest: false, isPlatformAdmin: false },
     authRequired: true,
-    appDomain: 'loopforge.example.com',
+    appDomain: 'zhiyan.example.com',
   });
   await app.evaluate(`boot()`);
   const exchange = app.router.calls.find(c => c.path === '/api/auth/exchange');

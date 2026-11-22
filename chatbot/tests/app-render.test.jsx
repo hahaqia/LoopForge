@@ -184,7 +184,7 @@ describe("App", () => {
       await user.click(screen.getByRole("button", { name: "发送消息" }));
       expect(chat.send).toHaveBeenLastCalledWith(expect.objectContaining({ approvalMode: submitted }));
       if (otherTab)
-        localStorage.setItem("loopforge.assistant.conversation.u1.approval.new:", JSON.stringify({ mode: "auto" }));
+        localStorage.setItem("zhiyan.assistant.conversation.u1.approval.new:", JSON.stringify({ mode: "auto" }));
       else
         await select(changed);
       await act(async () => finish());
@@ -464,7 +464,7 @@ describe("App", () => {
       expect(trigger.closest(".composer-context")).not.toBeNull();
       trigger.getBoundingClientRect = () => ({ top: 500, bottom: 528, left: 200, right: 400, width: 200, height: 28 });
       await user.click(trigger);
-      await user.click(screen.getByRole("option", { name: /LoopForge 云端/ }));
+      await user.click(screen.getByRole("option", { name: /智研工坊 云端/ }));
       expect(selectMachine).toHaveBeenCalledWith("");
       Object.assign(chat, { activeId: "s1", session: { id: "s1", messages: [] } });
       view.rerender(<App />);

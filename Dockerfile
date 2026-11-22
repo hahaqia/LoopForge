@@ -15,8 +15,11 @@ ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
 # Empty lets build-binaries.sh size parallelism from the builder's CPUs and memory.
-ARG LOOPFORGE_BUILD_JOBS=
-ENV LOOPFORGE_BUILD_JOBS=${LOOPFORGE_BUILD_JOBS}
+ARG ZHIYAN_BUILD_JOBS=
+ENV ZHIYAN_BUILD_JOBS=${ZHIYAN_BUILD_JOBS}
+# Overridable so a mirror can replace proxy.golang.org where it is unreachable.
+ARG GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=${GOPROXY}
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 # Ref updates must not invalidate the Go build cache.
@@ -61,10 +64,10 @@ COPY --from=build /out/ /app/bin/
 COPY LICENSE THIRD_PARTY_NOTICES.md /app/
 COPY third_party/go/ /app/third_party/go/
 ENV PATH="/app/bin:${PATH}"
-# An explicit LOOPFORGE_COMMIT wins. Otherwise read HEAD from the build context
+# An explicit ZHIYAN_COMMIT wins. Otherwise read HEAD from the build context
 # so `docker build` stamps the same corner label as the release workflow.
-ARG LOOPFORGE_COMMIT=
+ARG ZHIYAN_COMMIT=
 RUN --mount=type=bind,source=.,target=/ctx,ro \
-    sh /ctx/scripts/image-commit.sh /ctx /app/loopforge-commit
+    sh /ctx/scripts/image-commit.sh /ctx /app/zhiyan-commit
 EXPOSE 8080
 ENTRYPOINT ["/app/bin/agentflow"]

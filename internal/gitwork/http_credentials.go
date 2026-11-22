@@ -76,7 +76,7 @@ func privateHTTPHome(ctx context.Context) (string, func(), error) {
 	if UsesSSH(ctx) {
 		return "", func() {}, nil
 	}
-	home, err := os.MkdirTemp("", "loopforge-git-home-")
+	home, err := os.MkdirTemp("", "zhiyan-git-home-")
 	return home, func() { _ = os.RemoveAll(home) }, err
 }
 

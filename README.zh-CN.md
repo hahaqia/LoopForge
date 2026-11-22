@@ -1,19 +1,13 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/hero-zh-dark.svg">
-    <img src="docs/assets/readme/hero-zh.svg" alt="LoopForge —— 从想法，到合入的代码。在沙箱对话工作区里与编码 Agent 协作，用 SOP 固化交付流程，关键节点由人把关。" width="100%">
+    <img src="docs/assets/readme/hero-zh.svg" alt="智研工坊 —— 从想法，到合入的代码。在沙箱对话工作区里与编码 Agent 协作，用 SOP 固化交付流程，关键节点由人把关。" width="100%">
   </picture>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Tencent/LoopForge/actions/workflows/platform.yml"><img src="https://img.shields.io/github/actions/workflow/status/Tencent/LoopForge/platform.yml?branch=main&label=CI&style=flat-square" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7b61ff?style=flat-square" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/自主部署-Docker-526ce8?style=flat-square&logo=docker&logoColor=white" alt="Docker 自主部署">
-  <a href="https://github.com/Tencent/LoopForge/stargazers"><img src="https://img.shields.io/github/stars/Tencent/LoopForge?style=flat-square&color=f59e0b" alt="GitHub stars"></a>
-</p>
-
-<p align="center">
-  <a href="https://trendshift.io/repositories/300138?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-300138" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/300138" alt="Tencent%2FLoopForge | Trendshift" width="250" height="55"/></a>
 </p>
 
 <p align="center">
@@ -25,18 +19,14 @@
   <a href="#快速开始">快速开始</a> ·
   <a href="#sop-如何运行">SOP</a> ·
   <a href="#功能一览">功能</a> ·
-  <a href="#loopforge-local">本地版（旧版）</a> ·
+  <a href="#zhiyan-local">本地版（旧版）</a> ·
   <a href="#常见问题">FAQ</a> ·
   <a href="#文档">文档</a>
 </p>
 
-https://github.com/user-attachments/assets/10b8ae2e-d7e7-4b78-8876-c45818d4a08f
+**智研工坊** 是一个可自主部署的团队工作台，让你和编程 Agent 一起交付软件。在对话里把需求告诉 **Main Bot**：它会按需打开 Docker 沙箱、检出项目仓库、把任务分派给项目角色，最后提交 PR。某种做法被验证有效后，把它存成 **SOP**（由 Agent、脚本和人工关口组成的标准交付流程），下一个需求就按同样的方式交付，评审和验收都在流程里。
 
-<p align="center"><sub>80 秒产品演示（1080p，有声）。</sub></p>
-
-**LoopForge** 是一个可自主部署的团队工作台，让你和编程 Agent 一起交付软件。在对话里把需求告诉 **Main Bot**：它会按需打开 Docker 沙箱、检出项目仓库、把任务分派给项目角色，最后提交 PR。某种做法被验证有效后，把它存成 **SOP**（由 Agent、脚本和人工关口组成的标准交付流程），下一个需求就按同样的方式交付，评审和验收都在流程里。
-
-干活的是编程 Agent CLI：CodeBuddy、Codex、Claude Code、OpenCode、Cursor CLI、Antigravity、Kimi Code、Pi、DeepSeek Harness 和 ZCode；LoopForge 负责它们外面的角色、沙箱、检查点和留痕，全部运行在你自己的环境里，MIT 开源。
+干活的是编程 Agent CLI：CodeBuddy、Codex、Claude Code、OpenCode、Cursor CLI、Antigravity、Kimi Code、Pi、DeepSeek Harness 和 ZCode；智研工坊 负责它们外面的角色、沙箱、检查点和留痕，全部运行在你自己的环境里，MIT 开源。
 
 ## 两种工作方式
 
@@ -52,13 +42,13 @@ https://github.com/user-attachments/assets/10b8ae2e-d7e7-4b78-8876-c45818d4a08f
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/chat-home-dark.svg">
-    <img src="docs/assets/readme/chat-home.svg" alt="LoopForge 对话工作台：在输入框中描述需求，@ 面板列出角色、技能、需求和 SOP" width="100%">
+    <img src="docs/assets/readme/chat-home.svg" alt="智研工坊 对话工作台：在输入框中描述需求，@ 面板列出角色、技能、需求和 SOP" width="100%">
   </picture>
 </p>
 
 <p align="center"><sub>对话首页：描述需求，用 <code>@</code> 引用角色、技能、需求、SOP 或仓库；每个会话可单独选择执行器、模型和确认模式。</sub></p>
 
-## 为什么需要 LoopForge
+## 为什么需要 智研工坊
 
 让编程 Agent "修一下这个 Bug"，结果往往取决于这一次的运行：可能跳过方案，可能忘了跑测试，可能自己评审自己的代码，也可能做到一半停下而没人发现。做演示没问题，但团队交付不能这样。
 
@@ -70,17 +60,17 @@ https://github.com/user-attachments/assets/10b8ae2e-d7e7-4b78-8876-c45818d4a08f
 
 ## 快速开始
 
-先准备 **Git** 并克隆仓库。安装脚本会检查 Docker、Compose、Python 3 和 curl，并在获得确认后补装缺少的组件：Linux 的 Python/curl 支持 apt、dnf、yum，Compose 插件支持 x86_64/arm64 并校验官方发行文件的 SHA-256；macOS 需要可运行的 Python 3 和 Docker Desktop，可通过 Homebrew 补装缺少的组件。支持普通用户运行，需要时通过 Docker 组或 sudo 操作 Docker。设置 `LOOPFORGE_YES=1` 可接受安装提示；安装和拉取镜像需要可用的外网连接。
+先准备 **Git** 并克隆仓库。安装脚本会检查 Docker、Compose、Python 3 和 curl，并在获得确认后补装缺少的组件：Linux 的 Python/curl 支持 apt、dnf、yum，Compose 插件支持 x86_64/arm64 并校验官方发行文件的 SHA-256；macOS 需要可运行的 Python 3 和 Docker Desktop，可通过 Homebrew 补装缺少的组件。支持普通用户运行，需要时通过 Docker 组或 sudo 操作 Docker。设置 `ZHIYAN_YES=1` 可接受安装提示；安装和拉取镜像需要可用的外网连接。
 
 ```bash
-git clone https://github.com/Tencent/LoopForge.git
-cd LoopForge
+git clone <your-repository-url> 智研工坊
+cd 智研工坊
 ./start.sh
 ```
 
 `./start.sh` 直接拉取 `compose.yaml` 中 pin 的 GHCR 发布镜像，不在本地构建（`bash scripts/install.sh` 效果相同）。安装流程会创建 MySQL 和平台服务，生成配置与会话密钥，并导入内置沙箱、通用 SOP 和体验项目；无需在宿主机安装 Go 或 Node.js。模型 API Key 和 GitHub 授权在启动后由用户配置。用 `./start.sh logs`、`stop`、`restart`、`pull` 管理服务；需要从源码构建时用 `./start.sh dev`。
 
-国内拉取 `ghcr.io` 经常中断。`./start.sh` 和 `./start.sh pull` 会并行探测 `ghcr.io` 与南京大学镜像 [ghcr.nju.edu.cn](https://doc.nju.edu.cn/books/e1654/page/ghcr)。只有先从 ghcr.io 拿到 manifest 摘要，且南京返回同一摘要时，才按这个摘要拉取并改回 `compose.yaml` 里的原名；这表示信任该主机，因为下载结果会被标成官方镜像名。拿不到官方摘要、摘要不一致，或镜像拉取失败时，仍走 `ghcr.io`。`MIRROR=ghcr.io` 固定走官方源，`MIRROR=ghcr.nju.edu.cn` 固定走南京，选择不会写入 `.env`。发布说明里有 digest，可用 `docker image inspect --format '{{index .RepoDigests 0}}' ghcr.io/tencent/loopforge:<pin>` 核对，`@` 后面的摘要应一致。`compose.yaml` 不用改。Docker 引擎里的 `registry-mirrors`（包括 `https://docker.nju.edu.cn`）只加速 Docker Hub，不能填在 `MIRROR` 里。
+国内拉取 `ghcr.io` 经常中断。`./start.sh` 和 `./start.sh pull` 会并行探测 `ghcr.io` 与南京大学镜像 [ghcr.nju.edu.cn](https://doc.nju.edu.cn/books/e1654/page/ghcr)。只有先从 ghcr.io 拿到 manifest 摘要，且南京返回同一摘要时，才按这个摘要拉取并改回 `compose.yaml` 里的原名；这表示信任该主机，因为下载结果会被标成官方镜像名。拿不到官方摘要、摘要不一致，或镜像拉取失败时，仍走 `ghcr.io`。`MIRROR=ghcr.io` 固定走官方源，`MIRROR=ghcr.nju.edu.cn` 固定走南京，选择不会写入 `.env`。发布说明里有 digest，可用 `docker image inspect --format '{{index .RepoDigests 0}}' ghcr.io/tencent/zhiyan:<pin>` 核对，`@` 后面的摘要应一致。`compose.yaml` 不用改。Docker 引擎里的 `registry-mirrors`（包括 `https://docker.nju.edu.cn`）只加速 Docker Hub，不能填在 `MIRROR` 里。
 
 ```bash
 ./start.sh
@@ -94,7 +84,7 @@ GitLab、Gitea、Gogs 等托管可[配置 Git SSH](docs/deployment.md#git-reposi
 
 ### 免 API Key 体验
 
-新注册的账号会自动加入 **LoopForge 体验项目**，其中有一条只包含脚本和人工审批的 SOP：
+新注册的账号会自动加入 **智研工坊 体验项目**，其中有一条只包含脚本和人工审批的 SOP：
 
 1. 切换到体验项目，打开 **流程模板**，进入 **平台验收 · 脚本与审批**。
 2. 点击 **运行流程**。真实脚本会生成一份报告，然后在审批节点等你确认。
@@ -128,11 +118,11 @@ GitLab、Gitea、Gogs 等托管可[配置 Git SSH](docs/deployment.md#git-reposi
   Claude Code 之后的 7 种 Agent CLI 每次运行都在私有 HOME 目录里生成模型和 MCP 配置，因此始终使用需求责任人在个人设置中填写的 Key 和 Base URL，即使在已连接的执行机器上也一样。团队推广时，每位成员需要各自配置凭据。首次安装需要能访问 npm 或对应厂商；[原生部署](docs/deployment.md#workers-and-runners)需安装所选执行器的 CLI。
 - **企业微信通知。** 从本 Dockerfile 构建的平台镜像内置 `wecom-cli`，发布镜像将在下个版本包含它；原生部署需要另行安装，详见[部署指南](docs/deployment.md#native-development)。
 - **GitHub 可选。** 所有内置通用 SOP 都可以不绑定仓库运行：产品方案交付文档，前后端新项目在任务工作区交付源码；缺陷修复仍需提供待修代码和复现材料。需要修改已有代码或提交 PR 时再绑定仓库。
-- **交付到仓库。** 在个人设置中点击「连接 GitHub」，用设备码授权后选择自己的仓库（已内置 LoopForge 授权应用，无需申请 PAT，仍可手动填写 PAT），再配置执行器凭据（或绑定本机执行机器），之后既可以运行一条项目 SOP，也可以直接让 Main Bot 修改代码并提交 PR/MR。
+- **交付到仓库。** 在个人设置中点击「连接 GitHub」，用设备码授权后选择自己的仓库（已内置 智研工坊 授权应用，无需申请 PAT，仍可手动填写 PAT），再配置执行器凭据（或绑定本机执行机器），之后既可以运行一条项目 SOP，也可以直接让 Main Bot 修改代码并提交 PR/MR。
 - **沙箱。** 默认 Compose 安装中，SOP 运行和对话工作区都使用 Docker 沙箱容器，由平台通过宿主机 Docker socket 启动；默认沙箱复用已安装的运行镜像，安装后无需再构建；自定义 Dockerfile 仍单独构建。Docker socket 赋予平台控制宿主机 Docker 的权限，因此只适用于可信团队，不构成不可信多租户隔离边界；详见[部署边界](docs/deployment.md#accounts)。重复执行安装脚本会保留已有数据。
 - **账号与访问。** 新安装默认监听所有网卡（已有安装保留原配置），面向可信团队：已登录用户可以读取实例内各项目的数据，团队成员可在登录页自助注册（在 `.env` 中设置 `AGENTFLOW_ALLOW_SIGNUP=false` 可关闭）。对团队以外开放前，请先阅读[账号与访问边界](docs/deployment.md#accounts)。
 - **远程访问、HTTPS、独立 Worker。** 见[部署指南](docs/deployment.md)。
-- **参与 LoopForge 本身的开发？** 用 `bash scripts/dev.sh` 原生运行（需要 Go 1.26.11+）。
+- **参与 智研工坊 本身的开发？** 用 `bash scripts/dev.sh` 原生运行（需要 Go 1.26.11+）。
 
 </details>
 
@@ -148,7 +138,7 @@ GitLab、Gitea、Gogs 等托管可[配置 Git SSH](docs/deployment.md#git-reposi
 </p>
 
 <p align="center">
-  <img src="docs/assets/readme/designer-zh.svg" alt="LoopForge 流程设计器：内置缺陷修复 SOP，选中「独立评审」节点，右侧检查器显示角色、执行器与失败策略" width="100%">
+  <img src="docs/assets/readme/designer-zh.svg" alt="智研工坊 流程设计器：内置缺陷修复 SOP，选中「独立评审」节点，右侧检查器显示角色、执行器与失败策略" width="100%">
 </p>
 
 <p align="center"><sub>流程设计器中的内置缺陷修复 SOP。每个步骤选择一个角色；检查失败时可以打回到前面的步骤。</sub></p>
@@ -164,7 +154,7 @@ GitLab、Gitea、Gogs 等托管可[配置 Git SSH](docs/deployment.md#git-reposi
 每个节点声明自己的产物和依赖，依赖完成后引擎自动推进下一步。从内置 SOP 起步，按项目调整角色、规则和执行环境，随着流程演进发布新版本。
 
 <p align="center">
-  <img src="docs/assets/readme/run-approval-zh.svg" alt="LoopForge 运行详情：报告脚本已完成，流程停在人工关口，提供确认通过、补充信息重跑、退回上游三种操作" width="100%">
+  <img src="docs/assets/readme/run-approval-zh.svg" alt="智研工坊 运行详情：报告脚本已完成，流程停在人工关口，提供确认通过、补充信息重跑、退回上游三种操作" width="100%">
 </p>
 
 <p align="center"><sub>停在人工关口的运行：确认通过继续下游、补充信息重跑当前节点，或退回上游重做。</sub></p>
@@ -192,11 +182,11 @@ GitLab、Gitea、Gogs 等托管可[配置 Git SSH](docs/deployment.md#git-reposi
 
 <p align="center"><sub>内置 SOP 是平台维护的只读蓝图，复制到本项目后即可运行和修改。</sub></p>
 
-## LoopForge Local
+## 智研工坊 Local
 
-> **旧版（Legacy）。** 已发布的 LoopForge Local（`loopforge-cli`）版本仍可安装。[Local 使用指南](docs/local/usage.zh-CN.md)介绍如何安装固定版本、继续使用既有工作流并保留产物。
+> **旧版（Legacy）。** 已发布的 智研工坊 Local（`zhiyan-cli`）版本仍可安装。[Local 使用指南](docs/local/usage.zh-CN.md)介绍如何安装固定版本、继续使用既有工作流并保留产物。
 
-要在编码 Agent 中使用平台项目和 SOP，请[通过 MCP 将 CodeBuddy 接入 LoopForge 实例](docs/local/usage.zh-CN.md#通过-mcp-连接-loopforge)。Local 仍可在编码 Agent 中独立运行内置工作流，无需启动 LoopForge 服务端。
+要在编码 Agent 中使用平台项目和 SOP，请[通过 MCP 将 CodeBuddy 接入 智研工坊 实例](docs/local/usage.zh-CN.md#通过-mcp-连接-zhiyan)。Local 仍可在编码 Agent 中独立运行内置工作流，无需启动 智研工坊 服务端。
 
 | | 平台版 | Local（旧版） |
 | --- | --- | --- |
@@ -217,10 +207,10 @@ GitLab、Gitea、Gogs 等托管可[配置 Git SSH](docs/deployment.md#git-reposi
 探索和迭代用对话，Main Bot 同样可以提交 PR。当你希望每个需求都按同一套做法交付，有固定的评审、测试和签字环节，就把它做成 SOP。Main Bot 可以启动、暂停和接管 SOP 运行，两种方式可以配合使用。
 
 **和 Dify、n8n、Flowise 有什么区别？**
-它们是通用的 AI / 自动化工作流搭建平台。LoopForge 专注于 **用编程 Agent 做软件交付**：实现者与评审者等角色分工、带真实仓库的 Docker 沙箱、GitHub 交付、人工验收关口和运行证据。
+它们是通用的 AI / 自动化工作流搭建平台。智研工坊 专注于 **用编程 Agent 做软件交付**：实现者与评审者等角色分工、带真实仓库的 Docker 沙箱、GitHub 交付、人工验收关口和运行证据。
 
 **和直接用 Claude Code / Codex / CodeBuddy 等编程 CLI 有什么区别？**
-LoopForge 不替代它们，而是编排它们。每个 Agent 步骤和每轮对话都运行这些 CLI 之一；LoopForge 补上外面的部分：谁来做、在哪个沙箱里、按什么顺序、经过哪些检查、由谁签字。
+智研工坊 不替代它们，而是编排它们。每个 Agent 步骤和每轮对话都运行这些 CLI 之一；智研工坊 补上外面的部分：谁来做、在哪个沙箱里、按什么顺序、经过哪些检查、由谁签字。
 
 **可以直接暴露到公网吗？**
 新安装默认监听所有网卡，面向可信团队。开放前请阅读[账号与访问边界](docs/deployment.md#accounts)并配置 HTTPS。安全漏洞请按[安全政策](SECURITY.zh-CN.md)私密报告。
@@ -231,27 +221,15 @@ LoopForge 不替代它们，而是编排它们。每个 Agent 步骤和每轮对
 | --- | --- |
 | 部署、账号、执行机器与凭据 | [部署指南](docs/deployment.md) |
 | 对话工作区、AI 定时任务与 Token 成本口径 | [对话工作区](docs/conversation-workspaces.md) · [AI 定时任务](docs/ai-scheduled-task-capabilities.md) · [Token 成本统计](docs/token-pricing.md) |
-| 继续使用 Local 旧版工作流 | [LoopForge Local](docs/local/usage.zh-CN.md) · [版本差异](docs/local/editions.md) |
+| 继续使用 Local 旧版工作流 | [智研工坊 Local](docs/local/usage.zh-CN.md) · [版本差异](docs/local/editions.md) |
 | 扩展平台或接入 HTTP / MCP API | [架构](docs/architecture.md) · [API 参考](docs/api/README.md) · [共享定时任务 API](docs/api/shared-schedules.md) |
 | 参与前端开发 | [前端设计约定](design.md) |
 | 功能覆盖与发布就绪情况 | [实测记录](docs/validation.md) · [验收矩阵](docs/testing/acceptance-matrix.md) · [发布评审](docs/release-readiness.md) |
-| 来源与长期维护方式 | [开源范围](docs/open-source-scope.md) · [上游同步策略](docs/upstream-sync.md) |
-
-## 交流群
-
-扫描二维码加入 LoopForge 交流群。
-
-<img src="docs/community-wecom-qr.png" alt="LoopForge 交流群二维码" width="200" />
+| 来源与长期维护方式 | [开源范围](docs/open-source-scope.md) |
 
 ## 参与贡献
 
 欢迎通过 Issue 和 PR 分享使用场景、报告问题，或改进流程、工具适配和平台体验。请先阅读[贡献指南](CONTRIBUTING.zh-CN.md)；安全问题请按[安全政策](SECURITY.zh-CN.md)私密报告。
-
-如果 LoopForge 对你有帮助，欢迎点个 Star，让更多人看到它。
-
-<a href="https://star-history.com/#Tencent/LoopForge&Date">
-  <img src="https://api.star-history.com/svg?repos=Tencent/LoopForge&type=Date" alt="Star history" width="600">
-</a>
 
 ## 许可证
 

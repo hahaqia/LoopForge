@@ -32,7 +32,7 @@ test('token management renders client specs, revealed prompts, and credential hi
   assert.match(body.textContent, /我的访问密钥/);
   assert.doesNotMatch(body.textContent, /Token/);
   assert.match(body.textContent, /Claude Code/);
-  assert.match(body.textContent, /连接 LoopForge 平台 MCP/);
+  assert.match(body.textContent, /连接 智研工坊 平台 MCP/);
   assert.match(body.querySelector('[data-copy-revealed-prompt]').textContent, /复制 MCP 接入提示词/);
   assert.equal(body.querySelector('[data-revealed-client="claude"]').checked, true);
   assert.match(body.querySelector('#token-paste-hint').textContent, /粘贴到你自己的 Claude Code 对话中并发送/);

@@ -1,4 +1,4 @@
-# LoopForge Local architecture
+# 智研工坊 Local architecture
 
 `local/` 包含两个明确分离的工作流实现和一个统一安装控制面。下述源码路径均相对于 `local/`，开发命令也在该目录内执行。平台架构见[总体架构](../architecture.md)。
 
@@ -29,12 +29,12 @@ Portable 安装到目标项目时才生成 `.cursor/.claude/.agents/.codebuddy` 
 
 `DevFlow` CLI 负责 install、status、update、uninstall 和 doctor。四个 target
 保持薄层，安装核心统一处理计划、冲突检查、状态记录和用户文件保护。默认 edition
-是 Classic；`loopforge install <host>` 安装完整宿主包，Portable 通过
-`loopforge skills install <host>` 安装。安装器不改变两套工作流的内部状态机。
+是 Classic；`zhiyan install <host>` 安装完整宿主包，Portable 通过
+`zhiyan skills install <host>` 安装。安装器不改变两套工作流的内部状态机。
 
 ## 可选工具与私有扩展
 
-`tools/` 存放不进入 Classic/Portable 安装包和 `loopforge-cli` npm 包的配套工具。
+`tools/` 存放不进入 Classic/Portable 安装包和 `zhiyan-cli` npm 包的配套工具。
 当前 `tools/tcmcp` 是腾讯云只读 MCP Initializr，由克隆仓库或 GHCR 镜像单独运行。
 
 CI/CD、工单、企业代码托管、知识库、聊天通知，以及未开源的云运维能力，应保存在部署方的

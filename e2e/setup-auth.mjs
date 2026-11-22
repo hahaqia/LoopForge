@@ -8,8 +8,8 @@ if (process.env.AGENTFLOW_E2E_MODEL_KEYS_FILE?.trim()) {
 }
 const root=path.dirname(fileURLToPath(import.meta.url));
 const base=(process.env.AGENTFLOW_E2E_BASE||'http://127.0.0.1:8090').replace(/\/$/,'');
-const password=process.env.LOOPFORGE_TEST_PASSWORD||fs.readFileSync(process.env.LOOPFORGE_TEST_PASSWORD_FILE||path.join(root,'../.local/admin-password'),'utf8').trim();
-const login=await fetch(base+'/api/auth/password',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({login:process.env.LOOPFORGE_TEST_USER||'admin',password})});
+const password=process.env.ZHIYAN_TEST_PASSWORD||fs.readFileSync(process.env.ZHIYAN_TEST_PASSWORD_FILE||path.join(root,'../.local/admin-password'),'utf8').trim();
+const login=await fetch(base+'/api/auth/password',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({login:process.env.ZHIYAN_TEST_USER||'admin',password})});
 if(!login.ok)throw new Error('Acceptance login: HTTP '+login.status);
 const cookie=login.headers.get('set-cookie').split(';')[0];
 const response=await fetch(base+'/api/auth/tokens',{method:'POST',headers:{Origin:base,Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify({name:'e2e-acceptance-'+Date.now()})});

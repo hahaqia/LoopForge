@@ -29,7 +29,7 @@ func TestPrepareLocalSnapshotRepositoryCommitsBaseline(t *testing.T) {
 		t.Fatalf("branch = %q, %v", branch, err)
 	}
 	subject, err := gitC(context.Background(), workspace, "log", "-1", "--format=%s")
-	if err != nil || strings.TrimSpace(subject) != "LoopForge baseline" {
+	if err != nil || strings.TrimSpace(subject) != "智研工坊 baseline" {
 		t.Fatalf("baseline commit = %q, %v", subject, err)
 	}
 }

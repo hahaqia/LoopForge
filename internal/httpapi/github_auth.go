@@ -45,7 +45,7 @@ func (h *githubHandlers) current(c *gin.Context) (int64, bool) {
 	c.Header("Cache-Control", "no-store")
 	user, ok := h.requestUser(c.Request, false)
 	if !ok || user == nil || user.IsGuest || user.ID <= 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录 LoopForge，再连接 GitHub"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录 智研工坊，再连接 GitHub"})
 		return 0, false
 	}
 	if c.Request.Method != http.MethodGet {
@@ -129,7 +129,7 @@ func (h *githubHandlers) request(c *gin.Context, method, endpoint, token string,
 		return err
 	}
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("User-Agent", "LoopForge")
+	request.Header.Set("User-Agent", "智研工坊")
 	if form != nil {
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}

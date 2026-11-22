@@ -44,7 +44,7 @@ Claude Code 的回调在 **2.1.326** 的官方客户端中实测可用，但属�
 Codex 的用户身份与工作区共同作锚点；Claude 使用可信宿主 `.claude.json` 的账号/组织资料。
 缺少账号资料时，只接受管理器自己有 receipt 的更新，其他变化需要重启任务。
 
-默认私有状态目录为系统用户缓存目录下 `LoopForge/runner-auth`；可以用
+默认私有状态目录为系统用户缓存目录下 `zhiyan/runner-auth`；可以用
 `AGENTFLOW_RUNNER_AUTH_DIR` 指定持久目录，必须放在任务工作区之外。目录权限 `0700`，文件 `0600`。
 native 托管任务遮蔽原凭证与刷新目录；Docker 只得到工作区中的私有副本。
 任务结束会关闭刷新入口并移除临时凭证，不把刷新控制消息写入任务日志。
@@ -69,13 +69,13 @@ cleanup 要求 refresh token 与宿主原件一致，并通过 Google OIDC useri
 
 ```sh
 # 官方 Codex / Claude Code：仅本机虚构认证服务，macOS sandbox-exec 禁止外网与真实凭证访问
-LOOPFORGE_PROBE_CODEX_BIN=/absolute/path/to/codex \
-LOOPFORGE_PROBE_CLAUDE_BIN=/absolute/path/to/claude \
+ZHIYAN_PROBE_CODEX_BIN=/absolute/path/to/codex \
+ZHIYAN_PROBE_CLAUDE_BIN=/absolute/path/to/claude \
 go test ./internal/runtime -run 'TestManagedLoginOfficial' -race -count=1
 
 # 实际 native + Docker，对话和 SOP；使用 Python CLI 夹具与虚构 token
 # 需要预先提供 python:3.13-alpine，macOS 的工作区放在 Docker 已共享的用户缓存目录
-LOOPFORGE_PROBE_AUTH_SANDBOXES=1 \
+ZHIYAN_PROBE_AUTH_SANDBOXES=1 \
 go test ./internal/runtime -run TestManagedLoginRuntimePaths -race -count=1
 ```
 

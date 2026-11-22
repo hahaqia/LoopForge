@@ -43,7 +43,7 @@ AGENTFLOW_E2E_CODEBUDDY_API_KEY=ck_... ./local.sh api/40-model.test.mjs   # 带�
 | `AGENTFLOW_E2E_REPO_BRANCH` | 上面仓库的基线分支，默认 `main` |
 | `AGENTFLOW_E2E_PROJECT` | 测试项目，默认 `e2e-auto` |
 | `AGENTFLOW_E2E_VIEW_PROJECT` | 第二个页面巡检项目，默认 `welcome` |
-| `LOOPFORGE_TEST_USER` / `LOOPFORGE_TEST_PASSWORD` | UI 真实密码登录；用户名默认 admin，本地密码缺省读取 `.local/admin-password` |
+| `ZHIYAN_TEST_USER` / `ZHIYAN_TEST_PASSWORD` | UI 真实密码登录；用户名默认 admin，本地密码缺省读取 `.local/admin-password` |
 | `AGENTFLOW_E2E_KEEP` | 设为 `1` 保留资源用于诊断 |
 | `AGENTFLOW_E2E_KNOWN_ERRORS` | 正则。已修复但目标环境尚未部署的前端报错，临时忽略，例如 `'Content Security Policy'` |
 | `E2E_CHROMIUM` | 可选的 Chromium 路径 |
@@ -60,7 +60,7 @@ export AGENTFLOW_E2E_MODEL_KEYS_FILE="$PWD/.local/e2e-model-keys.json"
 node e2e/setup-model-keys.mjs
 ```
 
-如果流水线已调用 `node e2e/setup-auth.mjs`，给该步骤传入相同的环境变量即可，它会先导入凭证再创建 LoopForge 测试 API Token。设置 `LOOPFORGE_TEST_USER` 以选择 Token 对应的测试账号。远程测试平台使用 HTTPS。
+如果流水线已调用 `node e2e/setup-auth.mjs`，给该步骤传入相同的环境变量即可，它会先导入凭证再创建 智研工坊 测试 API Token。设置 `ZHIYAN_TEST_USER` 以选择 Token 对应的测试账号。远程测试平台使用 HTTPS。
 
 - 未指定文件路径、文件为空或所有凭证值为空时跳过导入。空白字符串和 `null` 都按空值处理，对应的已有凭证会保留。显式指定的文件无法读取、配置错误、登录或保存失败时退出非零。
 - `gitToken` 保存到该测试账号的 `github.com` HTTPS Git 凭证。再次导入会更新同一条凭证。单独导入 Git Token 时可省略 `apiKeys`。测试部署需支持按主机保存 Git 凭证。

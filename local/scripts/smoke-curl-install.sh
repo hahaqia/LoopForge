@@ -18,11 +18,11 @@ RELEASE_DIR="$TMP_DIR/release"
 bash "$ROOT_DIR/scripts/build-release-archive.sh" "$RELEASE_DIR" >/dev/null
 
 MOCK_ROOT="$TMP_DIR/http-root"
-API_DIR="$MOCK_ROOT/api/repos/Tencent/LoopForge"
-DOWNLOAD_DIR="$MOCK_ROOT/downloads/Tencent/LoopForge/releases/download/v0.1.0"
+API_DIR="$MOCK_ROOT/api/repos/zhiyan/zhiyan"
+DOWNLOAD_DIR="$MOCK_ROOT/downloads/zhiyan/zhiyan/releases/download/v0.1.0"
 mkdir -p "$API_DIR" "$DOWNLOAD_DIR"
 printf '[{"tag_name":"v0.1.0","prerelease":false}]\n' > "$API_DIR/releases"
-cp "$RELEASE_DIR/loopforge-workflow.tar.gz"* "$DOWNLOAD_DIR/"
+cp "$RELEASE_DIR/zhiyan-workflow.tar.gz"* "$DOWNLOAD_DIR/"
 
 PORT="$(python3 - <<'PY'
 import socket
@@ -38,18 +38,18 @@ SERVER_PID=$!
 BASE_URL="http://127.0.0.1:$PORT"
 
 for _ in {1..20}; do
-  if curl -fsS "$BASE_URL/api/repos/Tencent/LoopForge/releases?per_page=1" >/dev/null 2>&1; then
+  if curl -fsS "$BASE_URL/api/repos/zhiyan/zhiyan/releases?per_page=1" >/dev/null 2>&1; then
     break
   fi
   sleep 0.1
 done
-curl -fsS "$BASE_URL/api/repos/Tencent/LoopForge/releases?per_page=1" >/dev/null
+curl -fsS "$BASE_URL/api/repos/zhiyan/zhiyan/releases?per_page=1" >/dev/null
 
 CLASSIC_PROJECT="$TMP_DIR/classic-project"
 mkdir -p "$CLASSIC_PROJECT"
-cat "$ROOT_DIR/install.sh" | LOOPFORGE_ALLOW_INSECURE=1 \
-  LOOPFORGE_GITHUB_URL="$BASE_URL/downloads" \
-  LOOPFORGE_GITHUB_API_URL="$BASE_URL/api" \
+cat "$ROOT_DIR/install.sh" | ZHIYAN_ALLOW_INSECURE=1 \
+  ZHIYAN_GITHUB_URL="$BASE_URL/downloads" \
+  ZHIYAN_GITHUB_API_URL="$BASE_URL/api" \
   sh -s -- codex --project-root "$CLASSIC_PROJECT"
 test -f "$CLASSIC_PROJECT/.codex/README.md"
 test -f "$CLASSIC_PROJECT/.agents/skills/devflow-codex/SKILL.md"
@@ -57,9 +57,9 @@ test -f "$CLASSIC_PROJECT/.devflow/install-state.json"
 
 PORTABLE_PROJECT="$TMP_DIR/portable-project"
 mkdir -p "$PORTABLE_PROJECT"
-cat "$ROOT_DIR/install.sh" | LOOPFORGE_ALLOW_INSECURE=1 sh -s -- claude \
+cat "$ROOT_DIR/install.sh" | ZHIYAN_ALLOW_INSECURE=1 sh -s -- claude \
   --edition portable --project-root "$PORTABLE_PROJECT" \
-  --release-base-url "$BASE_URL/downloads/Tencent/LoopForge/releases/download/v0.1.0"
+  --release-base-url "$BASE_URL/downloads/zhiyan/zhiyan/releases/download/v0.1.0"
 test -f "$PORTABLE_PROJECT/.claude/skills/devflow/SKILL.md"
 test -f "$PORTABLE_PROJECT/.devflow/install-state.json"
 

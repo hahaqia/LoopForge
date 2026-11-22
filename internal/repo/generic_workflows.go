@@ -15,16 +15,16 @@ const (
 	GenericDockerSandboxID     = "generic-docker"
 )
 
-// Role identifiers used by the stored LoopForge backend template. Cloning a
+// Role identifiers used by the stored 智研工坊 backend template. Cloning a
 // generic template copies these roles into the target project.
 const (
-	GenericAgentRequirement = "loopforge-requirement"
-	GenericAgentDesign      = "loopforge-design"
-	GenericAgentImplement   = "loopforge-implement"
-	GenericAgentReview      = "loopforge-review"
-	GenericAgentTest        = "loopforge-test"
-	GenericAgentMR          = "loopforge-mr"
-	GenericAgentSummary     = "loopforge-summary"
+	GenericAgentRequirement = "zhiyan-requirement"
+	GenericAgentDesign      = "zhiyan-design"
+	GenericAgentImplement   = "zhiyan-implement"
+	GenericAgentReview      = "zhiyan-review"
+	GenericAgentTest        = "zhiyan-test"
+	GenericAgentMR          = "zhiyan-mr"
+	GenericAgentSummary     = "zhiyan-summary"
 )
 
 // Requirement keys a generic template may declare. Studio maps them onto live
@@ -37,7 +37,7 @@ const (
 )
 
 // Product and frontend harness templates share the same generic_templates
-// table as the LoopForge backend SOP.
+// table as the 智研工坊 backend SOP.
 const (
 	GenericProductDeliveryWorkflowID  = "generic-product-delivery"
 	GenericFrontendDeliveryWorkflowID = "generic-frontend-delivery"
@@ -63,17 +63,17 @@ const (
 // Template-owned rule ids. These are cloned into the adopting project and
 // referenced by the template roles.
 const (
-	GenericRuleCore           = "loopforge-core"
-	GenericRuleBackendProfile = "loopforge-backend-profile"
+	GenericRuleCore           = "zhiyan-core"
+	GenericRuleBackendProfile = "zhiyan-backend-profile"
 )
 
-// Template-owned skill ids, one per LoopForge stage capability.
+// Template-owned skill ids, one per 智研工坊 stage capability.
 const (
-	GenericSkillClarifyRequirements = "loopforge-clarify-requirements"
-	GenericSkillBrainstorming       = "loopforge-brainstorming"
-	GenericSkillTechDesign          = "loopforge-tech-design"
-	GenericSkillWritingPlans        = "loopforge-writing-plans"
-	GenericSkillKnowledgeDistill    = "loopforge-knowledge-distillation"
+	GenericSkillClarifyRequirements = "zhiyan-clarify-requirements"
+	GenericSkillBrainstorming       = "zhiyan-brainstorming"
+	GenericSkillTechDesign          = "zhiyan-tech-design"
+	GenericSkillWritingPlans        = "zhiyan-writing-plans"
+	GenericSkillKnowledgeDistill    = "zhiyan-knowledge-distillation"
 )
 
 // GenericTemplate bundles a project-independent SOP with the roles it needs.

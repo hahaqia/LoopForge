@@ -56,7 +56,7 @@ func TestRunnerCloneStopsAStalledTransferAndKeepsItsLastOutput(t *testing.T) {
 }
 
 func TestRunnerCloneKeepsItsTotalLimitConfigurable(t *testing.T) {
-	if got := runnerCloneWatch(&domain.RunnerRepository{CloneURL: "https://github.com/Tencent/LoopForge.git"}); got.Timeout != 10*time.Minute || got.Stall != 5*time.Minute || got.Label != "克隆仓库 LoopForge" {
+	if got := runnerCloneWatch(&domain.RunnerRepository{CloneURL: "https://github.com/zhiyan/zhiyan.git"}); got.Timeout != 10*time.Minute || got.Stall != 5*time.Minute || got.Label != "克隆仓库 智研工坊" {
 		t.Fatalf("defaults = %+v", got)
 	}
 	t.Setenv(gitwork.CloneTimeoutEnv, "500ms")

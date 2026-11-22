@@ -103,7 +103,7 @@ func TestAuthFlow_Success(t *testing.T) {
 		AppToken:      "test_token",
 		AuthHost:      mockSSO.URL,
 		AuthURI:       "/sso/access-token",
-		AppDomain:     "loopforge.example.com",
+		AppDomain:     "zhiyan.example.com",
 		SessionSecret: "secret123",
 	})
 	authClient.SetHTTPClient(mockSSO.Client())
@@ -112,7 +112,7 @@ func TestAuthFlow_Success(t *testing.T) {
 
 	// 1. Exchange code
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/exchange?code=my_valid_code", nil)
-	req.Host = "loopforge.example.com"
+	req.Host = "zhiyan.example.com"
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -166,8 +166,8 @@ func TestAuthFlow_Success(t *testing.T) {
 	if authCookie == nil {
 		t.Fatalf("expected agentflow_user cookie to be set")
 	}
-	if authCookie.Domain != "loopforge.example.com" {
-		t.Errorf("expected cookie domain loopforge.example.com, got %s", authCookie.Domain)
+	if authCookie.Domain != "zhiyan.example.com" {
+		t.Errorf("expected cookie domain zhiyan.example.com, got %s", authCookie.Domain)
 	}
 
 	// 2. Call /api/auth/current with cookie
@@ -191,7 +191,7 @@ func TestAuthFlow_Success(t *testing.T) {
 
 	// 3. Logout
 	logoutReq := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
-	logoutReq.Host = "loopforge.example.com"
+	logoutReq.Host = "zhiyan.example.com"
 	logoutRec := httptest.NewRecorder()
 	handler.ServeHTTP(logoutRec, logoutReq)
 
@@ -244,7 +244,7 @@ func TestAuthCurrent_TamperedCookie(t *testing.T) {
 func TestAuthCurrent_GatewayHeader(t *testing.T) {
 	t.Setenv("AGENTFLOW_TRUST_IDENTITY_HEADERS", "true")
 	authClient := auth.NewClient(auth.Config{
-		AppDomain:     "loopforge.example.com",
+		AppDomain:     "zhiyan.example.com",
 		SessionSecret: "test-secret-123",
 	})
 	handler, st := newTestAuthServer(t, authClient)
@@ -361,11 +361,11 @@ func TestAuthCookieSecureBehindHTTPSProxy(t *testing.T) {
 func TestAuthCurrent_FallbackWithLoginURL(t *testing.T) {
 	authClient := auth.NewClient(auth.Config{
 		PaaSID:    "ngn_test_paas",
-		AppDomain: "loopforge.example.com",
+		AppDomain: "zhiyan.example.com",
 	})
 	handler, _ := newTestAuthServer(t, authClient)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/auth/current?return_url=https://loopforge.example.com/#/dashboard", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/current?return_url=https://zhiyan.example.com/#/dashboard", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -394,7 +394,7 @@ func TestAuthCurrent_FallbackWithLoginURL(t *testing.T) {
 
 func TestAuthCurrent_CookieUserMissingInStore_AutoPersist(t *testing.T) {
 	authClient := auth.NewClient(auth.Config{
-		AppDomain:     "loopforge.example.com",
+		AppDomain:     "zhiyan.example.com",
 		SessionSecret: "secret-cookie-persist",
 	})
 	handler, st := newTestAuthServer(t, authClient)

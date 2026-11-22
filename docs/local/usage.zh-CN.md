@@ -1,49 +1,49 @@
-# LoopForge Local 使用指南
+# 智研工坊 Local 使用指南
 
 [English](usage.md) | 简体中文
 
-> **旧版（Legacy）。** LoopForge Local 在编码 Agent 中独立运行内置的 Classic 和 Portable 工作流，无需启动 LoopForge 服务端。已有项目可以继续使用已发布的版本。
+> **旧版（Legacy）。** 智研工坊 Local 在编码 Agent 中独立运行内置的 Classic 和 Portable 工作流，无需启动 智研工坊 服务端。已有项目可以继续使用已发布的版本。
 
-## 通过 MCP 连接 LoopForge
+## 通过 MCP 连接 智研工坊
 
-可以通过 CodeBuddy 访问运行中的 LoopForge 实例内的项目、SOP 和运行记录。需要自建实例时，参阅[部署指南](../deployment.md)。
+可以通过 CodeBuddy 访问运行中的 智研工坊 实例内的项目、SOP 和运行记录。需要自建实例时，参阅[部署指南](../deployment.md)。
 
-1. 登录 LoopForge，打开「接入方式」，创建个人访问密钥并选择 **CodeBuddy**，获取 MCP 接入指引。
-2. 在 CodeBuddy 中应用用户级配置，在 MCP 管理页确认 `agentflow` 已连接，再让 CodeBuddy 列出可访问的 LoopForge 项目以验证接入。
+1. 登录 智研工坊，打开「接入方式」，创建个人访问密钥并选择 **CodeBuddy**，获取 MCP 接入指引。
+2. 在 CodeBuddy 中应用用户级配置，在 MCP 管理页确认 `agentflow` 已连接，再让 CodeBuddy 列出可访问的 智研工坊 项目以验证接入。
 
 连接端点和可用操作见 [MCP API 参考](../api/README.md#公共能力发现与-mcp)。
 
 ## 快速开始
 
-需要 Node.js 20+ 和 Python 3.8+。把下文命令中的 `X.Y.Z` 替换成与你的 Agent 和 Edition 匹配的已发布版本。可用 `npm view loopforge-cli versions --json` 查看已发布版本。各版本支持的宿主以对应版本为准。
+需要 Node.js 20+ 和 Python 3.8+。把下文命令中的 `X.Y.Z` 替换成与你的 Agent 和 Edition 匹配的已发布版本。可用 `npm view zhiyan-cli versions --json` 查看已发布版本。各版本支持的宿主以对应版本为准。
 
 | Agent | 安装 | 启动工作流 |
 | --- | --- | --- |
-| CodeBuddy | `npx -y loopforge-cli@X.Y.Z install codebuddy` | `/start-devflow "<需求>"` |
-| Codex | `npx -y loopforge-cli@X.Y.Z install codex` | `$devflow-codex "<需求>"` |
-| Cursor | `npx -y loopforge-cli@X.Y.Z install cursor` | `/start-devflow "<需求>"` |
-| Claude Code | `npx -y loopforge-cli@X.Y.Z install claude` | `/start-devflow "<需求>"` |
-| DeepSeek Harness | `npx -y loopforge-cli@X.Y.Z skills install dsh` | `/devflow "<需求>"` |
-| Hermes Agent | `npx -y loopforge-cli@X.Y.Z skills install hermes`，然后 `hermes skills trust .` | `/devflow "<需求>"` |
+| CodeBuddy | `npx -y zhiyan-cli@X.Y.Z install codebuddy` | `/start-devflow "<需求>"` |
+| Codex | `npx -y zhiyan-cli@X.Y.Z install codex` | `$devflow-codex "<需求>"` |
+| Cursor | `npx -y zhiyan-cli@X.Y.Z install cursor` | `/start-devflow "<需求>"` |
+| Claude Code | `npx -y zhiyan-cli@X.Y.Z install claude` | `/start-devflow "<需求>"` |
+| DeepSeek Harness | `npx -y zhiyan-cli@X.Y.Z skills install dsh` | `/devflow "<需求>"` |
+| Hermes Agent | `npx -y zhiyan-cli@X.Y.Z skills install hermes`，然后 `hermes skills trust .` | `/devflow "<需求>"` |
 
 以 Claude Code 为例：
 
 ```bash
-npx -y loopforge-cli@X.Y.Z install claude
-npx -y loopforge-cli@X.Y.Z status claude
+npx -y zhiyan-cli@X.Y.Z install claude
+npx -y zhiyan-cli@X.Y.Z status claude
 ```
 
 ```text
 /start-devflow "为订单列表增加状态筛选，并补充接口测试"
 ```
 
-任何宿主都可以用 `npx -y loopforge-cli@X.Y.Z status <agent>` 检查安装状态。如果安装或运行遇到问题，执行环境诊断：
+任何宿主都可以用 `npx -y zhiyan-cli@X.Y.Z status <agent>` 检查安装状态。如果安装或运行遇到问题，执行环境诊断：
 
 ```bash
-npx -y loopforge-cli@X.Y.Z doctor
+npx -y zhiyan-cli@X.Y.Z doctor
 ```
 
-Pi、DeepSeek Harness 和 Hermes Agent 通过 [Portable Edition](#portable-edition) 支持。DSH 还可以安装[可选插件](../../local/dsh-plugin/README.md)，提供任务控制、状态、产物和人工审批入口。Hermes 使用项目级 `.hermes/skills/` 和 `delegate_task`，不会修改 `~/.hermes/config.yaml`；需要独立命令时可安装[可选 Hermes 插件](../../local/hermes-plugin/README.md)，提供 `/loopforge status`、`/loopforge result` 和 `/loopforge approve`。
+Pi、DeepSeek Harness 和 Hermes Agent 通过 [Portable Edition](#portable-edition) 支持。DSH 还可以安装[可选插件](../../local/dsh-plugin/README.md)，提供任务控制、状态、产物和人工审批入口。Hermes 使用项目级 `.hermes/skills/` 和 `delegate_task`，不会修改 `~/.hermes/config.yaml`；需要独立命令时可安装[可选 Hermes 插件](../../local/hermes-plugin/README.md)，提供 `/zhiyan status`、`/zhiyan result` 和 `/zhiyan approve`。
 
 ## 工作方式
 
@@ -53,7 +53,7 @@ Pi、DeepSeek Harness 和 Hermes Agent 通过 [Portable Edition](#portable-editi
 4. **用证据说明结果**：需求、方案、代码变更、审查意见和测试结果都会落盘，方便检查、复盘和交接。
 5. **中断后继续执行**：流程状态会被保存，下次可以从未完成的阶段继续，不必重新来过。
 
-LoopForge 会根据任务复杂度选择路径：小改动走精简的单角色路径，避免为简单任务引入额外流程；中大型任务才启用完整的角色分工流程。
+智研工坊 会根据任务复杂度选择路径：小改动走精简的单角色路径，避免为简单任务引入额外流程；中大型任务才启用完整的角色分工流程。
 
 ```text
 你的需求
@@ -105,11 +105,11 @@ Classic 工作流中断后，CodeBuddy、Cursor 和 Claude Code 使用 `/resume-
 
 CodeBuddy 的 Classic Edition 内置本地可观测看板。它把落盘的流程证据变成可视化视图，集中呈现会话活动、Token 与成本趋势、Skill/Rule 使用情况、角色派发，以及 Devflow 阶段归因，方便定位高成本运行、确认自动化是否真正生效，并复盘任务如何在不同角色之间流转。
 
-![使用演示数据的 LoopForge 本地 Agent 可观测看板](assets/agent-observability-dashboard.png)
+![使用演示数据的 智研工坊 本地 Agent 可观测看板](assets/agent-observability-dashboard.png)
 
 _看板示例使用合成演示数据。_
 
-看板的数据聚合和页面服务都在本机完成，不依赖外部遥测服务。运行日志可能包含工具参数和输出片段，因此 LoopForge 默认将它们排除在 Git 之外；未经检查不应对外分享原始日志。
+看板的数据聚合和页面服务都在本机完成，不依赖外部遥测服务。运行日志可能包含工具参数和输出片段，因此 智研工坊 默认将它们排除在 Git 之外；未经检查不应对外分享原始日志。
 
 <details>
 <summary>打开本地看板</summary>
@@ -127,7 +127,7 @@ python3 -m http.server 8765 --directory .codebuddy/skills/agent-observability/sc
 
 ## 什么时候适合使用
 
-LoopForge 尤其适合这些任务：
+智研工坊 尤其适合这些任务：
 
 - 需求还比较模糊，需要先把目标和边界讨论清楚；
 - 改动涉及多个模块，希望先形成方案再实施；
@@ -135,21 +135,21 @@ LoopForge 尤其适合这些任务：
 - 任务可能跨越多个会话，需要保留状态并断点续跑；
 - 团队希望留下可检查、可复盘的交付记录。
 
-如果只是一次性的代码补全或非常明确的微小修改，直接使用编码 Agent 通常已经足够；LoopForge 会为进入其工作流的简单任务选择精简路径。
+如果只是一次性的代码补全或非常明确的微小修改，直接使用编码 Agent 通常已经足够；智研工坊 会为进入其工作流的简单任务选择精简路径。
 
 ## Portable Edition
 
-使用基于 Agent Skills 的可移植工作流时，选择 Portable Edition。为避免同一个 Coding Agent 同时加载两套工作流，以及状态和产物相互冲突，LoopForge 在每个项目中只允许为同一 Coding Agent 启用一种 Edition。如需切换，可重新安装并添加 `--force`。
+使用基于 Agent Skills 的可移植工作流时，选择 Portable Edition。为避免同一个 Coding Agent 同时加载两套工作流，以及状态和产物相互冲突，智研工坊 在每个项目中只允许为同一 Coding Agent 启用一种 Edition。如需切换，可重新安装并添加 `--force`。
 
 | Agent | 安装 | 启动工作流 |
 | --- | --- | --- |
-| CodeBuddy | `npx -y loopforge-cli@X.Y.Z skills install codebuddy` | `/devflow "<需求>"` |
-| Codex | `npx -y loopforge-cli@X.Y.Z skills install codex` | `$devflow "<需求>"` |
-| Cursor | `npx -y loopforge-cli@X.Y.Z skills install cursor` | `/devflow "<需求>"` |
-| Claude Code | `npx -y loopforge-cli@X.Y.Z skills install claude` | `/devflow "<需求>"` |
-| Pi | `npx -y loopforge-cli@X.Y.Z skills install pi`，然后 `pi install npm:pi-subagents` | `/skill:devflow "<需求>"` |
-| DeepSeek Harness | `npx -y loopforge-cli@X.Y.Z skills install dsh` | `/devflow "<需求>"` |
-| Hermes Agent | `npx -y loopforge-cli@X.Y.Z skills install hermes`，然后 `hermes skills trust .` | `/devflow "<需求>"`（可选插件：`/loopforge`） |
+| CodeBuddy | `npx -y zhiyan-cli@X.Y.Z skills install codebuddy` | `/devflow "<需求>"` |
+| Codex | `npx -y zhiyan-cli@X.Y.Z skills install codex` | `$devflow "<需求>"` |
+| Cursor | `npx -y zhiyan-cli@X.Y.Z skills install cursor` | `/devflow "<需求>"` |
+| Claude Code | `npx -y zhiyan-cli@X.Y.Z skills install claude` | `/devflow "<需求>"` |
+| Pi | `npx -y zhiyan-cli@X.Y.Z skills install pi`，然后 `pi install npm:pi-subagents` | `/skill:devflow "<需求>"` |
+| DeepSeek Harness | `npx -y zhiyan-cli@X.Y.Z skills install dsh` | `/devflow "<需求>"` |
+| Hermes Agent | `npx -y zhiyan-cli@X.Y.Z skills install hermes`，然后 `hermes skills trust .` | `/devflow "<需求>"`（可选插件：`/zhiyan`） |
 
 完整边界和目录说明见 [Classic / Portable 说明](editions.md)。
 
@@ -160,24 +160,24 @@ LoopForge 尤其适合这些任务：
 管理已有的 Local 安装时，可以全局安装同一版本的 CLI。
 
 ```bash
-npm install --global loopforge-cli@X.Y.Z
+npm install --global zhiyan-cli@X.Y.Z
 ```
 
 之后用上面的宿主名（`codebuddy`、`codex`、`cursor`、`claude`，Portable Edition 另有 `pi`、`dsh` 和 `hermes`）维护安装：
 
 ```bash
 # Classic Edition
-loopforge update <agent>
-loopforge status <agent>
-loopforge uninstall <agent>
+zhiyan update <agent>
+zhiyan status <agent>
+zhiyan uninstall <agent>
 
 # Portable Edition
-loopforge skills update <agent>
-loopforge skills status <agent>
-loopforge skills uninstall <agent>
+zhiyan skills update <agent>
+zhiyan skills status <agent>
+zhiyan skills uninstall <agent>
 ```
 
-安装状态保存在 `.devflow/install-state.json`。检测到用户修改或文件冲突时，更新会停止而不是覆盖。只有在确认要替换冲突文件或切换 Edition 时才使用 `--force`，建议先运行 `loopforge plan` 检查变更。
+安装状态保存在 `.devflow/install-state.json`。检测到用户修改或文件冲突时，更新会停止而不是覆盖。只有在确认要替换冲突文件或切换 Edition 时才使用 `--force`，建议先运行 `zhiyan plan` 检查变更。
 
 要从历史发布版本的源码安装，先检出对应的 tag，再在仓库根目录执行以下命令。
 
@@ -187,16 +187,16 @@ pipx install ./local
 
 ## 可选工具
 
-`tools/tcmcp` 是腾讯云只读 MCP Initializr（Redis、CDB、TDSQL-C、TKE、CLS、COS）。它不包含在 `loopforge install` 或 npm CLI 包中。克隆仓库后：
+`tools/tcmcp` 是腾讯云只读 MCP Initializr（Redis、CDB、TDSQL-C、TKE、CLS、COS）。它不包含在 `zhiyan install` 或 npm CLI 包中。克隆仓库后：
 
 ```bash
 cd local/tools/tcmcp
 ```
 
-再按 [`tools/tcmcp/README.md`](../../local/tools/tcmcp/README.md) 启动。云 API 密钥不会写入生成的 zip 或容器镜像，只留在拉取资源或安装 MCP 客户端的本机。LoopForge Local 以 `local-vX.Y.Z` tag 发版时会发布 `ghcr.io/tencent/loopforge-tcmcp:<version>`。
+再按 [`tools/tcmcp/README.md`](../../local/tools/tcmcp/README.md) 启动。云 API 密钥不会写入生成的 zip 或容器镜像，只留在拉取资源或安装 MCP 客户端的本机。智研工坊 Local 以 `local-vX.Y.Z` tag 发版时会发布 `ghcr.io/tencent/zhiyan-tcmcp:<version>`。
 
 ## 权限与安全
 
-部分宿主的 Classic 配置会启用自动执行或高权限 Agent 模式。请只在可信项目中使用；安装前可以通过 `loopforge plan codebuddy`、`loopforge plan codex`、`loopforge plan cursor` 或 `loopforge plan claude` 检查将写入的文件。不要把凭据、私有地址或生产运维配置写入工作流模板。
+部分宿主的 Classic 配置会启用自动执行或高权限 Agent 模式。请只在可信项目中使用；安装前可以通过 `zhiyan plan codebuddy`、`zhiyan plan codex`、`zhiyan plan cursor` 或 `zhiyan plan claude` 检查将写入的文件。不要把凭据、私有地址或生产运维配置写入工作流模板。
 
 安全问题请参阅[统一安全政策](../../SECURITY.zh-CN.md)，并通过 GitHub Security Advisory 私密报告。

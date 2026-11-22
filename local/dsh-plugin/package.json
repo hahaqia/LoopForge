@@ -1,7 +1,7 @@
 {
-  "name": "@tencent/loopforge-dsh",
+  "name": "@tencent/zhiyan-dsh",
   "version": "0.1.0",
-  "description": "LoopForge Local integration for DeepSeek Harness",
+  "description": "智研工坊 Local integration for DeepSeek Harness",
   "type": "module",
   "main": "./index.js",
   "exports": {

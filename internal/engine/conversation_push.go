@@ -50,7 +50,7 @@ func (e *Engine) PushConversationWorkspace(ctx context.Context, runID string, re
 	}
 	message = strings.TrimSpace(message)
 	if message == "" {
-		message = "LoopForge: " + strings.TrimSpace(run.Input)
+		message = "智研工坊: " + strings.TrimSpace(run.Input)
 	}
 	message = truncateCommitMessage(message)
 	sharedTarget = strings.TrimSpace(sharedTarget)

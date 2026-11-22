@@ -18,7 +18,7 @@ export function cliInstallNotice(label) {
 }
 
 function installMemory(engine) {
-  return `loopforge.cli-install.${engine}`;
+  return `zhiyan.cli-install.${engine}`;
 }
 
 function rememberedInstall(engine) {

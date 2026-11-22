@@ -897,7 +897,7 @@ func bindDefaultWorkflow(v *domain.Issue, projectWorkflowID, projectIssueWorkflo
 		return
 	} else if wf := strings.TrimSpace(projectWorkflowID); wf != "" && isGenericWorkflowID(wf) {
 		// Projects defaulting to a built-in generic template (e.g. the
-		// LoopForge backend delivery SOP a new project starts with) run their
+		// 智研工坊 backend delivery SOP a new project starts with) run their
 		// synced Gongfeng issues on it too; projects bound to a production SOP
 		// keep the production default below.
 		v.WorkflowID = wf

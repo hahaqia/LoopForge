@@ -20,7 +20,7 @@ func TestGitHubLiveImportAndDelivery(t *testing.T) {
 	}
 	path := os.Getenv("AGENTFLOW_GITHUB_LIVE_REPO")
 	info, ok := domain.ParseRepositoryURL("https://github.com/" + path)
-	if !ok || path == "Tencent/LoopForge" || info.Project != "github:"+path {
+	if !ok || path == "zhiyan/zhiyan" || info.Project != "github:"+path {
 		t.Fatal("an explicitly authorized test repository is required")
 	}
 	raw, err := os.ReadFile(os.Getenv("AGENTFLOW_GITHUB_LIVE_TOKEN_FILE"))
@@ -65,7 +65,7 @@ func TestGitHubLiveImportAndDelivery(t *testing.T) {
 		} `json:"object"`
 	}
 	call("GET", "/git/ref/heads/"+url.PathEscape(remote.DefaultBranch), nil, &ref)
-	stamp := fmt.Sprintf("loopforge-e2e/%d", time.Now().UnixNano())
+	stamp := fmt.Sprintf("zhiyan-e2e/%d", time.Now().UnixNano())
 	base, head := stamp+"-base", stamp+"-change"
 	for _, branch := range []string{base, head} {
 		call("POST", "/git/refs", map[string]any{"ref": "refs/heads/" + branch, "sha": ref.Object.SHA}, nil)
@@ -78,7 +78,7 @@ func TestGitHubLiveImportAndDelivery(t *testing.T) {
 	var issue struct {
 		Number int `json:"number"`
 	}
-	call("POST", "/issues", map[string]any{"title": "LoopForge live acceptance " + stamp, "body": "Disposable integration fixture; automatically closed."}, &issue)
+	call("POST", "/issues", map[string]any{"title": "智研工坊 live acceptance " + stamp, "body": "Disposable integration fixture; automatically closed."}, &issue)
 	defer func() {
 		if err := g.request("PATCH", fmt.Sprintf("/issues/%d", issue.Number), map[string]string{"state": "closed"}, nil); err != nil {
 			t.Errorf("cleanup issue: %v", err)
@@ -113,9 +113,9 @@ func TestGitHubLiveImportAndDelivery(t *testing.T) {
 	if local.Description != "Locally clarified brief" {
 		t.Fatal("sync overwrote local clarification")
 	}
-	filename := "loopforge-e2e-" + strings.TrimPrefix(stamp, "loopforge-e2e/") + ".txt"
-	call("PUT", "/contents/"+filename, map[string]string{"message": "test: isolated LoopForge delivery", "branch": head, "content": base64.StdEncoding.EncodeToString([]byte("live-delivery-ok\n"))}, nil)
-	pr, err := s.EnsureAndMergeBranchMR(info.Project, head, base, "LoopForge isolated delivery acceptance", "Only merges disposable test branches. Default branch remains unchanged.")
+	filename := "zhiyan-e2e-" + strings.TrimPrefix(stamp, "zhiyan-e2e/") + ".txt"
+	call("PUT", "/contents/"+filename, map[string]string{"message": "test: isolated 智研工坊 delivery", "branch": head, "content": base64.StdEncoding.EncodeToString([]byte("live-delivery-ok\n"))}, nil)
+	pr, err := s.EnsureAndMergeBranchMR(info.Project, head, base, "智研工坊 isolated delivery acceptance", "Only merges disposable test branches. Default branch remains unchanged.")
 	if err != nil {
 		t.Fatal(err)
 	}

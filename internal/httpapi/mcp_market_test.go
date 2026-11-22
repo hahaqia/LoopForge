@@ -87,7 +87,7 @@ func TestMCPMarketSearch(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if payload.Source != "loopforge-public" || payload.Total != len(mcpMarketItems) {
+	if payload.Source != "zhiyan-public" || payload.Total != len(mcpMarketItems) {
 		t.Fatalf("catalog meta = %+v", payload)
 	}
 	if len(payload.Items) == 0 {

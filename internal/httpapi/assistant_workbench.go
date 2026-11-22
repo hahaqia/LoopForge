@@ -722,7 +722,7 @@ func tempDirDeckFiles() ([]string, error) {
 			continue
 		}
 		lower := strings.ToLower(name)
-		if !strings.Contains(lower, "ppt") && !strings.Contains(lower, "slide") && !strings.Contains(lower, "loopforge") {
+		if !strings.Contains(lower, "ppt") && !strings.Contains(lower, "slide") && !strings.Contains(lower, "zhiyan") {
 			continue
 		}
 		out = append(out, deckFilesUnder(path, 0)...)

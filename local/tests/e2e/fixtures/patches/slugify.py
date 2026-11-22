@@ -1,4 +1,4 @@
-"""Tiny fixture module used by the LoopForge E2E suite (fixed version)."""
+"""Tiny fixture module used by the 智研工坊 E2E suite (fixed version)."""
 
 import re
 

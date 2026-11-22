@@ -57,7 +57,7 @@ def skip():
 if stored('COMPOSE_FILE') == 'compose.yaml:compose.dev.yaml':
     skip()
 
-image = stored('LOOPFORGE_IMAGE')
+image = stored('ZHIYAN_IMAGE')
 if not image:
     compose = pathlib.Path('compose.yaml')
     if not compose.is_file():
@@ -65,7 +65,7 @@ if not image:
             skip()
         sys.stderr.write('MIRROR needs compose.yaml to find the pinned image.\n')
         raise SystemExit(1)
-    match = re.search(r'(?m)^[ \t]*image:[ \t]*\$\{LOOPFORGE_IMAGE:-([^}]+)\}[ \t]*$', compose.read_text())
+    match = re.search(r'(?m)^[ \t]*image:[ \t]*\$\{ZHIYAN_IMAGE:-([^}]+)\}[ \t]*$', compose.read_text())
     if not match:
         if auto:
             skip()
@@ -176,7 +176,7 @@ def trusted_digest(value):
 def probe(host):
     result = Result()
     started = time.monotonic()
-    work = Path(tempfile.mkdtemp(prefix='loopforge-mirror-'))
+    work = Path(tempfile.mkdtemp(prefix='zhiyan-mirror-'))
     token = ''
     try:
         return probe_host(host, result, started, work, token)

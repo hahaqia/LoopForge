@@ -21,7 +21,7 @@ fi
 
 # One compile job per CPU, but at most one per GiB of memory so small hosts do
 # not run out of memory (a cold build peaks near 1.3 GiB total with 4 jobs).
-# LOOPFORGE_BUILD_JOBS overrides the estimate.
+# ZHIYAN_BUILD_JOBS overrides the estimate.
 build_jobs() {
   local cpus memory_kib limit
   cpus=$(nproc 2>/dev/null || echo 2)
@@ -34,8 +34,8 @@ build_jobs() {
   local jobs=$(( cpus < by_memory ? cpus : by_memory ))
   echo $(( jobs < 1 ? 1 : jobs ))
 }
-jobs="${LOOPFORGE_BUILD_JOBS:-$(build_jobs)}"
-[[ $jobs =~ ^[1-9][0-9]*$ ]] || { echo "LOOPFORGE_BUILD_JOBS must be a positive integer" >&2; exit 1; }
+jobs="${ZHIYAN_BUILD_JOBS:-$(build_jobs)}"
+[[ $jobs =~ ^[1-9][0-9]*$ ]] || { echo "ZHIYAN_BUILD_JOBS must be a positive integer" >&2; exit 1; }
 export CGO_ENABLED=0
 flags=(-p="$jobs" -trimpath -ldflags=-s\ -w)
 
@@ -55,8 +55,8 @@ build() {
 
 printf 'Building with %s parallel jobs\n' "$jobs"
 if [[ $mode != platform ]]; then
-  printf '\nBuilding agentflow-mcp and loopforge-account for the platform…\n'
-  build '' ./cmd/agentflow-mcp ./cmd/loopforge-account
+  printf '\nBuilding agentflow-mcp and zhiyan-account for the platform…\n'
+  build '' ./cmd/agentflow-mcp ./cmd/zhiyan-account
   for target_os in linux darwin; do
     for target_arch in amd64 arm64; do
       printf '\nBuilding agentflow-runner and agentflow-gate-mcp (%s/%s)…\n' "$target_os" "$target_arch"

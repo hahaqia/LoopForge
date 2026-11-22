@@ -12,12 +12,12 @@ PACKAGE_PATH="$TMP_DIR/$PACKAGE_FILE"
 
 node <<'NODE'
 const result = JSON.parse(process.env.PACK_JSON)[0]
-if (result.name !== "loopforge-cli") {
+if (result.name !== "zhiyan-cli") {
   throw new Error(`unexpected npm package name ${result.name}`)
 }
 const files = new Set(result.files.map((item) => item.path))
 const required = [
-  "bin/loopforge.mjs",
+  "bin/zhiyan.mjs",
   "src/devflow_cli/cli.py",
   "skills/devflow/SKILL.md",
   ".codebuddy/settings.json",
@@ -46,18 +46,18 @@ for (const item of files) {
 }
 NODE
 
-npx --yes --package "$PACKAGE_PATH" loopforge --version
+npx --yes --package "$PACKAGE_PATH" zhiyan --version
 
 NPX_PROJECT="$TMP_DIR/npx project"
 mkdir -p "$NPX_PROJECT"
-npx --yes --package "$PACKAGE_PATH" loopforge install codex --project-root "$NPX_PROJECT"
-npx --yes --package "$PACKAGE_PATH" loopforge status codex --project-root "$NPX_PROJECT"
-npx --yes --package "$PACKAGE_PATH" loopforge uninstall codex --project-root "$NPX_PROJECT"
+npx --yes --package "$PACKAGE_PATH" zhiyan install codex --project-root "$NPX_PROJECT"
+npx --yes --package "$PACKAGE_PATH" zhiyan status codex --project-root "$NPX_PROJECT"
+npx --yes --package "$PACKAGE_PATH" zhiyan uninstall codex --project-root "$NPX_PROJECT"
 test ! -e "$NPX_PROJECT/.devflow/install-state.json"
 
 NPM_PREFIX="$TMP_DIR/npm-prefix"
 npm install --global --prefix "$NPM_PREFIX" "$PACKAGE_PATH" >/dev/null
-NPM_BIN="$NPM_PREFIX/bin/loopforge"
+NPM_BIN="$NPM_PREFIX/bin/zhiyan"
 test -x "$NPM_BIN"
 "$NPM_BIN" --version
 
@@ -69,12 +69,12 @@ mkdir -p "$NPM_PROJECT"
 test ! -e "$NPM_PROJECT/.devflow/install-state.json"
 
 bash "$ROOT_DIR/scripts/build-release-archive.sh" "$TMP_DIR/release"
-tar -xzf "$TMP_DIR/release/loopforge-workflow.tar.gz" -C "$TMP_DIR"
-ARCHIVE_ROOT="$TMP_DIR/loopforge-workflow"
-test -x "$ARCHIVE_ROOT/bin/loopforge.mjs"
+tar -xzf "$TMP_DIR/release/zhiyan-workflow.tar.gz" -C "$TMP_DIR"
+ARCHIVE_ROOT="$TMP_DIR/zhiyan-workflow"
+test -x "$ARCHIVE_ROOT/bin/zhiyan.mjs"
 test -f "$ARCHIVE_ROOT/README.md"
 test -f "$ARCHIVE_ROOT/scripts/prepare-notices.py"
-node "$ARCHIVE_ROOT/bin/loopforge.mjs" --version
+node "$ARCHIVE_ROOT/bin/zhiyan.mjs" --version
 (cd "$ARCHIVE_ROOT" && npm pack --dry-run --json >/dev/null)
 
 echo "npm/npx and release archive smoke tests passed"

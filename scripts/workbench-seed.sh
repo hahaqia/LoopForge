@@ -5,12 +5,12 @@
 # public API only offers real CLIs; everything else goes through the API.
 set -euo pipefail
 
-API="${LOOPFORGE_API:-http://127.0.0.1:18765}"
+API="${ZHIYAN_API:-http://127.0.0.1:18765}"
 MYSQL_CONTAINER="${LF_MYSQL_CONTAINER:-lf-workbench-mysql}"
 PROJECT="${LF_PROJECT:-proj-mall}"
 export LF_SESSION_SECRET="${LF_SESSION_SECRET:-lf-workbench-preview}"
 
-sql() { docker exec -i "$MYSQL_CONTAINER" mysql --default-character-set=utf8mb4 -uroot -proot loopforge 2>/dev/null; }
+sql() { docker exec -i "$MYSQL_CONTAINER" mysql --default-character-set=utf8mb4 -uroot -proot zhiyan 2>/dev/null; }
 
 curl -fsS "$API/api/auth/current" >/dev/null || { echo "API $API 不可用，先运行 scripts/workbench-dev.sh" >&2; exit 1; }
 

@@ -8,7 +8,7 @@ import (
 var genericDockerEpoch = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
 // genericBackendDockerfileContent is the platform default image for the
-// LoopForge backend delivery SOP: Node (agent CLIs) + Go + git. It follows
+// 智研工坊 backend delivery SOP: Node (agent CLIs) + Go + git. It follows
 // the SkillHub backend image that already runs on the production CVM.
 const genericBackendDockerfileContent = `FROM node:22-bookworm-slim
 

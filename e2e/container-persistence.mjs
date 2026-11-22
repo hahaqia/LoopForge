@@ -1,7 +1,7 @@
 // Called by test-container.sh before and after force-recreating the app.
 import fs from 'node:fs';
 const [phase,stateFile]=process.argv.slice(2);
-const base=process.env.LOOPFORGE_TEST_URL;
+const base=process.env.ZHIYAN_TEST_URL;
 if(!['prepare','verify'].includes(phase)||!base||!stateFile)throw new Error('Expected phase, protected state path and test URL');
 let state;
 async function request(method,path,body){
@@ -12,7 +12,7 @@ async function request(method,path,body){
   return res;
 }
 if(phase==='prepare'){
-  const login=await fetch(base+'/api/auth/password',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({login:process.env.LOOPFORGE_TEST_USER||'admin',password:process.env.LOOPFORGE_TEST_PASSWORD})});
+  const login=await fetch(base+'/api/auth/password',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({login:process.env.ZHIYAN_TEST_USER||'admin',password:process.env.ZHIYAN_TEST_PASSWORD})});
   if(!login.ok)throw new Error('Persistence test login failed');
   state={cookie:login.headers.get('set-cookie').split(';')[0],sessionId:'e2e-container-persistence'};
   const form=new FormData();form.set('projectId','welcome');form.set('file',new Blob(['persistent attachment\n']),'persistence.txt');

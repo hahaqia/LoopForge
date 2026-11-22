@@ -55,7 +55,7 @@ func TestLongCardKeepsContextAndEvidenceInCompanionMessage(t *testing.T) {
 
 func TestLongDetailsPreserveRunLinkEvenAtMessageLimit(t *testing.T) {
 	run := domain.Run{Nodes: map[string]*domain.NodeRun{"fail": {Error: strings.Repeat("完整失败原因。", 4000)}}}
-	link := "https://loopforge-test.example.com/#/runs/run-test"
+	link := "https://zhiyan-test.example.com/#/runs/run-test"
 	text := notificationCardDetails(run, domain.NotificationDelivery{NodeID: "fail"}, "需求：模拟验收", link)
 	if !strings.HasSuffix(text, "[查看运行详情]("+link+")") || len(text) > 16000 {
 		t.Fatalf("missing or oversized link footer: %d", len(text))

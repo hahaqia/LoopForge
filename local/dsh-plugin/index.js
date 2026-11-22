@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
-export const name = 'loopforge-dsh'
+export const name = 'zhiyan-dsh'
 export const inject = ['commands', 'tools']
 
 const SKILL_ROOT = '.dsh/skills/devflow'
@@ -29,7 +29,7 @@ function cwdOf(owner) {
 function run(argv, cwd, signal) {
   return new Promise((resolvePromise, reject) => {
     if (signal?.aborted) {
-      reject(signal.reason instanceof Error ? signal.reason : new Error('LoopForge command aborted'))
+      reject(signal.reason instanceof Error ? signal.reason : new Error('智研工坊 command aborted'))
       return
     }
     let settled = false
@@ -54,8 +54,8 @@ function run(argv, cwd, signal) {
       signal?.removeEventListener('abort', abort)
       if (code === 0) resolvePromise(stdout.trim())
       else if (signal?.aborted) {
-        reject(signal.reason instanceof Error ? signal.reason : new Error('LoopForge command aborted'))
-      } else reject(new Error(stderr.trim() || `LoopForge command exited with ${code}`))
+        reject(signal.reason instanceof Error ? signal.reason : new Error('智研工坊 command aborted'))
+      } else reject(new Error(stderr.trim() || `智研工坊 command exited with ${code}`))
     })
   })
 }
@@ -63,7 +63,7 @@ function run(argv, cwd, signal) {
 function scriptPath(cwd) {
   const path = join(cwd, SKILL_ROOT, WORKFLOW)
   if (!existsSync(path)) {
-    throw new Error('LoopForge Skill is not installed in this project; run `loopforge skills install dsh` first.')
+    throw new Error('智研工坊 Skill is not installed in this project; run `zhiyan skills install dsh` first.')
   }
   return path
 }
@@ -90,7 +90,7 @@ function readState(cwd, slug) {
 }
 
 function renderState(record) {
-  if (!record) return 'No LoopForge task found in this project.'
+  if (!record) return 'No 智研工坊 task found in this project.'
   const { state, path } = record
   const completed = Object.entries(state.stages ?? {})
     .filter(([, stage]) => stage?.status === 'completed')
@@ -131,12 +131,12 @@ async function handle(invocation, ctx) {
   const cwd = cwdOf(invocation)
   const { command, value } = parseInput(invocation.rawInput)
   if (command === 'help') {
-    return { kind: 'success', text: 'Usage: /loopforge start <request> | status [slug] | result [slug] | approve [stage] | help' }
+    return { kind: 'success', text: 'Usage: /zhiyan start <request> | status [slug] | result [slug] | approve [stage] | help' }
   }
   if (command === 'status') return { kind: 'success', text: renderState(readState(cwd, value || undefined)) }
   if (command === 'result') {
     const record = readState(cwd, value || undefined)
-    if (!record) return { kind: 'success', text: 'No LoopForge task found in this project.' }
+    if (!record) return { kind: 'success', text: 'No 智研工坊 task found in this project.' }
     const files = resultFiles(cwd, record.state.task_slug)
     const listing = files.length
       ? `\n\nArtifact files:\n${files.map(file => `- ${file}`).join('\n')}`
@@ -146,7 +146,7 @@ async function handle(invocation, ctx) {
   const script = scriptPath(cwd)
   if (command === 'approve') {
     const record = readState(cwd)
-    if (!record) return { kind: 'error', text: 'No LoopForge task is waiting for approval.' }
+    if (!record) return { kind: 'error', text: 'No 智研工坊 task is waiting for approval.' }
     const stage = value || record.state.awaiting_approval
     if (!stage) return { kind: 'error', text: 'No approval stage is pending.' }
     if (!APPROVAL_STAGES.has(stage)) {
@@ -157,7 +157,7 @@ async function handle(invocation, ctx) {
     await run(args, cwd, invocation.signal)
     return { kind: 'success', text: `Approved ${stage}. Resume the DSH workflow to continue.` }
   }
-  if (!value) return { kind: 'error', text: 'A request is required: /loopforge start <request>' }
+  if (!value) return { kind: 'error', text: 'A request is required: /zhiyan start <request>' }
   const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || `dsh-${Date.now()}`
   const statePath = join(cwd, 'artifacts', slug, 'workflow-state.json')
   const hasSubagent = typeof ctx?.tools?.get === 'function'
@@ -178,19 +178,19 @@ async function handle(invocation, ctx) {
   const execution = hasSubagent
     ? 'isolated stages via the DSH subagent tool'
     : 'single-context fallback because the DSH subagent tool is unavailable'
-  return { kind: 'success', text: `LoopForge task initialized: ${slug}\nRequest: ${value}\nState: ${statePath}\n${output}\nExecution: ${execution}. Follow the devflow Skill to resume the workflow.` }
+  return { kind: 'success', text: `智研工坊 task initialized: ${slug}\nRequest: ${value}\nState: ${statePath}\n${output}\nExecution: ${execution}. Follow the devflow Skill to resume the workflow.` }
 }
 
 export function apply(ctx) {
   ctx.commands.register({
-    name: 'loopforge',
-    description: 'Start, inspect, and approve LoopForge Local workflows',
+    name: 'zhiyan',
+    description: 'Start, inspect, and approve 智研工坊 Local workflows',
     input: { hint: '[start <request>|status [slug]|result [slug]|approve [stage]|help]' },
     handler: invocation => handle(invocation, ctx),
   })
   ctx.tools.register({
-    name: 'loopforge_status',
-    description: 'Read the current LoopForge Local workflow state and pending human approval for the current DSH project. Read-only.',
+    name: 'zhiyan_status',
+    description: 'Read the current 智研工坊 Local workflow state and pending human approval for the current DSH project. Read-only.',
     parameters: {
       type: 'object',
       properties: {

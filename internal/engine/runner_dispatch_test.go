@@ -69,7 +69,7 @@ func TestGateCommandInvocationCarriesResponsibleCredentialReference(t *testing.T
 	if got.GitToken != "" || got.Dir != "skillhub" || got.WorkBranch != "feature/fix-issue-67" {
 		t.Fatalf("repository = %+v", got)
 	}
-	if invocation.GitUserName != "private" || invocation.GitUserEmail != "private@users.noreply.loopforge.invalid" {
+	if invocation.GitUserName != "private" || invocation.GitUserEmail != "private@users.noreply.zhiyan.invalid" {
 		t.Fatalf("git identity = %q <%s>", invocation.GitUserName, invocation.GitUserEmail)
 	}
 }

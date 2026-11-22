@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LoopForge 设置收敛 Demo（完整版）</title>
+<title>智研工坊 设置收敛 Demo（完整版）</title>
 <style>
   :root{
     --accent:#7b61ff;--accent-soft:#f0edff;--text:#252529;--text-2:#62626c;--text-3:#9a9aa4;
@@ -363,7 +363,7 @@
 <body class="marks">
 
 <div class="demo-bar">
-  <b>LoopForge 设置收敛 Demo</b>
+  <b>智研工坊 设置收敛 Demo</b>
   <span class="muted">数据均为模拟，刷新页面后重置</span>
   <span class="grow"></span>
   <label class="switch-label"><input type="checkbox" class="switch" id="marksToggle" checked>标注改动</label>
@@ -584,8 +584,8 @@ const DB={
   ],
   runners:[
     {id:'n1',name:'林悦的 MacBook Pro',os:'macOS 15.1 · arm64',scope:'个人',online:true,cli:'CodeBuddy CLI 2.3.1',tasks:1,beat:'1 分钟前'},
-    {id:'n2',name:'cvm-sh-02',os:'Ubuntu 22.04 · 8 核 16 GB',scope:'项目共享',online:true,cli:'LoopForge Runner 1.8.0',tasks:3,beat:'刚刚'},
-    {id:'n3',name:'cvm-sh-03',os:'Ubuntu 22.04 · 4 核 8 GB',scope:'项目共享',online:false,cli:'LoopForge Runner 1.7.2',tasks:0,beat:'2 小时前'}
+    {id:'n2',name:'cvm-sh-02',os:'Ubuntu 22.04 · 8 核 16 GB',scope:'项目共享',online:true,cli:'智研工坊 Runner 1.8.0',tasks:3,beat:'刚刚'},
+    {id:'n3',name:'cvm-sh-03',os:'Ubuntu 22.04 · 4 核 8 GB',scope:'项目共享',online:false,cli:'智研工坊 Runner 1.7.2',tasks:0,beat:'2 小时前'}
   ],
   dockerfiles:[
     {id:'d1',scope:'本项目',name:'go122-build',desc:'后端编译与单测',updated:'5 天前',content:'FROM golang:1.22-bookworm\nRUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1\nENV CGO_ENABLED=0 GOFLAGS=-mod=mod\nWORKDIR /workspace'},
@@ -966,7 +966,7 @@ function vEnvironment(){
 }
 
 const CLIENTS=[['cursor','Cursor'],['claude','Claude Code'],['codebuddy','CodeBuddy'],['codex','Codex']];
-function mcpPrompt(token){const c=CLIENTS.find(x=>x[0]===state.ui.tokenClient)?.[1]||'Cursor';return `按照这个流程安装并验证 LoopForge MCP（客户端：${c}）：\n1. 用 curl 下载安装流程：https://loopforge.example.com/mcp-setup.txt\n2. 把两个占位符替换为：\n   API_TOKEN = ${token}\n   ENDPOINT = https://loopforge.example.com/mcp`}
+function mcpPrompt(token){const c=CLIENTS.find(x=>x[0]===state.ui.tokenClient)?.[1]||'Cursor';return `按照这个流程安装并验证 智研工坊 MCP（客户端：${c}）：\n1. 用 curl 下载安装流程：https://zhiyan.example.com/mcp-setup.txt\n2. 把两个占位符替换为：\n   API_TOKEN = ${token}\n   ENDPOINT = https://zhiyan.example.com/mcp`}
 function vTokens(){
   const r=state.revealed,active=DB.tokens.filter(t=>t.status==='active').length;
   const reveal=r?`<div class="reveal" role="status"><b>访问密钥已创建：${esc(r.name)}</b><p>平台只保存哈希，关闭后无法再次查看明文。选择客户端，可以直接复制带好访问密钥的接入提示词。</p>${seg('tokenClient',CLIENTS,'客户端')}<code>${esc(r.token)}</code><div class="btns"><button type="button" class="btn sm primary" data-act="copyText" data-text="${esc(mcpPrompt(r.token))}">${ic('copy',13)}复制接入提示词</button><button type="button" class="btn sm" data-act="copyText" data-text="${esc(r.token)}">仅复制密钥</button><button type="button" class="btn sm ghost" data-act="closeReveal">我已保存</button></div></div>`:'';
@@ -1203,7 +1203,7 @@ const ACT={
   newSkill:()=>openModal({title:'新建技能',submit:'创建',body:field('名称','<input name="name" maxlength="40" required placeholder="小写字母和短横线，例如 log-triage">')+field('用途','<input name="desc" maxlength="120" required>'),
     onSubmit:f=>{const name=f.get('name').trim(),desc=f.get('desc').trim();if(!/^[a-z0-9-]{2,40}$/.test(name)){toast('名称只能用小写字母、数字和短横线','err');return false}if(!desc){toast('请填写用途','err');return false}DB.skills.push({id:'k'+(++seq),scope:'project',name,desc,files:1});state.ui.skillScope='project';toast('已创建技能','ok');renderMain()}}),
   installSkill:a=>{const h=DB.skillhub.find(x=>x.id===a.dataset.id);if(!h)return;DB.skills.push({id:'k'+(++seq),scope:'project',name:h.name,desc:h.desc,files:2});toast(`已安装 ${h.name}`,'ok');renderMain()},
-  addRunner:()=>openModal({title:'添加执行机器',desc:'在要接入的机器上运行下面的命令，连接成功后会出现在列表里。',submit:'完成',body:`<div class="copy-line"><input class="input" readonly value="npx loopforge-runner connect --server https://loopforge.example.com" aria-label="连接命令"><button type="button" class="btn" data-act="copyText" data-text="npx loopforge-runner connect --server https://loopforge.example.com">${ic('copy',13)}复制</button></div><p>命令会打开浏览器完成授权，不需要手动粘贴访问密钥。</p>`,onSubmit:()=>true}),
+  addRunner:()=>openModal({title:'添加执行机器',desc:'在要接入的机器上运行下面的命令，连接成功后会出现在列表里。',submit:'完成',body:`<div class="copy-line"><input class="input" readonly value="npx zhiyan-runner connect --server https://zhiyan.example.com" aria-label="连接命令"><button type="button" class="btn" data-act="copyText" data-text="npx zhiyan-runner connect --server https://zhiyan.example.com">${ic('copy',13)}复制</button></div><p>命令会打开浏览器完成授权，不需要手动粘贴访问密钥。</p>`,onSubmit:()=>true}),
   envSel:a=>{state.ui.envSel[a.dataset.tab]=a.dataset.id;renderMain();$(`.split-item[data-id="${a.dataset.id}"]`)?.focus()},
   closeReveal:()=>{state.revealed=null;renderMain()},
   revokeToken:a=>{const t=DB.tokens.find(x=>x.id===a.dataset.id);if(t)confirmModal('撤销访问密钥',`撤销后，正在使用「${t.name}」的 API 和 MCP 客户端会立即失效。`,'撤销',()=>{t.status='revoked';if(state.revealed?.id===t.id)state.revealed=null;toast('访问密钥已撤销');renderMain()})},

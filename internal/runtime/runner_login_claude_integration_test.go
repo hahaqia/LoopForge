@@ -22,9 +22,9 @@ import (
 // The official client, real stdin/stdout bridge, and production OAuth adapter
 // run against a loopback fixture. No Claude subscription or live auth is used.
 func TestManagedLoginOfficialClaude(t *testing.T) {
-	binary := os.Getenv("LOOPFORGE_PROBE_CLAUDE_BIN")
+	binary := os.Getenv("ZHIYAN_PROBE_CLAUDE_BIN")
 	if binary == "" {
-		t.Skip("set LOOPFORGE_PROBE_CLAUDE_BIN for the offline official-client test")
+		t.Skip("set ZHIYAN_PROBE_CLAUDE_BIN for the offline official-client test")
 	}
 	if gort.GOOS != "darwin" || !filepath.IsAbs(binary) {
 		t.Fatal("requires macOS and an absolute official binary path")

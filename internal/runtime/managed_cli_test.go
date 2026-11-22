@@ -117,7 +117,7 @@ func TestBwrapUsesCanonicalManagedPathWhenTemporarySymlinkIsHidden(t *testing.T)
 	if runtime.GOOS != "linux" {
 		t.Skip("bwrap is available on Linux")
 	}
-	storage, err := os.MkdirTemp("/var/tmp", "loopforge-managed-cli-")
+	storage, err := os.MkdirTemp("/var/tmp", "zhiyan-managed-cli-")
 	if err != nil {
 		t.Fatal(err)
 	}

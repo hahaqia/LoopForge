@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-MIT。Copyright (C) 2026 Tencent。本目录是 LoopForge 的可选工具，适用仓库根目录 [`LICENSE`](../../LICENSE)。
+MIT。Copyright (C) 2026 Tencent。本目录是 智研工坊 的可选工具，适用仓库根目录 [`LICENSE`](../../LICENSE)。
 
 类似 [start.spring.io](https://start.spring.io/)：在页面上勾选腾讯云产品与**真实资源**，下载一个精简的 Python MCP 项目。
 
@@ -10,7 +10,7 @@ MIT。Copyright (C) 2026 Tencent。本目录是 LoopForge 的可选工具，适�
 
 支持的产品：Redis、CDB、TDSQL-C、TKE（TKEX）、CLS、COS。一期只走只读 API；COS 仅列桶、列对象和查询对象元数据，不下载对象内容。
 
-`loopforge install` **不会**安装本工具。在本目录运行，或拉取已发布镜像。
+`zhiyan install` **不会**安装本工具。在本目录运行，或拉取已发布镜像。
 
 ## 本地运行
 
@@ -33,11 +33,11 @@ cd web && npm run dev       # UI :5173，代理 /api
 
 ## Docker
 
-LoopForge Local 以 `local-vX.Y.Z` tag 发版时，会把本镜像推到 GHCR（版本号与 CLI 相同）：
+智研工坊 Local 以 `local-vX.Y.Z` tag 发版时，会把本镜像推到 GHCR（版本号与 CLI 相同）：
 
 ```bash
-docker pull ghcr.io/tencent/loopforge-tcmcp:0.2.1
-docker run --rm -p 127.0.0.1:8088:8088 ghcr.io/tencent/loopforge-tcmcp:0.2.1
+docker pull ghcr.io/tencent/zhiyan-tcmcp:0.2.1
+docker run --rm -p 127.0.0.1:8088:8088 ghcr.io/tencent/zhiyan-tcmcp:0.2.1
 ```
 
 在本目录本地构建（Node 打前端，Python 跑 API 并托管 `web/dist`）：

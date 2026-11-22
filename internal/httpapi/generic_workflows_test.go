@@ -219,7 +219,7 @@ func TestGenericTemplateCloneCreatesProjectRolesAndRemapsNodes(t *testing.T) {
 	if len(remapped) == 0 {
 		t.Fatal("adopted workflow has no agent nodes")
 	}
-	// LoopForge rules and skills must be cloned into the project alongside the
+	// 智研工坊 rules and skills must be cloned into the project alongside the
 	// roles, and the role bindings must point at the cloned assets.
 	for _, id := range []string{repo.GenericRuleCore, repo.GenericRuleBackendProfile} {
 		rule, found := s.Rule(id)
@@ -251,7 +251,7 @@ func TestGenericTemplateCloneCreatesProjectRolesAndRemapsNodes(t *testing.T) {
 		}
 	}
 	if coreBindings != 7 {
-		t.Fatalf("LoopForge core rule bound by %d project roles, want 7", coreBindings)
+		t.Fatalf("智研工坊 core rule bound by %d project roles, want 7", coreBindings)
 	}
 	var mrAgentID string
 	for _, node := range copied.Nodes {

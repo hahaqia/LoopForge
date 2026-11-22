@@ -63,7 +63,7 @@ func TestTempDirDeckFiles(t *testing.T) {
 	mk("notes.txt")
 	inPPT := mk("my-ppt-job/deck.pptx")
 	inSlide := mk("Slides/a/b.pptx")
-	inLF := mk("loopforge-x/c.pptx")
+	inLF := mk("zhiyan-x/c.pptx")
 	mk("unrelated/d.pptx")
 
 	got, err := tempDirDeckFiles()

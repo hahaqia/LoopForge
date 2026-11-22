@@ -141,7 +141,7 @@ func TestPutIssueUsesProjectDefaultRequirementWorkflow(t *testing.T) {
 	}
 }
 
-// 新项目默认 SOP 是内置通用模板（LoopForge 后端交付）时，同步/新建的需求与
+// 新项目默认 SOP 是内置通用模板（智研工坊 后端交付）时，同步/新建的需求与
 // 工蜂缺陷都默认使用它，保证开箱即用。
 func TestPutIssueBindsGenericProjectDefaultForAllIssues(t *testing.T) {
 	s, err := OpenTest()

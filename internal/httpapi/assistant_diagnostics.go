@@ -470,7 +470,7 @@ func (h *assistantHandlers) generationDiagnostics(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
 	if c.Query("download") == "1" {
 		data, _ := json.MarshalIndent(report, "", "  ")
-		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="loopforge-diagnostics-%s.json"`, url.PathEscape(report.GenerationID)))
+		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="zhiyan-diagnostics-%s.json"`, url.PathEscape(report.GenerationID)))
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Data(200, "application/json; charset=utf-8", data)
 		return

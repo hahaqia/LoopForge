@@ -32,7 +32,7 @@ Runner。后续正式实现位于 `feature/runner-managed-auth`，见[实现说�
 这是维护者对当时实现的说明，不是当前时长或所有轮换细节的稳定契约；本次未用真实账号验证。
 
 两个 SOP 与宿主机同时从同一份原凭证刷新，在该宽限机制下可以各自成功，不能断言只有
-一个成功、另两个必定退出登录。当前 LoopForge 给 SOP 的是各自私有 HOME 内的文件副本，
+一个成功、另两个必定退出登录。当前 智研工坊 给 SOP 的是各自私有 HOME 内的文件副本，
 不是三方共享同一个宿主机认证文件。若宿主机先保存新凭证，两个 SOP 后续 cleanup 会发现
 宿主机已经不同于最初快照并跳过写回；SOP 不会因此自动收到宿主机的最新凭证。
 
@@ -203,12 +203,12 @@ go test -race ./internal/runtime \
 ```
 
 默认不会启动任何本机 CLI。`TestManagedLoginOfficialCodex` 需要显式设置
-`LOOPFORGE_PROBE_CODEX_BIN`，并要求 macOS `sandbox-exec`。它给官方二进制提供全新的 HOME、
+`ZHIYAN_PROBE_CODEX_BIN`，并要求 macOS `sandbox-exec`。它给官方二进制提供全新的 HOME、
 虚构的 token 和本机模拟刷新服务，同时由操作系统禁止读取真实认证目录、写入真实 HOME
 和访问非本机网络。此项只验证 CLI 协议行为，不验证真实供应商策略。
 
 ```sh
-LOOPFORGE_PROBE_CODEX_BIN=/absolute/path/to/official/codex \
+ZHIYAN_PROBE_CODEX_BIN=/absolute/path/to/official/codex \
   go test -race ./internal/runtime -run '^TestManagedLoginOfficialCodex$' -count=1 -v
 ```
 
@@ -227,9 +227,9 @@ python3 scripts/probe-cli-auth-control.py claude --binary /absolute/path/to/offi
 Docker 镜像；只在已授权的机器运行，确保 PATH 中的 docker 连接本地引擎：
 
 ```sh
-LOOPFORGE_PROBE_AGY_LIVE=1 \
-LOOPFORGE_PROBE_AGY_BIN=/absolute/path/to/official/agy \
-LOOPFORGE_PROBE_AGY_DOCKER_IMAGE=credential-free-official-agy-image \
+ZHIYAN_PROBE_AGY_LIVE=1 \
+ZHIYAN_PROBE_AGY_BIN=/absolute/path/to/official/agy \
+ZHIYAN_PROBE_AGY_DOCKER_IMAGE=credential-free-official-agy-image \
   go test ./internal/runtime -run '^TestWritebackProbeAntigravityLiveRefresh$' -count=1 -v
 ```
 

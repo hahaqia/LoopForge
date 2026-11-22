@@ -5,7 +5,7 @@ docker_access() {
   # A failing command there aborts set -e before the caller can see the status.
   # A subshell returns Docker's status instead, including to a cold install's
   # image inspect and to the automatic mirror pull fallback.
-  if [[ "${LOOPFORGE_DOCKER_USE_SUDO:-0}" == 1 ]]; then
+  if [[ "${ZHIYAN_DOCKER_USE_SUDO:-0}" == 1 ]]; then
     require_sudo
     ( command sudo -n docker "$@" )
   else
@@ -40,7 +40,7 @@ select_docker_access() {
   if [[ $(uname -s) == Linux && $(id -u) -ne 0 ]]; then
     require_sudo
     if sudo -n docker info >/dev/null 2>&1; then
-      export LOOPFORGE_DOCKER_USE_SUDO=1
+      export ZHIYAN_DOCKER_USE_SUDO=1
       return 0
     fi
   fi

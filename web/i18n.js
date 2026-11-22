@@ -9,7 +9,7 @@
     const value = next === 'en' ? 'en' : 'zh';
     const current = root.dataset.lang === 'en' ? 'en' : 'zh';
     if (value === current || root.classList.contains('lang-leaving')) return;
-    try { localStorage.setItem('loopforge.lang', value); } catch { /* A blocked store keeps the previous language after reload. */ }
+    try { localStorage.setItem('zhiyan.lang', value); } catch { /* A blocked store keeps the previous language after reload. */ }
     const groups = [...document.querySelectorAll('.lang-switch')];
     for (const group of groups) {
       group.querySelectorAll('[data-lang-value]').forEach(btn => {
@@ -20,7 +20,7 @@
     }
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) { location.reload(); return; }
-    try { sessionStorage.setItem('loopforge.lang.motion', 'in'); } catch { /* Fade-in is skipped when the flag cannot be stored. */ }
+    try { sessionStorage.setItem('zhiyan.lang.motion', 'in'); } catch { /* Fade-in is skipped when the flag cannot be stored. */ }
     root.classList.add('lang-leaving');
     let done = false;
     const finish = () => { if (!done) { done = true; location.reload(); } };
@@ -64,7 +64,7 @@
   }
   function finishLangEnter() {
     if (!root.classList.contains('lang-enter')) return;
-    try { sessionStorage.removeItem('loopforge.lang.motion'); } catch { /* The flag only skips the splash on the next load. */ }
+    try { sessionStorage.removeItem('zhiyan.lang.motion'); } catch { /* The flag only skips the splash on the next load. */ }
     const shell = document.querySelector('.app-shell, .login-card');
     const clear = () => root.classList.remove('lang-enter', 'lang-shown');
     requestAnimationFrame(() => requestAnimationFrame(() => {

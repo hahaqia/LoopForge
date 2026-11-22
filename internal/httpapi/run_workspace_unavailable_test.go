@@ -13,8 +13,8 @@ func TestWorkspaceUnavailablePayloadKeepsShape(t *testing.T) {
 		ID:     "run-1",
 		Status: "succeeded",
 		Repositories: []domain.RepositoryContext{{
-			Name:       "loopforge",
-			CloneURL:   "https://user:secret-token@example.com/loopforge.git",
+			Name:       "zhiyan",
+			CloneURL:   "https://user:secret-token@example.com/zhiyan.git",
 			BaseBranch: "main",
 			WorkBranch: "feat/x",
 		}},
@@ -37,11 +37,11 @@ func TestWorkspaceUnavailablePayloadKeepsShape(t *testing.T) {
 	if !ok || len(details) != 1 {
 		t.Fatalf("repositoryDetails = %#v", payload["repositoryDetails"])
 	}
-	if details[0].Name != "loopforge" || details[0].WorkBranch != "feat/x" || details[0].BaseBranch != "main" {
+	if details[0].Name != "zhiyan" || details[0].WorkBranch != "feat/x" || details[0].BaseBranch != "main" {
 		t.Fatalf("repository detail = %#v", details[0])
 	}
 	// 与 workspaceRepositoryDetails 一致：凭据不能出现在面板响应里。
-	if details[0].CloneURL != "https://example.com/loopforge.git" {
+	if details[0].CloneURL != "https://example.com/zhiyan.git" {
 		t.Fatalf("cloneUrl leaked credentials: %q", details[0].CloneURL)
 	}
 	if len(payload) != 5 {

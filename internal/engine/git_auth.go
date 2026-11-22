@@ -89,7 +89,7 @@ func resolveGitIdentity(s *repo.Store, userID int64) gitIdentity {
 	}
 	// Local platform accounts do not establish corporate or GitHub identity.
 	// Use a non-deliverable address rather than inventing an employer email.
-	return gitIdentity{name: login, email: login + "@users.noreply.loopforge.invalid"}
+	return gitIdentity{name: login, email: login + "@users.noreply.zhiyan.invalid"}
 }
 
 func applyWorkspaceGitIdentity(ctx context.Context, workspace string) error {

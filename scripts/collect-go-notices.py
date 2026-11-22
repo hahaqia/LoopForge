@@ -17,7 +17,7 @@ while raw.strip():
     item, end = decoder.raw_decode(raw.lstrip())
     modules.append(item)
     raw = raw.lstrip()[end:]
-parts = ['LoopForge Go dependency license bundle\nGenerated from go.mod; retain with binary distributions.\n']
+parts = ['智研工坊 Go dependency license bundle\nGenerated from go.mod; retain with binary distributions.\n']
 for module in sorted(modules, key=lambda m: m['Path']):
     if module.get('Main'):
         continue

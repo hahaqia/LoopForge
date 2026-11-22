@@ -615,7 +615,7 @@ func promoteClarifiedIssueTodo(issue *domain.Issue) {
 }
 
 const (
-	clarificationHeading       = "## LoopForge 澄清结论"
+	clarificationHeading       = "## 智研工坊 澄清结论"
 	legacyClarificationHeading = "## AgentFlow 澄清结论"
 )
 
@@ -646,7 +646,7 @@ func clarificationComment(issue domain.Issue, summary string) string {
 	} else if issue.Source == "tapd" {
 		source = "TAPD 需求"
 	}
-	return fmt.Sprintf("%s\n\n%s\n\n---\n来源：%s `%s`，由 LoopForge 基于当前描述和用户回答生成。", clarificationHeading, strings.TrimSpace(summary), source, issue.ID)
+	return fmt.Sprintf("%s\n\n%s\n\n---\n来源：%s `%s`，由 智研工坊 基于当前描述和用户回答生成。", clarificationHeading, strings.TrimSpace(summary), source, issue.ID)
 }
 
 func (h issuesHandlers) bindIssueRepositories(v *domain.Issue) error {

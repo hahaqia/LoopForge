@@ -11,13 +11,13 @@ python3 scripts/check-public.py
 bash scripts/scan-secrets.sh
 ```
 
-社区贡献不需要私有来源清单，也不需要更新文件哈希。维护者在本地保存来源与同步审计记录，公共 CI 不依赖这些资料。长期流程见[维护策略](docs/upstream-sync.md)。
+社区贡献不需要私有来源清单，也不需要更新文件哈希。必须保留的许可文件见[开源来源与许可](docs/open-source-scope.md)。
 
 登录、语言/主题或执行链路的改动需要跑[公共浏览器验收](e2e/public/README.md)。真实模型与外部知识库测试需显式配置；请区分通过、失败、跳过与未运行。
 
 平台的 pull request 会跑 `core`、`browser` 和 `first-run` 三个作业。稳定检查名 `platform-required` 只有三者都成功时才通过。仓库管理员需要在 GitHub 分支保护里把 `platform-required` 手动勾成必须通过的检查。这次代码改动不会修改 GitHub 上的分支保护设置。
 
-LoopForge Local 请在 `local/` 内修改，遵循[本地开发约定](local/AGENTS.md)。先明确改动属于 Classic、Portable 或共享行为合同；三者与平台运行资产保持清晰边界。Portable 修改 `local/skills/`；Classic 的 Cursor/Claude 包在 `local/` 内运行 `python3 scripts/build-classic-hosts.py --write` 生成。工作流模板保持通用，可选工具放在 `local/tools/`，单独分发。
+智研工坊 Local 请在 `local/` 内修改，遵循[本地开发约定](local/AGENTS.md)。先明确改动属于 Classic、Portable 或共享行为合同；三者与平台运行资产保持清晰边界。Portable 修改 `local/skills/`；Classic 的 Cursor/Claude 包在 `local/` 内运行 `python3 scripts/build-classic-hosts.py --write` 生成。工作流模板保持通用，可选工具放在 `local/tools/`，单独分发。
 
 在 `local/` 内执行本地版检查：
 
