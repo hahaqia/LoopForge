@@ -785,15 +785,38 @@ function renderAgentGovernance(a){
     el.onchange=e=>{if(typeof prevChange==='function')prevChange.call(el,e);renderAgentSummary()};
   });
 }
+function artifactTemplateOptions(current){
+  const list=state.data.templates||[];
+  return `<option value="">不校验结构</option>`+list.map(t=>{
+    const required=parseTemplateHeadings(t.content||'').filter(h=>!h.optional).length;
+    return `<option value="${escapeHTML(t.id)}" ${t.id===current?'selected':''}>${escapeHTML(t.name||t.id)}（${required} 必填章节）</option>`;
+  }).join('');
+}
 function renderAgentArtifactEditors(d){
   const host=$('#agentArtifactPanel');if(!host)return;
   const arts=d.artifactOutputs||[];
-  host.innerHTML=arts.length?arts.map((a,i)=>`<article class="as-artifact" data-artifact-row="${i}"><div class="as-artifact-head"><span class="as-file-icon">📄</span><input data-ak="name" value="${escapeHTML(a.name||'')}" placeholder="给文件起个名字，例如 根因报告"><button type="button" data-remove-artifact="${i}" title="删除">×</button></div><label>写到哪个文件</label><input data-ak="path" type="text" value="${escapeHTML(a.path||'')}" placeholder="fix-plan.md"><div class="as-artifact-foot"><select data-ak="mediaType"><option value="application/json" ${a.mediaType==='application/json'?'selected':''}>JSON</option><option value="text/markdown" ${a.mediaType!=='application/json'?'selected':''}>Markdown</option></select><label><input type="checkbox" data-ak="required" ${a.required?'checked':''}> 必须交</label></div></article>`).join(''):'<div class="as-empty">还没有要交的文件。一般至少加一份结论，比如 <code>fix-plan.md</code>。</div>';
+  host.innerHTML=arts.length?arts.map((a,i)=>`<article class="as-artifact" data-artifact-row="${i}"><div class="as-artifact-head"><span class="as-file-icon">📄</span><input data-ak="name" value="${escapeHTML(a.name||'')}" placeholder="给文件起个名字，例如 根因报告"><button type="button" data-remove-artifact="${i}" title="删除">×</button></div><label>写到哪个文件</label><input data-ak="path" type="text" value="${escapeHTML(a.path||'')}" placeholder="fix-plan.md"><div class="as-artifact-foot"><select data-ak="mediaType"><option value="application/json" ${a.mediaType==='application/json'?'selected':''}>JSON</option><option value="text/markdown" ${a.mediaType!=='application/json'?'selected':''}>Markdown</option></select><label><input type="checkbox" data-ak="required" ${a.required?'checked':''}> 必须交</label></div><label>结构模板</label><select data-ak="templateId">${artifactTemplateOptions(a.templateId)}</select></article>`).join(''):'<div class="as-empty">还没有要交的文件。一般至少加一份结论，比如 <code>fix-plan.md</code>。</div>';
   host.insertAdjacentHTML('beforeend','<button type="button" class="as-add" id="agentAddArtifact">+ 添加要交的文件</button>');
   const touch=()=>renderAgentSummary();
   host.querySelectorAll('[data-artifact-row]').forEach(row=>row.querySelectorAll('[data-ak]').forEach(el=>el.oninput=el.onchange=()=>{const art=d.artifactOutputs[Number(row.dataset.artifactRow)];art[el.dataset.ak]=el.dataset.ak==='required'?el.checked:el.value;touch();dirty()}));
   host.querySelectorAll('[data-remove-artifact]').forEach(el=>el.onclick=()=>{d.artifactOutputs.splice(Number(el.dataset.removeArtifact),1);renderAgentGovernance(d);touch();dirty()});
   host.querySelector('#agentAddArtifact')?.addEventListener('click',()=>{d.artifactOutputs.push({name:'',path:'',mediaType:'text/markdown',required:true});renderAgentGovernance(d);touch();dirty()});
+}
+/** 由产物模板派生的结构门禁：只读展示，章节清单来自模板，改模板即可更新。 */
+function artifactStructureGatesHTML(d){
+  const templates=state.data.templates||[];
+  const cards=(d.artifactOutputs||[]).map(a=>{
+    const templateId=String(a.templateId||'').trim();
+    if(!templateId)return '';
+    const tpl=templates.find(t=>t.id===templateId);
+    if(!tpl)return `<article class="as-gate as-gate-derived is-missing"><header><b>${escapeHTML(a.path||'产物')} 章节完整</b><span class="as-derived-tag">模板已失效</span></header><p class="prop-hint">引用的模板 ${escapeHTML(templateId)} 已不存在，运行时会跳过结构校验。请重新选择模板或恢复它。</p></article>`;
+    const required=parseTemplateHeadings(tpl.content||'').filter(h=>!h.optional);
+    if(!required.length)return '';
+    const command=`missing=""\nfor h in ${required.map(h=>`'${h.title}'`).join(' ')}; do\n  grep -qF -- "## $h" ${a.path||'result.md'} || missing="$missing $h"\ndone\n[ -z "$missing" ] || { echo "缺少必需章节:$missing"; exit 1; }`;
+    return `<article class="as-gate as-gate-derived"><header><b>${escapeHTML(a.path||'产物')} 章节完整</b><span class="as-derived-tag">由模板生成</span></header><p class="prop-hint">模板「${escapeHTML(tpl.name||tpl.id)}」的 ${required.length} 个必填章节：${escapeHTML(required.map(h=>h.title).join(' · '))}</p><details><summary>查看校验命令</summary><pre class="as-derived-cmd">${escapeHTML(command)}</pre></details><p class="prop-hint">这条校验跟随模板自动生成，改模板即更新，不在这里编辑。</p></article>`;
+  }).filter(Boolean).join('');
+  if(!cards)return '';
+  return `<div class="as-derived-gates">${cards}</div>`;
 }
 function gateFailureSelect(g,noScope){
   const v=['loop','reject','fail','human'].includes(g.onFailure)?g.onFailure:'loop',scope=g.executionScope==='repositories'?'repositories':'run';
@@ -817,6 +840,7 @@ function renderAgentGateEditors(d){
     const preview=cmds.length?`<div class="script-snippet-preview" data-editor-agent-gate="${i}" title="点击在代码编辑器中修改"><code>${escapeHTML(cmds.join(' && '))}</code></div>`:'';
     return `<article class="as-gate" data-gate-row="${i}"><div class="as-gate-head"><span class="as-file-icon">⌘</span><input data-gk="name" value="${escapeHTML(g.name||'')}" placeholder="例如：文件必须存在"><button type="button" data-remove-gate="${i}" title="删除">×</button></div><div class="gate-script-trigger-wrap"><label style="font-size:11px;color:var(--muted);font-weight:600">验收命令</label><button type="button" class="script-editor-launch-btn btn-open-code-editor" data-editor-agent-gate="${i}"><span>⛶ 打开代码编辑器编写命令</span><span class="script-btn-badge">${countText}</span></button>${preview}</div>${gateFailureSelect(g)}</article>`;
   }).join(''):'<div class="as-empty">还没有验收命令。可以先加一条检查文件在不在，例如 <code>test -f fix-plan.md</code>。</div>';
+  host.insertAdjacentHTML('beforeend', artifactStructureGatesHTML(d));
   host.insertAdjacentHTML('beforeend',`<button type="button" class="as-add" id="agentAddGate">+ 添加验收命令</button>`);
   const touch=()=>renderAgentSummary();
   host.querySelectorAll('[data-gate-row]').forEach(row=>row.querySelectorAll('[data-gk]').forEach(el=>el.oninput=el.onchange=()=>{applyGateField(d.verification[Number(row.dataset.gateRow)],el);touch();dirty()}));

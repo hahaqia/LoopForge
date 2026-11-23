@@ -3506,3 +3506,14 @@ html[data-theme="dark"] #runnersView .runner-runtime-icon:is(.codex,.claude-code
 @media(max-width:1100px){#projectsView .project-admin-layout>aside>:is(.project-admin-caption,.project-admin-list){position:static}}
 /* The profile card owns the theme switcher on desktop; the node stays because assistant.js inserts its button before it. */
 @media(min-width:1001px){.topbar #themeToggle{display:none!important}}
+
+/* 由产物模板派生的结构门禁：只读展示，跟随模板更新。 */
+.as-derived-gates{margin-top:10px}
+.as-gate.as-gate-derived{border-style:dashed}
+.as-gate-derived header{display:flex;align-items:center;gap:8px}
+.as-derived-tag{margin-left:auto;padding:1px 7px;border:1px solid var(--line-strong);border-radius:999px;color:var(--muted-2);font-size:9px}
+.as-gate-derived details{margin-top:6px}
+.as-gate-derived summary{cursor:pointer;color:var(--muted-2);font-size:10px}
+.as-derived-cmd{max-height:180px;margin:6px 0 0;padding:8px;overflow:auto;border-radius:6px;background:#0b1220;color:#cfe3ff;font:9px/1.55 var(--mono);white-space:pre-wrap}
+.as-gate-derived.is-missing{border-color:var(--amber,#d29922)}
+.as-gate-derived.is-missing .as-derived-tag{color:var(--amber,#d29922);border-color:currentColor}

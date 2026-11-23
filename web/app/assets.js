@@ -1,17 +1,32 @@
-function assetScopeKey(type){return ({rules:'ruleScope',skills:'skillScope',dockerfiles:'dockerfileScope',environments:'environmentScope',sandboxes:'sandboxScope'})[type]||'ruleScope'}
-function isProjectSharedAsset(type){return ['rules','skills','dockerfiles','environments','sandboxes'].includes(type)}
+/** 与后端 ParseArtifactTemplateHeadings 保持一致：## 标题，上方 <!-- optional --> 表示可省略。 */
+function parseTemplateHeadings(content){
+  const lines=String(content||'').split('\n'),out=[];
+  lines.forEach((line,index)=>{
+    const trimmed=String(line||'').trim();
+    if(!trimmed.startsWith('## ')||trimmed.startsWith('###'))return;
+    const title=trimmed.slice(3).trim();
+    if(!title)return;
+    let optional=false;
+    for(let i=index-1;i>=0;i--){const prev=String(lines[i]||'').trim();if(!prev)continue;optional=prev.toLowerCase().includes('<!-- optional -->');break}
+    out.push({title,optional});
+  });
+  return out;
+}
+function assetScopeKey(type){return ({rules:'ruleScope',skills:'skillScope',dockerfiles:'dockerfileScope',environments:'environmentScope',sandboxes:'sandboxScope',templates:'templateScope'})[type]||'ruleScope'}
+function isProjectSharedAsset(type){return ['rules','skills','dockerfiles','environments','sandboxes','templates'].includes(type)}
 function assetPageCopy(type=state.assetType){
   return ({
     rules:{group:'Agent 能力',page:'能力资产',tab:'规则',desc:'维护当前项目的行为约束和执行规则。',create:'新建规则'},
     skills:{group:'Agent 能力',page:'能力资产',tab:'技能',desc:'维护当前项目可供角色使用的技能和附加文件。',create:'新建技能'},
     dockerfiles:{group:'运行环境',page:'环境资产',tab:'Dockerfile',desc:'维护当前项目的容器构建定义。',create:'新建 Dockerfile'},
     environments:{group:'运行环境',page:'环境资产',tab:'安装脚本',desc:'维护安装到隔离执行环境中的工具与依赖。',create:'新建安装脚本'},
-    sandboxes:{group:'运行环境',page:'环境资产',tab:'沙箱',desc:'维护当前项目的运行隔离方式及环境依赖。',create:'新建沙箱'}
+    sandboxes:{group:'运行环境',page:'环境资产',tab:'沙箱',desc:'维护当前项目的运行隔离方式及环境依赖。',create:'新建沙箱'},
+    templates:{group:'Agent 能力',page:'能力资产',tab:'产物模板',desc:'维护交付物的章节骨架；角色绑定后，节点结束时会校验必填章节是否存在。',create:'新建产物模板'}
   })[type]||{group:'运行环境',page:'环境资产',tab:'Dockerfile',desc:'维护当前项目的容器构建定义。',create:'新建 Dockerfile'};
 }
-function assetSharedDescription(type=state.assetType){return type==='rules'?'查看其他项目共享的规则；共享规则只读，可直接绑定到本项目角色。':type==='skills'?'查看其他项目共享的技能；共享技能只读，会自动装入平台上所有对话和定时任务，也可绑定到本项目角色。':'查看其他项目共享的环境资产；共享资产只读，可直接用于本项目。'}
-function assetIconName(type=state.assetType){return ({rules:'gate',skills:'skills',dockerfiles:'layers',environments:'terminal',sandboxes:'server'})[type]||'layers'}
-function assetRefIconName(type=state.assetType){return ({rules:'robot',skills:'robot',dockerfiles:'server',environments:'server',sandboxes:'workflow'})[type]||'layers'}
+function assetSharedDescription(type=state.assetType){return type==='rules'?'查看其他项目共享的规则；共享规则只读，可直接绑定到本项目角色。':type==='skills'?'查看其他项目共享的技能；共享技能只读，会自动装入平台上所有对话和定时任务，也可绑定到本项目角色。':type==='templates'?'查看其他项目共享的产物模板；共享模板只读，可直接绑定到本项目角色的交付物。':'查看其他项目共享的环境资产；共享资产只读，可直接用于本项目。'}
+function assetIconName(type=state.assetType){return ({rules:'gate',skills:'skills',dockerfiles:'layers',environments:'terminal',sandboxes:'server',templates:'doc'})[type]||'layers'}
+function assetRefIconName(type=state.assetType){return ({rules:'robot',skills:'robot',dockerfiles:'server',environments:'server',sandboxes:'workflow',templates:'robot'})[type]||'layers'}
 function assetScopeItems(scope){return (state.data[state.assetType]||[]).filter(item=>scope==='shared'?catalogShared(item.projectId,item.shared):catalogOwned(item.projectId))}
 function assetMatchesQuery(a,query){const q=String(query||'').trim().toLowerCase();if(!q)return true;return [a?.name,a?.id,a?.description].some(v=>String(v||'').toLowerCase().includes(q))}
 function assetFilteredItems(){return assetScopeItems(state[assetScopeKey(state.assetType)]).filter(a=>assetMatchesQuery(a,state.assetQuery))}
@@ -33,6 +48,7 @@ function assetMetaHTML(a){
   }
   if(state.assetType==='dockerfiles')meta.push(item('doc',`${(a.content||'').split('\n').length} 行`));
   if(state.assetType==='environments')meta.push(item('variable',`${Object.keys(a.variables||{}).length} 个变量`));
+  if(state.assetType==='templates'){const hs=parseTemplateHeadings(a.content||'');const req=hs.filter(h=>!h.optional).length;meta.push(item('doc',`${hs.length} 个章节 · ${req} 必填`))}
   if(state.assetType==='sandboxes')meta.push(item('server',sandboxDriverOption(a.driver)));
   const refs=assetReferenceNames(a).length;
   meta.push(item(assetRefIconName(),refs?`${refs} 个${assetRefKindLabel()}引用`:'未被引用'));
@@ -102,7 +118,9 @@ function assetDetailHeadHTML(a,{creating=false,dirty=false}={}){
   const desc=creating?`填写标识和名称后创建${state.assetType==='skills'?'，创建后即可上传文件':''}。`:(a.description||'暂无说明');
   let actions;
   if(creating)actions=`<button type="button" class="button" data-asset-cancel>取消</button><button type="submit" form="assetForm" class="button primary" data-asset-save>${huiIcon('plus')}创建${escapeHTML(kind)}</button>`;
-  else if(readonly)actions=`<span class="asset-badge is-ro">${huiIcon('lock')}只读 · 可直接在本项目使用</span>`;
+  else if(readonly)actions=state.assetType==='templates'
+    ? `<span class="asset-badge is-ro">${huiIcon('lock')}共享模板只读</span><button type="button" class="button" data-asset-copy>复制到本项目</button>`
+    : `<span class="asset-badge is-ro">${huiIcon('lock')}只读 · 可直接在本项目使用</span>`;
   else{
     const blocked=assetDeleteBlocked(a);
     actions=`<span class="asset-dirty" data-asset-dirty ${dirty?'':'hidden'}><i></i>未保存</span>`+
@@ -124,6 +142,7 @@ function renderAssetDetailHead(a){
   const share=head.querySelector('[data-asset-share]');if(share)share.onclick=()=>toggleAssetShare(a.id);
   const more=$('#assetMoreBtn');if(more)more.onclick=e=>{e.stopPropagation();$('#assetMoreMenu')?.classList.contains('is-open')?closeAssetMenu(true):openAssetMenu()};
   const del=head.querySelector('[data-asset-delete]');if(del)del.onclick=()=>{if(del.disabled)return;closeAssetMenu();deleteAsset(a.id)};
+  const copyBtn=head.querySelector('[data-asset-copy]');if(copyBtn)copyBtn.onclick=()=>copyTemplateToProject(a);
   bindAssetDetailChrome();
   updateAssetStuck();
 }
@@ -215,6 +234,22 @@ async function createConversationSandbox(projectId){
   switchView('sandboxes');
   openAssetDetail('__new__',{driver:'docker'});
 }
+/** 共享模板只读：复制一份到本项目后才能改。 */
+async function copyTemplateToProject(a){
+  const projectId=state.projectFilter||'';
+  if(!projectId)return toast('请先在左上角选择项目');
+  let id=`${a.id}-copy`,n=2;
+  const taken=value=>(state.data.templates||[]).some(t=>t.id===value);
+  while(taken(id))id=`${a.id}-copy-${n++}`;
+  const body={...a,id,name:`${a.name||a.id}（副本）`,projectId,shared:false};
+  try{
+    await api('/api/artifact-templates',{method:'PUT',body:JSON.stringify(body)});
+    state.data.templates=[...(state.data.templates||[]).filter(t=>t.id!==id),{...body,version:(a.version||0)+1}];
+    state[assetScopeKey('templates')]='project';
+    openAssetDetail(id);
+    toast('已复制到本项目，可以继续修改');
+  }catch(err){toast(err.message)}
+}
 function openAssetDetail(id,defaults={}){
   if(!id||state.selectedAsset===id)return;
   const type=state.assetType;
@@ -254,13 +289,14 @@ async function toggleAssetShare(id){
     toast(saved.shared?(state.assetType==='skills'?'已共享，所有对话和定时任务会自动装入':'已共享，其他项目可绑定'):'已取消共享');
   }catch(e){toast(e.message)}
 }
-function assetEmptyHint(){return ({rules:'规则是写给 Agent 的行为约束，例如编码规范、禁止事项。建好后在「角色定义」里绑定到角色。',skills:'技能是 Agent 可按需加载的说明和附加文件，例如某个框架的操作手册。建好后在「角色定义」里绑定到角色。',dockerfiles:'Dockerfile 定义沙箱容器的镜像。建好后在「沙箱管理」里选用；也可以直接用「共享」里的现成配置。',environments:'安装脚本在沙箱初始化时把工具装进隔离环境，例如指定版本的 Go、PHP、Node。建好后在「沙箱管理」里选用。',sandboxes:'沙箱决定 SOP 节点在什么隔离环境里执行，由 Dockerfile 和安装脚本组合而成。建好后在流程设置里选用；也可以直接用「共享」里的现成配置。'})[state.assetType]||''}
-function assetKindLabel(){return ({rules:'规则',skills:'技能',dockerfiles:'Dockerfile',environments:'环境安装脚本',sandboxes:'沙箱'})[state.assetType]||'资产'}
-function assetRefKindLabel(){return ({rules:'角色',skills:'角色',dockerfiles:'沙箱',environments:'沙箱',sandboxes:'流程'})[state.assetType]||'引用'}
+function assetEmptyHint(){return ({templates:'产物模板是交付物的章节骨架，例如需求文档必须包含目标、范围、验收标准。建好后在「角色定义」的产物里选择它，节点结束时会自动校验。',rules:'规则是写给 Agent 的行为约束，例如编码规范、禁止事项。建好后在「角色定义」里绑定到角色。',skills:'技能是 Agent 可按需加载的说明和附加文件，例如某个框架的操作手册。建好后在「角色定义」里绑定到角色。',dockerfiles:'Dockerfile 定义沙箱容器的镜像。建好后在「沙箱管理」里选用；也可以直接用「共享」里的现成配置。',environments:'安装脚本在沙箱初始化时把工具装进隔离环境，例如指定版本的 Go、PHP、Node。建好后在「沙箱管理」里选用。',sandboxes:'沙箱决定 SOP 节点在什么隔离环境里执行，由 Dockerfile 和安装脚本组合而成。建好后在流程设置里选用；也可以直接用「共享」里的现成配置。'})[state.assetType]||''}
+function assetKindLabel(){return ({rules:'规则',skills:'技能',dockerfiles:'Dockerfile',environments:'环境安装脚本',sandboxes:'沙箱',templates:'产物模板'})[state.assetType]||'资产'}
+function assetRefKindLabel(){return ({rules:'角色',skills:'角色',dockerfiles:'沙箱',environments:'沙箱',sandboxes:'流程',templates:'角色'})[state.assetType]||'引用'}
 function assetReferenceNames(a){
   if(!a?.id)return [];
   if(state.assetType==='rules')return (state.data.agents||[]).filter(x=>(x.rules||[]).includes(a.id)).map(x=>x.name||x.id);
   if(state.assetType==='skills')return (state.data.agents||[]).filter(x=>(x.skills||[]).includes(a.id)).map(x=>x.name||x.id);
+  if(state.assetType==='templates')return [...new Set((state.data.agents||[]).filter(x=>(x.artifactOutputs||[]).some(c=>c.templateId===a.id)).map(x=>x.name||x.id))];
   if(state.assetType==='dockerfiles')return (state.data.sandboxes||[]).filter(x=>x.dockerfileId===a.id).map(x=>x.name||x.id);
   if(state.assetType==='environments')return (state.data.sandboxes||[]).filter(x=>x.environmentId===a.id).map(x=>x.name||x.id);
   if(state.assetType==='sandboxes')return (state.data.workflows||[]).filter(x=>!catalogGeneric(x)&&x.sandboxProfileId===a.id).map(x=>x.name||x.id);
@@ -284,7 +320,7 @@ async function deleteAsset(id){
   const label=assetKindLabel();
   if(!await afConfirm({title:`删除${label}确认`,message:`确认删除${label}「${item.name}」？此操作不可恢复。`,confirmText:'确认删除',danger:true}))return;
   try{
-    await api(`/api/${state.assetType}?id=${encodeURIComponent(id)}`,{method:'DELETE'});
+    const delEndpoints={templates:'artifact-templates'};await api(`/api/${delEndpoints[state.assetType]||state.assetType}?id=${encodeURIComponent(id)}`,{method:'DELETE'});
     state.data[state.assetType]=(state.data[state.assetType]||[]).filter(x=>x.id!==id);
     if(state.selectedAsset===id)await closeAssetDetail({force:true});
     else renderAssets();
@@ -304,11 +340,12 @@ function environmentOptions(selected){const items=(state.data.environments||[]).
 function sandboxDriverOption(driver){return ['seatbelt','bwrap','native'].includes(driver)?'native':driver==='docker'?'docker':'local'}
 function syncSandboxDriverFields(select){const driver=select?.value||'local';select?.form?.querySelectorAll('[data-sandbox-drivers]').forEach(el=>{el.hidden=!el.dataset.sandboxDrivers.split(' ').includes(driver)})}
 function resolveAssetSaveIdentity(items,selectedID,requestedID){if(selectedID!=='__new__'){const existing=(items||[]).find(item=>item.id===selectedID);return existing?{id:existing.id,existing,created:false}:{error:'选中的资产已不存在，请刷新后重试'}}if((items||[]).some(item=>item.id===requestedID))return {error:'该标识已存在，请换一个标识，或回到列表打开已有资产修改'};return {id:requestedID,existing:null,created:true}}
-function assetPaneTabs(type=state.assetType){return ({rules:[['edit','编辑'],['preview','预览']],skills:[['files','文件']],dockerfiles:[['content','Dockerfile'],['files','构建上下文']],environments:[['script','install.sh'],['vars','环境变量'],['path','PATH']],sandboxes:[['env','环境变量']]})[type]||[['edit','编辑']]}
-function assetPaneHint(type=state.assetType){return ({rules:'支持 Markdown',skills:'每次上传都会完整替换现有文件',dockerfiles:'沙箱初始化时用库里这份 docker build',environments:'脚本把工具装进 $PREFIX',sandboxes:'驱动与执行环境在右侧设置，不要在这里保存凭证'})[type]||''}
+function assetPaneTabs(type=state.assetType){return ({rules:[['edit','编辑'],['preview','预览']],templates:[['preview','预览'],['edit','编辑']],skills:[['files','文件']],dockerfiles:[['content','Dockerfile'],['files','构建上下文']],environments:[['script','install.sh'],['vars','环境变量'],['path','PATH']],sandboxes:[['env','环境变量']]})[type]||[['edit','编辑']]}
+function assetPaneHint(type=state.assetType){return ({rules:'支持 Markdown',templates:'按 ## 二级标题定义章节，预览即运行时的校验依据',skills:'每次上传都会完整替换现有文件',dockerfiles:'沙箱初始化时用库里这份 docker build',environments:'脚本把工具装进 $PREFIX',sandboxes:'驱动与执行环境在右侧设置，不要在这里保存凭证'})[type]||''}
 function assetMainPanesHTML(a,{creating,readonly}){
   const pane=(key,body)=>`<div class="asset-tabpanel" data-asset-pane="${key}" role="tabpanel">${body}</div>`;
   if(state.assetType==='rules')return pane('edit',`<textarea name="content" class="asset-editor" rows="18" placeholder="写入必须遵守的行为和约束">${escapeHTML(a.content||'')}</textarea>`)+pane('preview',`<div class="asset-md markdown-body" data-asset-preview></div>`);
+  if(state.assetType==='templates')return pane('edit',`<textarea name="content" class="asset-editor" rows="20" ${readonly?'readonly':''} placeholder="用 ## 二级标题定义章节；可省略的章节在标题上一行写 <!-- optional -->">${escapeHTML(a.content||'')}</textarea>`)+pane('preview',`<div class="asset-md markdown-body" data-asset-preview></div>`);
   if(state.assetType==='skills'){
     if(creating)return pane('files',`<div class="asset-empty is-inline"><b>先创建技能，再上传文件</b><p>支持文件夹、.zip 压缩包或单独的 SKILL.md。</p></div>`);
     const src=assetSkillSource(a),locked=readonly||!!src;
@@ -335,7 +372,7 @@ function assetMainPanesHTML(a,{creating,readonly}){
 function assetBasicFieldsHTML(a,{creating}){
   const kind=assetKindLabel();
   let html=`<label class="asset-field-label" for="assetFieldName">名称</label><input id="assetFieldName" name="name" class="asset-input" value="${escapeHTML(a.name||'')}" required placeholder="给${escapeHTML(kind)}起个名字"><label class="asset-field-label" for="assetFieldId">标识</label><input id="assetFieldId" name="id" class="asset-input is-mono" value="${escapeHTML(a.id||'')}" required ${creating?'placeholder="如 zhiyan-core"':'readonly aria-readonly="true"'}><div class="asset-field-hint">${creating?'创建后不可修改，用于资产引用。':'标识用于资产引用，创建后不可修改。'}</div><label class="asset-field-label" for="assetFieldDesc">描述</label><input id="assetFieldDesc" name="description" class="asset-input" value="${escapeHTML(a.description||'')}" placeholder="一句话说明用途">`;
-  if(state.assetType==='rules')html+=`<label class="asset-field-label" for="assetFieldPriority">优先级</label><input id="assetFieldPriority" name="priority" class="asset-input" type="number" value="${a.priority||100}"><div class="asset-field-hint">数值越大越先注入。</div>${ruleGlobalFields(a)}`;
+  if(state.assetType==='templates')html+='<div class="asset-field-hint">用 <code>## 二级标题</code> 定义章节；角色绑定后，节点结束时会校验这些标题是否都存在（<code>&lt;!-- optional --&gt;</code> 标记的章节可省略）。</div>';if(state.assetType==='rules')html+=`<label class="asset-field-label" for="assetFieldPriority">优先级</label><input id="assetFieldPriority" name="priority" class="asset-input" type="number" value="${a.priority||100}"><div class="asset-field-hint">数值越大越先注入。</div>${ruleGlobalFields(a)}`;
   if(state.assetType==='sandboxes')html+=`<label class="asset-field-label">隔离方式</label><select name="driver" class="asset-select" aria-label="隔离方式"><option value="local" ${sandboxDriverOption(a.driver)==='local'?'selected':''}>local（本机直接执行）</option><option value="native" ${sandboxDriverOption(a.driver)==='native'?'selected':''}>native（系统轻量隔离）</option><option value="docker" ${sandboxDriverOption(a.driver)==='docker'?'selected':''}>docker（OCI 容器）</option></select><div data-sandbox-drivers="local" class="json-help">直接在本机 workspace 执行，并继承受控的宿主进程环境。</div><div data-sandbox-drivers="native" class="json-help">按执行机器的系统自动选择：macOS 用 seatbelt，Linux 用 bwrap。</div><div data-sandbox-drivers="native"><label class="asset-field-label">执行环境</label><select name="environmentId" class="asset-select" aria-label="执行环境">${environmentOptions(a.environmentId)}</select><div class="json-help">选中后沙箱会执行该环境的 <code>install.sh</code>，把工具装进隔离的 <code>$PREFIX</code>，再用 PATH 切换。未选择时，若 workspace 存在 <code>agentflow-environment/</code> 也会自动启用。</div></div><div data-sandbox-drivers="docker"><label class="asset-field-label">Dockerfile</label><select name="dockerfileId" class="asset-select" aria-label="Dockerfile">${dockerfileOptions(a.dockerfileId)}</select><div class="json-help">沙箱只引用这条目录资产；初始化时用库里的内容构建临时镜像，结束后删除容器和镜像。</div>
     <div class="asset-switch-row">
       <label for="assetReadOnlyRootFS">
@@ -363,12 +400,17 @@ function setAssetTab(key){
 function renderAssetForm(a){
   const f=$('#assetForm');if(!f||!a)return;
   const creating=state.selectedAsset==='__new__',readonly=!creating&&!catalogOwned(a.projectId);
-  const tabs=assetPaneTabs(),kind=assetKindLabel();
+  let tabs=assetPaneTabs();
+  // 共享模板只读：不提供编辑页签，只让看渲染后的章节结构。
+  if(readonly&&state.assetType==='templates')tabs=tabs.filter(([k])=>k!=='edit');
+  const kind=assetKindLabel();
   const summary=state.assetType==='skills'&&!creating?`<span data-skill-summary>${skillFileSummary(a)}</span>`:'';
   const save=readonly?'':`<div class="asset-panel-foot"><button type="submit" class="button primary">${creating?`${huiIcon('plus')}创建${escapeHTML(kind)}`:`${huiIcon('save')}保存修改`}</button></div>`;
   f.innerHTML=`<section class="asset-panel asset-main"><div class="asset-panel-head"><div class="asset-pane-tabs" role="tablist" aria-label="${escapeHTML(kind)}内容">${tabs.map(([k,label])=>`<button type="button" role="tab" data-asset-tab="${k}">${escapeHTML(label)}</button>`).join('')}</div><span class="asset-panel-hint">${summary||escapeHTML(assetPaneHint())}</span></div><div class="asset-stage">${assetMainPanesHTML(a,{creating,readonly})}</div>${save}</section><aside class="asset-aside">${assetAsideHTML(a,{creating})}</aside>`;
   f.querySelectorAll('[data-asset-tab]').forEach(b=>b.onclick=()=>setAssetTab(b.dataset.assetTab));
-  setAssetTab(state.assetTab||tabs[0][0]);
+  // 模板先看预览，点了「编辑」再进源码；新建时直接进编辑。
+  const first=state.assetType==='templates'&&!creating?'preview':tabs[0][0];
+  setAssetTab(state.assetTab||first);
   if(state.assetType==='rules')bindRuleGlobalPicker(a);
   if(state.assetType==='sandboxes'){
     f.elements.driver.onchange=()=>syncSandboxDriverFields(f.elements.driver);
@@ -689,11 +731,12 @@ async function openSkillFilePreview(skill, path){
 }
 async function saveAsset(e){e.preventDefault();const f=e.currentTarget,items=state.data[state.assetType]||[],projectScoped=isProjectSharedAsset(state.assetType),identity=resolveAssetSaveIdentity(items,state.selectedAsset,f.elements.id.value.trim());if(identity.error)return toast(identity.error);const existing=identity.existing;if(existing&&projectScoped&&catalogForeign(existing.projectId))return toast('共享资产只读');let value={id:identity.id,name:f.elements.name.value.trim(),description:f.elements.description.value,projectId:existing?(existing.projectId||''):(state.projectFilter||''),shared:projectScoped&&!!existing?.shared};if(!value.id||!value.name)return toast('标识和名称不能为空');try{
   if(state.assetType==='rules'){const global=!!f.elements.global?.checked;Object.assign(value,{priority:Number(f.elements.priority.value),content:f.elements.content.value,global,workflowIds:global?selectedRuleWorkflowIds():[]})}
+  if(state.assetType==='templates')Object.assign(value,{content:f.elements.content.value,mediaType:'text/markdown'});
   if(state.assetType==='skills'){/* 文件经独立上传接口承载；此处只提交元数据。服务端会强制保留 Content/Files/FileRefs。 */}
   if(state.assetType==='dockerfiles')Object.assign(value,{content:f.elements.content.value,files:JSON.parse(f.elements.files.value||'{}')});
   if(state.assetType==='environments')Object.assign(value,{variables:JSON.parse(f.elements.variables.value||'{}'),pathEntries:lines(f.elements.pathEntries.value),installScript:f.elements.installScript.value});
   if(state.assetType==='sandboxes'){const driver=f.elements.driver.value,sandbox={driver,environment:JSON.parse(f.elements.environment.value||'{}')};if(driver==='docker')Object.assign(sandbox,{dockerfileId:f.elements.dockerfileId.value,readOnlyRootFS:f.elements.readOnlyRootFS.checked});if(driver==='native')Object.assign(sandbox,{environmentId:f.elements.environmentId.value});Object.assign(value,sandbox)}
-  const endpoints={rules:'rules',skills:'skills',dockerfiles:'dockerfiles',environments:'environments',sandboxes:'sandboxes'};await api(`/api/${endpoints[state.assetType]}`,{method:'PUT',body:JSON.stringify(value)});const i=items.findIndex(x=>x.id===value.id);if(state.assetType==='skills'&&existing)value={...existing,...value,fileRefs:existing.fileRefs||[],content:existing.content||'',files:existing.files||{}};if(i>=0)items[i]=value;else items.push(value);state.selectedAsset=value.id;state.assetDirty=false;
+  const endpoints={rules:'rules',skills:'skills',dockerfiles:'dockerfiles',environments:'environments',sandboxes:'sandboxes',templates:'artifact-templates'};await api(`/api/${endpoints[state.assetType]}`,{method:'PUT',body:JSON.stringify(value)});const i=items.findIndex(x=>x.id===value.id);if(state.assetType==='skills'&&existing)value={...existing,...value,fileRefs:existing.fileRefs||[],content:existing.content||'',files:existing.files||{}};if(i>=0)items[i]=value;else items.push(value);state.selectedAsset=value.id;state.assetDirty=false;
   if(identity.created){history.replaceState(history.state,'',assetViewHash(state.assetType,value.id));state.assetDetailKey='';renderAssets()}
   else{renderAssetDetailHead(value);refreshAssetAside(value)}
   renderWorkflowMeta();renderProperties();toast(identity.created?'资产已创建':'资产修改已保存');
