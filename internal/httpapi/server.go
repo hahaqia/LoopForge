@@ -861,6 +861,7 @@ func catalogAgents(agents []domain.AgentDefinition) []domain.AgentDefinition {
 			MCPServers:      agent.MCPServers,
 			PlatformMCP:     agent.PlatformMCP,
 			KnowledgeBase:   agent.KnowledgeBase,
+			AllowHumanAsk:   agent.AllowHumanAsk,
 			ArtifactOutputs: agent.ArtifactOutputs,
 			Verification:    agent.Verification,
 			Loop:            domain.AgentLoopPolicy{Enabled: agent.Loop.Enabled, MaxIterations: agent.Loop.MaxIterations, OnExhausted: agent.Loop.OnExhausted},

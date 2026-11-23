@@ -18,7 +18,7 @@ const gateMCPServerID = "agentflow-gate"
 
 var gateMCPBuildMu sync.Mutex
 
-func materializeGateMCP(workspace, configRoot, binaryRel, resultPath string, askLimit int, driver string) (domain.MCPServerDefinition, error) {
+func materializeGateMCP(workspace, configRoot, binaryRel, resultPath string, askLimit int, askDisabled bool, driver string) (domain.MCPServerDefinition, error) {
 	resultPath = filepath.ToSlash(filepath.Clean(strings.TrimSpace(resultPath)))
 	if resultPath == "." || filepath.IsAbs(resultPath) || resultPath == ".." || strings.HasPrefix(resultPath, "../") {
 		return domain.MCPServerDefinition{}, fmt.Errorf("invalid gate result path %q", resultPath)
@@ -40,10 +40,12 @@ func materializeGateMCP(workspace, configRoot, binaryRel, resultPath string, ask
 		return domain.MCPServerDefinition{}, err
 	}
 	environment := map[string]string{"AGENTFLOW_GATE_RESULT_PATH": resultPath}
-	if askPath := GateAskPath(resultPath); askPath != "" {
-		environment["AGENTFLOW_ASK_PATH"] = askPath
-		if askLimit >= 0 {
-			environment["AGENTFLOW_ASK_LIMIT"] = strconv.Itoa(askLimit)
+	if !askDisabled {
+		if askPath := GateAskPath(resultPath); askPath != "" {
+			environment["AGENTFLOW_ASK_PATH"] = askPath
+			if askLimit >= 0 {
+				environment["AGENTFLOW_ASK_LIMIT"] = strconv.Itoa(askLimit)
+			}
 		}
 	}
 	return domain.MCPServerDefinition{

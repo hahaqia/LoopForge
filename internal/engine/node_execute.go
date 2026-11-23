@@ -782,7 +782,7 @@ func (e *Engine) executeNode(ctx context.Context, runID string, wf domain.Workfl
 				}
 			}
 			if requiresSubmit {
-				prompt = appendSubmitGateInstruction(prompt, node.RejectTo, feedback == gateMissingRetryMarker)
+				prompt = appendSubmitGateInstruction(prompt, node.RejectTo, agent.AllowHumanAsk, feedback == gateMissingRetryMarker)
 			}
 			if repositoryFallback != "" {
 				prompt = runtime.GitPreparationFallbackPrompt(current.RepositoryContexts(), repositoryFallback) + prompt
@@ -797,11 +797,17 @@ func (e *Engine) executeNode(ctx context.Context, runID string, wf domain.Workfl
 			options := runtime.InvocationOptions{RunID: runID, NodeID: node.ID, ResumeSessionID: resumeSessionID, Repositories: current.RepositoryContexts(), Templates: artifactTemplates}
 			if requiresSubmit {
 				options.GateResultPath = gateResultPath(nodeControlKey(current, node.ID), attempt)
-				askUsed := 0
-				if nr := current.Nodes[node.ID]; nr != nil {
-					askUsed = nr.AskCount
+				// 只有显式开启的角色才能中途提问：其余节点连 ask_human 工具都
+				// 不注入，避免实现/测试节点用提问代替判断。
+				if agent.AllowHumanAsk {
+					askUsed := 0
+					if nr := current.Nodes[node.ID]; nr != nil {
+						askUsed = nr.AskCount
+					}
+					options.AskLimit = maxAskQuestions - askUsed
+				} else {
+					options.AskDisabled = true
 				}
-				options.AskLimit = maxAskQuestions - askUsed
 			}
 			ex := ex
 			if cb := sb.credentialSnapshot().CodeBuddy; ex.Kind == "codebuddy" && cb.Sponsored {

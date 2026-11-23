@@ -98,8 +98,10 @@ type InvocationOptions struct {
 	NodeID          string
 	ResumeSessionID string
 	GateResultPath  string
-	// AskLimit 是本次调用还允许向人提问的次数；0 表示不限制。
+	// AskLimit 是本次调用还允许向人提问的次数；-1 表示不限制，0 表示不允许。
 	AskLimit int
+	// AskDisabled 为真时不注入 ask_human 工具（角色没有开启中途提问）。
+	AskDisabled bool
 	// Templates 是交付物骨架：模板 id → Markdown 内容，运行时写入
 	// .agentflow/templates/<id>.md，供 Agent 复制后填充。
 	Templates    map[string]string

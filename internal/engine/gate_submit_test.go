@@ -46,15 +46,31 @@ func TestApplyGateResultDegradesReworkWithoutTarget(t *testing.T) {
 
 func TestSubmitGateInstructionExplainsReworkAvailability(t *testing.T) {
 	t.Parallel()
-	withTarget := appendSubmitGateInstruction("task", "implement", false)
+	withTarget := appendSubmitGateInstruction("task", "implement", false, false)
 	for _, want := range []string{"pass", "rework", "fail", "human", "implement"} {
 		if !strings.Contains(withTarget, want) {
 			t.Fatalf("instruction missing %q:\n%s", want, withTarget)
 		}
 	}
-	withoutTarget := appendSubmitGateInstruction("task", "", false)
+	withoutTarget := appendSubmitGateInstruction("task", "", false, false)
 	if !strings.Contains(withoutTarget, "rework：本节点没有配置返工目标，不可选择") {
 		t.Fatalf("missing no-target warning:\n%s", withoutTarget)
+	}
+}
+
+// 角色没开中途提问时，任务书里不能出现 ask_human，否则模型会去调一个不存在的工具。
+func TestSubmitGateInstructionOnlyMentionsAskWhenAllowed(t *testing.T) {
+	t.Parallel()
+	withAsk := appendSubmitGateInstruction("task", "implement", true, false)
+	if !strings.Contains(withAsk, "ask_human") || !strings.Contains(withAsk, "可以先向人确认") {
+		t.Fatalf("ask section missing when allowed:\n%s", withAsk)
+	}
+	withoutAsk := appendSubmitGateInstruction("task", "implement", false, false)
+	if strings.Contains(withoutAsk, "ask_human") {
+		t.Fatalf("ask section leaked when disabled:\n%s", withoutAsk)
+	}
+	if !strings.Contains(withoutAsk, "submit_gate_result") {
+		t.Fatalf("gate instruction must stay:\n%s", withoutAsk)
 	}
 }
 

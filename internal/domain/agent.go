@@ -84,8 +84,12 @@ type AgentDefinition struct {
 	// KnowledgeBase binds the reserved read-only agentflow-knowledge MCP and
 	// the built-in knowledge usage rule. Upstream credentials stay on the
 	// platform; the role only receives a short-lived project-scoped token.
-	KnowledgeBase   bool                     `json:"knowledgeBase,omitempty"`
-	Hooks           []AgentHook              `json:"hooks,omitempty"`
+	KnowledgeBase bool `json:"knowledgeBase,omitempty"`
+	// AllowHumanAsk lets the role pause mid-node and ask the operator a
+	// question through the gate MCP instead of guessing. Off by default: only
+	// roles that genuinely need a discussion (requirement, design) should nag.
+	AllowHumanAsk bool          `json:"allowHumanAsk,omitempty"`
+	Hooks         []AgentHook   `json:"hooks,omitempty"`
 	ExecutorID      string                   `json:"executorId,omitempty"`
 	Model           string                   `json:"model,omitempty"`
 	Effort          string                   `json:"effort,omitempty"`

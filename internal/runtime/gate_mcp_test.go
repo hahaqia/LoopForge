@@ -19,7 +19,7 @@ func TestGateMCPSubmitWritesStructuredResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	resultPath := ".agentflow/gate-results/review/attempt-1.json"
-	server, err := materializeGateMCP(workspace, configRoot, ".agentflow/config/reviewer/gate-mcp", resultPath, -1, "local")
+	server, err := materializeGateMCP(workspace, configRoot, ".agentflow/config/reviewer/gate-mcp", resultPath, -1, false, "local")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestMaterializeGateMCPSelectsLinuxForDocker(t *testing.T) {
 	if err := os.MkdirAll(configRoot, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := materializeGateMCP(dir, configRoot, ".agentflow/config/reviewer/gate-mcp", "result.json", -1, "docker"); err != nil {
+	if _, err := materializeGateMCP(dir, configRoot, ".agentflow/config/reviewer/gate-mcp", "result.json", -1, false, "docker"); err != nil {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(filepath.Join(configRoot, "gate-mcp"))
@@ -136,5 +136,32 @@ func TestMaterializeGateMCPSelectsLinuxForDocker(t *testing.T) {
 	}
 	if string(raw) != "linux" {
 		t.Fatalf("docker gate helper = %q, want linux artifact", raw)
+	}
+}
+
+// 角色没开中途提问时，连 ask_human 工具都不该暴露给 Agent。
+func TestGateMCPHidesAskToolWhenDisabled(t *testing.T) {
+	workspace := t.TempDir()
+	configRoot := filepath.Join(workspace, ".agentflow", "config", "reviewer")
+	if err := os.MkdirAll(configRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	resultPath := ".agentflow/gate-results/review/attempt-1.json"
+	server, err := materializeGateMCP(workspace, configRoot, ".agentflow/config/reviewer/gate-mcp", resultPath, 3, true, "local")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := server.Environment["AGENTFLOW_ASK_PATH"]; got != "" {
+		t.Fatalf("ask path leaked while disabled: %q", got)
+	}
+	if got := server.Environment["AGENTFLOW_ASK_LIMIT"]; got != "" {
+		t.Fatalf("ask limit leaked while disabled: %q", got)
+	}
+	enabled, err := materializeGateMCP(workspace, configRoot, ".agentflow/config/reviewer/gate-mcp", resultPath, 3, false, "local")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if enabled.Environment["AGENTFLOW_ASK_PATH"] == "" || enabled.Environment["AGENTFLOW_ASK_LIMIT"] != "3" {
+		t.Fatalf("enabled gate should expose ask tool: %#v", enabled.Environment)
 	}
 }

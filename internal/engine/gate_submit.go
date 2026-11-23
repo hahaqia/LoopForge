@@ -187,7 +187,7 @@ func applyGateResult(result *domain.GateResult, rejectTarget string) (error, str
 	}
 }
 
-func appendSubmitGateInstruction(prompt, rejectTarget string, retry bool) string {
+func appendSubmitGateInstruction(prompt, rejectTarget string, allowAsk, retry bool) string {
 	if retry {
 		return "刚才没有收到有效的节点终态。不要重复执行任务，也不要只输出文字；请立刻调用 submit_gate_result，提交 pass、rework、fail 或 human 之一以及具体 reason。选择 human 时还必须填写 actionRequired，明确需要人工确认什么。只有工具调用成功才算完成本节点。"
 	}
@@ -197,11 +197,15 @@ func appendSubmitGateInstruction(prompt, rejectTarget string, retry bool) string
 	} else {
 		reworkInstruction = fmt.Sprintf("- rework：存在应由上游节点「%s」返工的问题；平台会自动打回；", rejectTarget)
 	}
-	return strings.TrimRight(prompt, "\n") + fmt.Sprintf(`
+	askSection := ""
+	if allowAsk {
+		askSection = `
 
 # 可以先向人确认
 
-如果需求、范围或方案上存在**必须由人决定**的歧义（例如目标用户、验收口径、取舍），先调用 MCP 工具 ask_human 提交 1-10 个具体问题：带两个以上选项的会渲染成选择题，不带选项的按开放填写。本节点会暂停等待回答，回答后你在同一会话里继续，不需要从头重做。不要用它询问你自己能查证的事实，也不要为了少做判断而滥用。
+如果需求、范围或方案上存在**必须由人决定**的歧义（例如目标用户、验收口径、取舍），先调用 MCP 工具 ask_human 提交 1-10 个具体问题：带两个以上选项的会渲染成选择题，不带选项的按开放填写。本节点会暂停等待回答，回答后你在同一会话里继续，不需要从头重做。不要用它询问你自己能查证的事实，也不要为了少做判断而滥用。`
+	}
+	return strings.TrimRight(prompt, "\n") + askSection + fmt.Sprintf(`
 
 # 必须提交节点终态
 

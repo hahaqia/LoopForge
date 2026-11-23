@@ -615,14 +615,14 @@
     <section id="agentsView" class="view page-view">
       <div class="page-heading">
         <div>
-          <h1>角色定义</h1><p>每个角色一套任务、产物和门禁。本项目角色可共享给其他项目；流程里只选角色，不在画布上改这些内容。</p>
+          <h1>角色定义</h1><p>平台共享的角色，所有项目可见；项目自己的角色在「项目配置 → Agent 角色」里维护。</p>
         </div>
-        <button id="newAgent" class="button primary">＋ 新建角色</button>
+        <button id="newAgent" class="button primary" hidden>＋ 新建角色</button>
       </div>
       <div class="agent-toolbar">
         <div class="agent-tabs" data-scope-for="agent" role="tablist" aria-label="角色范围">
-          <button type="button" class="agent-tab on" role="tab" data-scope="project">项目角色<span class="agent-tab-count" data-scope-count="agent-project">0</span></button>
-          <button type="button" class="agent-tab" role="tab" data-scope="shared">共享角色<span class="agent-tab-count" data-scope-count="agent-shared">0</span></button>
+          <button type="button" class="agent-tab" role="tab" data-scope="project" hidden>项目角色<span class="agent-tab-count" data-scope-count="agent-project">0</span></button>
+          <button type="button" class="agent-tab on" role="tab" data-scope="shared">共享角色<span class="agent-tab-count" data-scope-count="agent-shared">0</span></button>
         </div>
         <div id="agentCatalogStats" hidden></div>
         <label class="catalog-search agent-search"><span aria-hidden="true">⌕</span><input id="agentSearch" type="search" placeholder="搜索名称、职责或资产"></label>
@@ -673,7 +673,7 @@
     <!-- 能力资产 · MCP -->
     <section id="mcpView" class="view page-view">
       <div class="page-heading mcp-page-heading">
-        <div><p class="eyebrow">Agent 能力</p><h1>能力资产</h1><p>MCP、规则和技能统一在这里维护，角色按需绑定后即可使用。</p></div>
+        <div><p class="eyebrow">Agent 能力</p><h1>能力资产</h1><p>平台共享的 MCP、规则、技能与产物模板；项目私有资产在「项目配置 → Agent 能力资产」里维护。</p></div>
         <div class="heading-actions"><a class="button ghost" href="https://github.com/modelcontextprotocol/servers" target="_blank" rel="noopener noreferrer">浏览公共 MCP ↗</a><button id="newCustomMcp" class="button primary" type="button">＋ 添加 MCP</button></div>
       </div>
       <div class="asset-type-tabs" role="tablist" aria-label="能力资产类型" data-asset-type-group="capability"><button type="button" role="tab" data-asset-type-tab="mcp" class="active" aria-selected="true">MCP</button><button type="button" role="tab" data-asset-type-tab="rules" aria-selected="false" tabindex="-1">规则</button><button type="button" role="tab" data-asset-type-tab="skills" aria-selected="false" tabindex="-1">技能</button><button type="button" role="tab" data-asset-type-tab="templates" aria-selected="false" tabindex="-1">产物模板</button></div>
@@ -698,7 +698,7 @@
         <div class="asset-type-tabs" role="tablist" aria-label="能力资产类型" data-asset-type-group="capability" hidden><button type="button" role="tab" data-asset-type-tab="mcp" aria-selected="false" tabindex="-1">MCP</button><button type="button" role="tab" data-asset-type-tab="rules" aria-selected="false" tabindex="-1">规则</button><button type="button" role="tab" data-asset-type-tab="skills" aria-selected="false" tabindex="-1">技能</button><button type="button" role="tab" data-asset-type-tab="templates" aria-selected="false" tabindex="-1">产物模板</button></div>
         <div class="asset-type-tabs" role="tablist" aria-label="环境资产类型" data-asset-type-group="environment"><button type="button" role="tab" data-asset-type-tab="dockerfiles" class="active" aria-selected="true">Dockerfile</button><button type="button" role="tab" data-asset-type-tab="environments" aria-selected="false" tabindex="-1">安装脚本</button><button type="button" role="tab" data-asset-type-tab="sandboxes" aria-selected="false" tabindex="-1">沙箱</button></div>
         <div id="assetScopeToolbar" class="asset-toolbar">
-          <div id="assetScopeSwitch" class="mcp-scope-switch asset-scope-tabs" aria-label="资产范围"><button type="button" data-asset-scope="project" class="active">本项目<span class="sliding-tab-count" data-asset-scope-count="project">0</span></button><button type="button" data-asset-scope="shared">共享<span class="sliding-tab-count" data-asset-scope-count="shared">0</span></button><button type="button" data-asset-scope="skillhub" hidden>SkillHub 市场</button></div>
+          <div id="assetScopeSwitch" class="mcp-scope-switch asset-scope-tabs" aria-label="资产范围"><button type="button" data-asset-scope="project" hidden>本项目<span class="sliding-tab-count" data-asset-scope-count="project">0</span></button><button type="button" data-asset-scope="shared" class="active">共享<span class="sliding-tab-count" data-asset-scope-count="shared">0</span></button><button type="button" data-asset-scope="skillhub" hidden>SkillHub 市场</button></div>
           <label id="assetSearchBox" class="asset-search"><svg class="agent-icon harness-icon" data-icon="search" width="14" height="14" aria-hidden="true" focusable="false"></svg><input id="assetSearch" type="search" placeholder="搜索名称或标识…" aria-label="搜索资产" autocomplete="off"></label>
         </div>
         <div id="skillhubMarket" class="skillhub-market" hidden>
@@ -1268,7 +1268,7 @@
     </div>
   </div>
   <div id="revisionModal" class="modal"><div class="modal-card revision-card"><button type="button" class="modal-close" id="revisionClose">×</button><div class="wizard-head"><div><p class="eyebrow">版本历史</p><h2 id="revisionTitle">版本历史</h2><p>对比上一版并回退。回退会生成新版本，不会改已经跑完的记录。</p></div></div><div id="revisionList" class="revision-list"></div><pre id="revisionDiff" class="revision-diff">选择一个历史版本查看差异。</pre><div class="wizard-actions"><button type="button" class="button ghost" id="revisionClose2">关闭</button><button type="button" class="button primary" id="revisionRestore" disabled>回退到此版本</button></div></div></div>
-  <script src="/app.js?v=20261123tpl"></script>
+  <script src="/app.js?v=20261123ask"></script>
   <script src="/app/assistant-models.js"></script>
   <script src="/app/access.js"></script>
   <script src="/app/dashboards.js"></script>
@@ -1295,8 +1295,8 @@
   <script src="/app/flow-history.js?v=20261030fd2"></script>
   <script src="/app/flow-viewport.js?v=20261030fd2"></script>
   <script src="/app/flow-palette.js?v=20261030fd2"></script>
-  <script src="/app/flows.js?v=20261123tpl"></script>
-  <script src="/app/agents.js?v=20261123tpl"></script>
+  <script src="/app/flows.js?v=20261123ask"></script>
+  <script src="/app/agents.js?v=20261123ask"></script>
   <script src="/app/mcp.js"></script>
   <script src="/app/assets.js"></script>
   <script src="/app/skillhub.js"></script>
