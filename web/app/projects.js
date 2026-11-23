@@ -39,7 +39,7 @@ function bindUserSearches(root=document){
   });
 }
 // Project admin has two levels: #/projects lists cards, #/projects/<id>[/<tab>] edits one project.
-const PROJECT_ADMIN_TABS=[{id:'basic',label:'基本信息'},{id:'repos',label:'代码仓库'},{id:'members',label:'项目成员'},{id:'tapd',label:'高级设置'}];
+const PROJECT_ADMIN_TABS=[{id:'basic',label:'基本信息'},{id:'repos',label:'代码仓库'},{id:'members',label:'项目成员'},{id:'agents',label:'Agent 角色'},{id:'assets',label:'Agent 能力资产'},{id:'tapd',label:'高级设置'}];
 // TAPD is a legacy tracker: its settings appear only once the platform has a TAPD integration or the project already uses one.
 function tapdIntegrationAvailable(project){
   if(project&&(String(project.tapdWorkspaceId||'').trim()||String(project.tapdIterationId||'').trim()))return true;
@@ -171,6 +171,62 @@ function projectRepoListHTML(repos,defaultId){
   if(!repos.length)return projectAdminEmptyHTML('repo','还没有绑定代码仓库','绑定后，Agent 执行 SOP 时会自动克隆仓库并在工作分支上提交。第一个仓库会自动设为默认。',`<ol class="pa-steps"><li><span>1</span>粘贴 Git HTTPS 链接或 Git SSH 地址</li><li><span>2</span>确认分支</li><li><span>3</span>保存即生效</li></ol><button type="button" class="button primary" data-repo-add>＋ 添加第一个仓库</button>`);
   return `<div class="pa-rgrid">${repos.map(r=>repoCardHTML(r,r.id===defaultId)).join('')}<button type="button" class="pa-rc-add" data-repo-add><i>${paIcon('plus',14)}</i><b>添加仓库</b></button></div>`;
 }
+function bindProjectAssetPanels(form){
+  form.querySelectorAll('[data-project-agent-copy]').forEach(b=>b.onclick=()=>{
+    state.agentScope='shared';
+    switchView('agents');
+    if(typeof renderAgents==='function')renderAgents();
+    toast('在共享角色里点行尾菜单「复制到本项目」，复制后回项目里调整');
+  });
+  form.querySelectorAll('[data-project-agent]').forEach(row=>row.onclick=()=>{
+    const a=(state.data.agents||[]).find(x=>x.id===row.dataset.projectAgent);
+    if(a&&typeof openAgentWizard==='function')openAgentWizard(a);
+  });
+  form.querySelectorAll('[data-project-asset-manage]').forEach(b=>b.onclick=()=>{
+    const type=b.dataset.projectAssetManage;
+    if(typeof assetScopeKey==='function')state[assetScopeKey(type)]='project';
+    switchView(type);
+    if(typeof renderAssets==='function')renderAssets();
+  });
+}
+function projectAgentUsage(id){
+  const seen=new Set();
+  let count=0;
+  for(const wf of (state.data.workflows||[])){
+    if(!wf||seen.has(wf.id))continue;
+    seen.add(wf.id);
+    if(String(wf.projectId||'')!==state.projectAdminDetailId)continue;
+    (wf.nodes||[]).forEach(n=>{if((n.agentId||'')===id)count++});
+  }
+  return count;
+}
+function projectAgentsPanelHTML(saved){
+  const projectId=saved?.id||'';
+  const roles=(state.data.agents||[]).filter(a=>String(a.projectId||'')===projectId);
+  const desc='只影响本项目；平台共享角色在「设置 → AGENT 能力 → 角色定义」维护。';
+  if(!roles.length){
+    return paSection('Agent 角色',desc,projectAdminEmptyHTML('repo','本项目还没有自己的 Agent 角色',
+      '未配置时，本项目的需求会使用平台通用 SOP 自带的角色运行。要单独调优，请从平台角色复制一份，并在本项目的流程里重新绑定。',
+      '<button type="button" class="button primary" data-project-agent-copy>＋ 从平台角色复制</button>'));
+  }
+  const rows=roles.map(a=>{
+    const used=projectAgentUsage(a.id);
+    return `<div class="pa-asset-row" data-project-agent="${escapeHTML(a.id)}"><b>${escapeHTML(a.name||a.id)}</b><span>${(a.artifactOutputs||[]).length} 产物</span><span>${(a.verification||[]).length} 门禁</span><em>${used?`被 ${used} 个节点引用`:'未被使用'}</em></div>`;
+  }).join('');
+  return paSection('Agent 角色',`本项目 ${roles.length} 个；${desc}`,`<div class="pa-asset-list">${rows}</div>`,
+    '<button type="button" class="button ghost small" data-project-agent-copy>＋ 从平台角色复制</button>');
+}
+function projectAssetsPanelHTML(saved){
+  const projectId=saved?.id||'';
+  const groups=[['rules','规则'],['skills','技能'],['templates','产物模板']];
+  const body=groups.map(([type,label])=>{
+    const items=(state.data[type]||[]).filter(x=>String(x.projectId||'')===projectId);
+    const rows=items.length?items.map(x=>`<div class="pa-asset-row"><b>${escapeHTML(x.name||x.id)}</b></div>`).join('')
+      :'<div class="pa-rows-empty">未配置，运行时使用平台共享资产</div>';
+    return `<div class="pa-asset-group"><div class="pa-group-head"><b>${label}（${items.length}）</b><button type="button" class="button ghost small" data-project-asset-manage="${type}">管理</button></div>${rows}</div>`;
+  }).join('');
+  return paSection('Agent 能力资产','规则、技能、产物模板等项目私有资产；平台共享资产在「设置 → AGENT 能力 → 能力资产」维护。',`<div class="pa-asset-grid">${body}</div>`);
+}
 function projectAdminFormHTML(d,ctx){
   const {creating,custom,repos,saved}=ctx;
   const defaultRepo=repos.some(r=>r.id===d.defaultRepositoryId)?d.defaultRepositoryId:'';
@@ -195,7 +251,7 @@ function projectAdminFormHTML(d,ctx){
       ${paRow('Workspace ID','TAPD 项目 URL 中 /tapd_fe/ 后的数字。',`<input class="pa-input mono" name="tapdWorkspaceId" value="${escapeHTML(d.tapdWorkspaceId||'')}" placeholder="例如 20375341" spellcheck="false">`)}
       ${paRow('Iteration ID','可选，只导入该迭代内的需求。',`<input class="pa-input mono" name="tapdIterationId" value="${escapeHTML(d.tapdIterationId||'')}" placeholder="留空导入全部" spellcheck="false">`)}
     </div>`):'')+paSection('危险操作','',`<div class="pa-rows">${projectDeleteRow(saved)}${configured?paRow(`清除已保存的 TAPD 配置${configured?' <span class="pa-chip">当前已配置</span>':''}`,'保存项目设置时同时清空 Workspace 与 Iteration，已导入的需求不受影响。',`<label class="pa-switch-wrap"><input type="checkbox" name="tapdClear" role="switch" ${d.tapdClear?'checked':''} aria-label="清除已保存的 TAPD 配置"><span class="pa-switch danger"></span></label>`,{attrs:' data-pa-row-inline'}):''}</div>`);
-  const panels={basic,repos:paSection('代码仓库','Agent 执行 SOP 时会克隆这些仓库。仓库保存后立即生效，无需点「保存项目设置」。',`<div data-pa-repo-box>${projectRepoListHTML(repos,saved?.defaultRepositoryId||'')}</div>`,repos.length?'<button type="button" class="button ghost small" data-repo-add>＋ 添加仓库</button>':''),members:memberPanel,tapd:tapdPanel};
+  const panels={basic,agents:projectAgentsPanelHTML(saved),assets:projectAssetsPanelHTML(saved),repos:paSection('代码仓库','Agent 执行 SOP 时会克隆这些仓库。仓库保存后立即生效，无需点「保存项目设置」。',`<div data-pa-repo-box>${projectRepoListHTML(repos,saved?.defaultRepositoryId||'')}</div>`,repos.length?'<button type="button" class="button ghost small" data-repo-add>＋ 添加仓库</button>':''),members:memberPanel,tapd:tapdPanel};
   const tab=state.projectAdminTab||'basic';
   return PROJECT_ADMIN_TABS.map(t=>`<section class="pa-panel" data-pa-panel="${t.id}" id="paPanel-${t.id}" role="tabpanel" aria-labelledby="paTab-${t.id}"${t.id===tab?'':' hidden'}>${creating&&t.id!=='basic'?'':panels[t.id]}</section>`).join('')
     +`<div class="pa-savebar-dock"><div class="pa-savebar" data-pa-savebar inert><span class="pa-savebar-tx"><i></i><span data-pa-savebar-text>有未保存的修改</span></span><button type="button" class="button ghost" data-pa-discard>放弃修改</button><button type="submit" class="button primary" data-pa-submit>保存项目设置</button></div></div>`;
@@ -203,10 +259,12 @@ function projectAdminFormHTML(d,ctx){
 function renderProjectAdminHead(){
   const d=state.projectDraft||{},creating=state.projectAdminDetailId==='new',saved=(state.data.projects||[]).find(p=>p.id===state.projectAdminDetailId);
   const name=String(d.name||'').trim()||(creating?'新项目':saved?.name||''),key=String(d.key||'').trim().toUpperCase();
+  const flowWf=(state.data.workflows||[]).find(w=>w.id===d.workflowId);
+  const flowChip=flowWf?`<span class="pa-chip">${(flowWf.generic||!flowWf.projectId)?'通用模板流程':'项目私有流程'}</span>`:'';
   const crumb=$('#projectAdminCrumb');if(crumb){crumb.textContent=creating?'新建项目':name;crumb.title=crumb.textContent}
   const head=$('#projectAdminHead');if(!head)return;
   const issues=(state.data.issues||[]).filter(i=>!creating&&i.projectId===state.projectAdminDetailId),active=issues.filter(i=>issueRunHealth(i)==='active').length,sop=projectWorkflowName(d.workflowId);
-  head.innerHTML=`<span class="pa-mark lg" style="background:${safeColor(d.color)}">${escapeHTML((key||(creating?'NEW':name)||'P').slice(0,2).toUpperCase())}</span><div class="pa-dhd-m"><h1><span title="${escapeHTML(name)}">${escapeHTML(name)}</span>${key?`<span class="pa-chip">${escapeHTML(key)}</span>`:''}${!creating&&saved?.id===state.projectFilter?'<span class="pa-chip cur">当前工作台项目</span>':''}</h1><p>${escapeHTML(creating?'填写项目名称并创建，之后即可绑定代码仓库、邀请成员。':(d.description||''))}</p>${creating?'':`<div class="pa-dmeta"><span>${paIcon('user',12)}<b>${projectPeopleIds(d).length}</b> 位成员</span><span><b>${issues.length}</b> 个需求</span><span><b>${active}</b> 个推进中</span>${sop?`<span>${paIcon('flow',12)}${escapeHTML(sop)}</span>`:''}</div>`}</div>`;
+  head.innerHTML=`<span class="pa-mark lg" style="background:${safeColor(d.color)}">${escapeHTML((key||(creating?'NEW':name)||'P').slice(0,2).toUpperCase())}</span><div class="pa-dhd-m"><h1><span title="${escapeHTML(name)}">${escapeHTML(name)}</span>${key?`<span class="pa-chip">${escapeHTML(key)}</span>`:''}${flowChip}${!creating&&saved?.id===state.projectFilter?'<span class="pa-chip cur">当前工作台项目</span>':''}</h1><p>${escapeHTML(creating?'填写项目名称并创建，之后即可绑定代码仓库、邀请成员。':(d.description||''))}</p>${creating?'':`<div class="pa-dmeta"><span>${paIcon('user',12)}<b>${projectPeopleIds(d).length}</b> 位成员</span><span><b>${issues.length}</b> 个需求</span><span><b>${active}</b> 个推进中</span>${sop?`<span>${paIcon('flow',12)}${escapeHTML(sop)}</span>`:''}</div>`}</div>`;
 }
 function syncProjectAdminTabs(){
   const bar=$('#projectAdminTabs');if(!bar)return;
@@ -354,7 +412,7 @@ function renderProjectDetail(opt={}){
     const repos=creating?[]:(state.data.repositories||[]).filter(r=>r.projectId===id);
     form.innerHTML=projectAdminFormHTML(state.projectDraft,{creating,custom:!!state.projectIdentCustom,repos,saved});
     form.dataset.projectFor=id;form.dataset.mode=mode;
-    bindProjectAdminForm(form);bindUserSearches(form);
+    bindProjectAdminForm(form);bindUserSearches(form);bindProjectAssetPanels(form);
   }
   syncProjectIdentity();renderProjectAdminHead();
   if(!PROJECT_ADMIN_TABS.some(t=>t.id===state.projectAdminTab)||creating&&state.projectAdminTab!=='basic')state.projectAdminTab='basic';
