@@ -448,6 +448,13 @@ func expandedTelemetryEvent(event domain.TelemetryEvent) domain.TelemetryEvent {
 	// The conversation needs the normalized tool identity, not arbitrary raw
 	// provider attributes. Preserve only the published file's public metadata.
 	safe.Tool = event.Tool
+	// 单条展开时才回传工具入参：runtime 的 slimToolInput 已经只保留命令/路径等
+	// 白名单字段，这里再做一次凭据脱敏，避免 curl -H Authorization 这类命令带出密钥。
+	if event.Category == "tool" {
+		if input, ok := event.Attributes["input"]; ok {
+			safe.Attributes = map[string]any{"input": redactToolInput(input)}
+		}
+	}
 	if event.Category == "artifact" && event.Name == "artifact.published" {
 		safe.Attributes = map[string]any{}
 		for _, key := range []string{"artifactId", "path", "mediaType", "size"} {
@@ -457,6 +464,39 @@ func expandedTelemetryEvent(event domain.TelemetryEvent) domain.TelemetryEvent {
 		}
 	}
 	return safe
+}
+
+// redactToolInput 清理展开展示的工具入参：structure 保持不变，字符串值去掉
+// Bearer / sk- / ghp_ 等凭据，超长命令截断，避免把密钥打进前端。
+func redactToolInput(value any) any {
+	switch v := value.(type) {
+	case string:
+		return clipRunText(redactTelemetrySecrets(v), 2000)
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, item := range v {
+			out[key] = redactToolInput(item)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, item := range v {
+			out[i] = redactToolInput(item)
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func redactTelemetrySecrets(text string) string {
+	if text == "" {
+		return text
+	}
+	text = diagnosticBearer.ReplaceAllString(text, "$1 ***")
+	text = diagnosticKey.ReplaceAllString(text, "***")
+	text = diagnosticSecret.ReplaceAllString(text, "$1***")
+	return text
 }
 
 func slimTelemetryEvent(e domain.TelemetryEvent) domain.TelemetryEvent {

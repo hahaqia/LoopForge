@@ -2020,13 +2020,13 @@ func TestClipExecutorOutputKeepsMultiByteRunesWhole(t *testing.T) {
 }
 
 func TestClipToolMsgKeepsMultiByteRunesWhole(t *testing.T) {
-	// 180 bytes is 60 three-byte runes; one leading byte moves the cut inside one.
-	got := clipToolMsg("x" + strings.Repeat("失败", 100))
+	// toolMsgLimit 字节是 200 个三字节 rune；一个前导字节会把切点推进某个汉字内部。
+	got := clipToolMsg("x" + strings.Repeat("失败", toolMsgLimit))
 	if !utf8.ValidString(got) {
 		t.Fatalf("clipped tool message is not valid UTF-8: %q", got)
 	}
-	if !strings.HasSuffix(got, "…") || len(got) > 180+len("…") {
-		t.Fatalf("expected a clipped message of at most 180 bytes, got %d bytes", len(got))
+	if !strings.HasSuffix(got, "…") || len(got) > toolMsgLimit+len("…") {
+		t.Fatalf("expected a clipped message of at most %d bytes, got %d bytes", toolMsgLimit, len(got))
 	}
 }
 

@@ -347,6 +347,7 @@ func (e *Engine) executeNode(ctx context.Context, runID string, wf domain.Workfl
 		executionAttempt = nr.Attempt
 		nr.StartedAt = time.Now().UTC()
 		nr.GateResult = nil
+		nr.PendingQuestions = nil
 		e.event(r, node.ID, "node.started", node.Name+" 开始执行")
 	})
 	if !started {
@@ -778,6 +779,11 @@ func (e *Engine) executeNode(ctx context.Context, runID string, wf domain.Workfl
 			options := runtime.InvocationOptions{RunID: runID, NodeID: node.ID, ResumeSessionID: resumeSessionID, Repositories: current.RepositoryContexts()}
 			if requiresSubmit {
 				options.GateResultPath = gateResultPath(nodeControlKey(current, node.ID), attempt)
+				askUsed := 0
+				if nr := current.Nodes[node.ID]; nr != nil {
+					askUsed = nr.AskCount
+				}
+				options.AskLimit = maxAskQuestions - askUsed
 			}
 			ex := ex
 			if cb := sb.credentialSnapshot().CodeBuddy; ex.Kind == "codebuddy" && cb.Sponsored {
@@ -853,6 +859,19 @@ func (e *Engine) executeNode(ctx context.Context, runID string, wf domain.Workfl
 		var submitted *domain.GateResult
 		if err == nil && requiresSubmit {
 			submitted, err = readGateResultFrom(outputs, submitPath)
+			var askedQuestions []domain.PendingQuestion
+			if err == nil && submitted == nil {
+				// ask_human 是“中途提问”：语义等同 human 终态 —— 节点挂起等回答，
+				// 回答后 retry 会续上同一会话，不必从头再跑一遍。
+				asked, questions, askErr := readAskResultFrom(outputs, runtime.GateAskPath(submitPath))
+				if askErr != nil {
+					err = askErr
+				} else if asked != nil {
+					submitted = asked
+					askedQuestions = questions
+					e.observe(runID, node.ID, domain.TelemetryEvent{Category: "verification", Name: "gate.ask", Phase: "progress", Message: "Agent 请求人工确认：" + asked.Reason})
+				}
+			}
 			if err != nil || submitted == nil {
 				firstProblem := "未调用 submit_gate_result"
 				if err != nil {
@@ -890,6 +909,10 @@ func (e *Engine) executeNode(ctx context.Context, runID string, wf domain.Workfl
 					if nr := r.Nodes[node.ID]; nr != nil {
 						copy := *submitted
 						nr.GateResult = &copy
+						nr.PendingQuestions = askedQuestions
+						if len(askedQuestions) > 0 {
+							nr.AskCount++
+						}
 					}
 				})
 				e.observe(runID, node.ID, domain.TelemetryEvent{Category: "verification", Name: "gate.submit.received", Phase: "finish", Message: "收到 Agent 节点终态：" + submitted.Decision, Attributes: map[string]any{"decision": submitted.Decision, "reason": submitted.Reason}})

@@ -162,9 +162,23 @@ type NodeRun struct {
 	UsageCursor     TokenUsage  `json:"usageCursor,omitempty"`
 	ToolCalls       int         `json:"toolCalls"`
 	GateResult      *GateResult `json:"gateResult,omitempty"`
+	// PendingQuestions 是 Agent 通过 ask_human 提出的结构化问题，仅在节点
+	// 等待回答期间存在；回答后节点重跑时清空。
+	PendingQuestions []PendingQuestion `json:"pendingQuestions,omitempty"`
+	// AskCount 累计本节点已向人提问的次数，用来限制多轮问答的总量。
+	AskCount int `json:"askCount,omitempty"`
 	ChildRunID      string      `json:"childRunId,omitempty"`
 	StartedAt       time.Time   `json:"startedAt,omitzero"`
 	FinishedAt      time.Time   `json:"finishedAt,omitzero"`
+}
+
+// PendingQuestion is one question the Agent asked through ask_human: options
+// render as a choice, an empty option list means free text.
+type PendingQuestion struct {
+	ID       string   `json:"id"`
+	Question string   `json:"question"`
+	Options  []string `json:"options,omitempty"`
+	FreeText bool     `json:"freeText,omitempty"`
 }
 
 // GateResult is the structured terminal decision submitted by an Agent through

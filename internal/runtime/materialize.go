@@ -161,7 +161,7 @@ func materializeInvocationForDriver(workspace, invocationID string, ex domain.Ex
 	// Agent definition is the sole allowlist for tools in unattended runs.
 	mergedMCP := mergeMCPServers(assets.MCPServers, nil)
 	if strings.TrimSpace(options.GateResultPath) != "" {
-		gateServer, err := materializeGateMCP(workspace, configRoot, filepath.Join(".agentflow", "config", agentID, "gate-mcp"), options.GateResultPath, driver)
+		gateServer, err := materializeGateMCP(workspace, configRoot, filepath.Join(".agentflow", "config", agentID, "gate-mcp"), options.GateResultPath, options.AskLimit, driver)
 		if err != nil {
 			return compiled, err
 		}

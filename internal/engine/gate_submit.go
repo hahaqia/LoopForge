@@ -10,11 +10,14 @@ import (
 	"strings"
 
 	"agentflow/internal/domain"
+	"agentflow/internal/runtime"
 )
 
 const (
 	gateResultArtifactName = "__agentflow_gate_result"
 	gateMissingRetryMarker = "__agentflow_missing_gate_result__"
+	// maxAskQuestions 限制单个节点向人提问的总次数，避免 Agent 用提问代替判断。
+	maxAskQuestions = 3
 )
 
 type verificationRun struct {
@@ -34,7 +37,87 @@ func clearGateResult(workspace, path string) error {
 	if strings.TrimSpace(path) == "" {
 		return nil
 	}
-	return os.RemoveAll(filepath.Join(workspace, filepath.FromSlash(path)))
+	err := os.RemoveAll(filepath.Join(workspace, filepath.FromSlash(path)))
+	if askPath := runtime.GateAskPath(path); askPath != "" {
+		if askErr := os.RemoveAll(filepath.Join(workspace, filepath.FromSlash(askPath))); askErr != nil && err == nil {
+			err = askErr
+		}
+	}
+	return err
+}
+
+type askQuestionPayload struct {
+	ID       string   `json:"id"`
+	Question string   `json:"question"`
+	Options  []string `json:"options"`
+	FreeText bool     `json:"freeText"`
+}
+
+type askPayload struct {
+	Summary   string               `json:"summary"`
+	Questions []askQuestionPayload `json:"questions"`
+}
+
+// readAskResultFrom 把 ask_human 的提问映射成一次 human 终态：节点停在
+// waiting_approval 等操作员回答，回答后按 retry 继续（会续上同一 CLI 会话）。
+// 问题文本写进 ActionRequired，前端现有的人工确认卡片可以直接展示。
+func readAskResultFrom(outputs nodeOutputs, path string) (*domain.GateResult, []domain.PendingQuestion, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, nil, nil
+	}
+	raw, err := outputs.readFile(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil, nil
+		}
+		return nil, nil, err
+	}
+	var ask askPayload
+	if err := json.Unmarshal(raw, &ask); err != nil {
+		return nil, nil, fmt.Errorf("ask_human payload is invalid: %w", err)
+	}
+	questions := make([]domain.PendingQuestion, 0, len(ask.Questions))
+	for _, q := range ask.Questions {
+		question := strings.TrimSpace(q.Question)
+		if question == "" {
+			continue
+		}
+		item := domain.PendingQuestion{ID: strings.TrimSpace(q.ID), Question: question, Options: q.Options, FreeText: q.FreeText}
+		if item.ID == "" {
+			item.ID = fmt.Sprintf("q%d", len(questions)+1)
+		}
+		if len(item.Options) == 0 {
+			item.FreeText = true
+		}
+		questions = append(questions, item)
+	}
+	if len(questions) == 0 {
+		return nil, nil, nil
+	}
+	var b strings.Builder
+	for i, q := range questions {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		fmt.Fprintf(&b, "%d. %s", i+1, q.Question)
+		if len(q.Options) > 0 {
+			b.WriteString("（可选：" + strings.Join(q.Options, " / ") + "）")
+		} else {
+			b.WriteString("（请填写）")
+		}
+	}
+	required := strings.TrimSpace(b.String())
+	if len(required) > 4000 {
+		required = required[:4000]
+	}
+	reason := strings.TrimSpace(ask.Summary)
+	if reason == "" {
+		reason = "Agent 需要确认后才能继续"
+	}
+	if len(reason) > 4000 {
+		reason = reason[:4000]
+	}
+	return &domain.GateResult{Decision: "human", Reason: reason, ActionRequired: required}, questions, nil
 }
 
 func readGateResult(workspace, path string) (*domain.GateResult, error) {
@@ -115,6 +198,10 @@ func appendSubmitGateInstruction(prompt, rejectTarget string, retry bool) string
 		reworkInstruction = fmt.Sprintf("- rework：存在应由上游节点「%s」返工的问题；平台会自动打回；", rejectTarget)
 	}
 	return strings.TrimRight(prompt, "\n") + fmt.Sprintf(`
+
+# 可以先向人确认
+
+如果需求、范围或方案上存在**必须由人决定**的歧义（例如目标用户、验收口径、取舍），先调用 MCP 工具 ask_human 提交 1-10 个具体问题：带两个以上选项的会渲染成选择题，不带选项的按开放填写。本节点会暂停等待回答，回答后你在同一会话里继续，不需要从头重做。不要用它询问你自己能查证的事实，也不要为了少做判断而滥用。
 
 # 必须提交节点终态
 

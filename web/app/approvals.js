@@ -6,7 +6,34 @@ function humanContextFieldHTML(){
 }
 function readHumanContext(fromEl){
   const root=fromEl?.closest?.('[data-human-context-root], .approval-callout, .ap-card, .issue-outcome, .node-inspector, .human-decision');
-  return String(root?.querySelector?.('[data-human-context]')?.value||'').trim();
+  if(!root)return '';
+  // Agent 通过 ask_human 提的问题：把选择/填写整理成条目，回答会随 retry
+  // 注入同一 CLI 会话，Agent 能直接对上它自己问过的问题。
+  const answers=[];
+  root.querySelectorAll('.pending-question').forEach((box,index)=>{
+    const question=box.querySelector('.callout-text')?.textContent?.trim()||`问题 ${index+1}`;
+    const choice=box.querySelector('input[type=radio]:checked');
+    const free=box.querySelector('.pending-free');
+    const value=String(choice?.value||free?.value||'').trim();
+    if(value)answers.push(`${index+1}. ${question}\n回答：${value}`);
+  });
+  const note=String(root.querySelector('[data-human-context]')?.value||'').trim();
+  if(!answers.length)return note;
+  return note?`${answers.join('\n\n')}\n\n补充说明：\n${note}`:answers.join('\n\n');
+}
+function pendingQuestionsHTML(nr){
+  const questions=Array.isArray(nr?.pendingQuestions)?nr.pendingQuestions:[];
+  if(!questions.length)return '';
+  const items=questions.map((q,index)=>{
+    const id=String(q?.id||`q${index+1}`),options=Array.isArray(q?.options)?q.options:[];
+    const label=`<strong class="callout-label">问题 ${index+1}</strong><p class="callout-text">${escapeHTML(q?.question||'')}</p>`;
+    if(options.length){
+      const choices=options.map(option=>`<label class="pending-option"><input type="radio" name="answer-${escapeHTML(id)}" value="${escapeHTML(option)}"><span>${escapeHTML(option)}</span></label>`).join('');
+      return `<div class="pending-question" data-question="${escapeHTML(id)}">${label}<div class="pending-options">${choices}</div></div>`;
+    }
+    return `<div class="pending-question" data-question="${escapeHTML(id)}">${label}<input class="pending-free" type="text" placeholder="填写你的回答"></div>`;
+  }).join('');
+  return `<div class="callout-section pending-questions"><strong class="callout-label">需要你回答</strong>${items}</div>`;
 }
 function withHumanContext(payload){
   const context=String(payload?.context||'').trim();
@@ -55,7 +82,8 @@ function humanGateSectionsHTML(nr,run,node){
   const gate=nr?.gateResult;
   const sections=[];
   if(gate){
-    if(gate.actionRequired){
+    // 结构化问题会单独渲染成卡片，这里不再重复同义的纯文本清单。
+    if(gate.actionRequired&&!nr?.pendingQuestions?.length){
       sections.push(`<div class="callout-section"><strong class="callout-label">需要确认</strong><p class="callout-text">${escapeHTML(gate.actionRequired)}</p></div>`);
     }
     if(gate.reason){
@@ -69,6 +97,7 @@ function humanGateSectionsHTML(nr,run,node){
       sections.push(`<div class="callout-section"><strong class="callout-label">待确认项与证据</strong><ul class="callout-findings">${items}</ul></div>`);
     }
   }
+  if(nr?.pendingQuestions?.length)sections.push(pendingQuestionsHTML(nr));
   if(!sections.length&&node?.type==='approval'&&!nr?.error&&!nr?.feedback){
     const why=approvalWaitReason(run,node.id);
     if(why)sections.push(`<div class="callout-section"><strong class="callout-label">为什么需要人工确认</strong><p class="callout-text">${escapeHTML(why)}</p></div>`);

@@ -244,9 +244,13 @@ func summarizeToolResult(name string, failed bool, content any) string {
 	return label + " 完成"
 }
 
+// toolMsgLimit 决定工具名/入参摘要的最大字节数。600 能覆盖绝大多数单行命令
+// （mvn/go test/npm run 的完整命令行），同时把单条工具事件控制在 1KB 内。
+const toolMsgLimit = 600
+
 func clipToolMsg(s string) string {
 	s = strings.TrimSpace(strings.Join(strings.Fields(s), " "))
-	const n = 180
+	const n = toolMsgLimit
 	if len(s) <= n {
 		return s
 	}

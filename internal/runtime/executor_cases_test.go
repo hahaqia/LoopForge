@@ -295,7 +295,7 @@ func TestProtocolToolHelperBranches(t *testing.T) {
 	if !looksLikeSource("a\nb\nc\nd") || !looksLikeSource("func x()") || looksLikeSource("plain") {
 		t.Fatal("source detection")
 	}
-	if firstLogLine(" a\r\nb") != "a" || clipToolMsg(strings.Repeat("x", 200)) == strings.Repeat("x", 200) {
+	if firstLogLine(" a\r\nb") != "a" || clipToolMsg(strings.Repeat("x", toolMsgLimit+100)) == strings.Repeat("x", toolMsgLimit+100) {
 		t.Fatal("line clipping")
 	}
 }

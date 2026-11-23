@@ -522,3 +522,70 @@ body.obs-expand-open{overflow:hidden}
 @media (prefers-reduced-motion:reduce){
   .obs-chart-skeleton{animation:none}
 }
+
+/* 节点实时执行流：概览页直接看“在干什么”，不必切到实时轨迹。 */
+.graph-node-live{display:flex;align-items:baseline;gap:5px;margin-top:5px;min-width:0;color:var(--blue);font-size:9px;line-height:1.4}
+.graph-node-live b{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;font-size:9px}
+.graph-node-live em{position:static;right:auto;top:auto;flex:none;color:var(--muted-2);font-style:normal;font-size:9px}
+.node-live{margin-top:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);overflow:hidden}
+.node-live>summary{display:flex;align-items:center;gap:8px;height:35px;padding:0 10px;border-bottom:1px solid var(--line);background:var(--bg-soft);cursor:pointer;list-style:none}
+.node-live>summary::-webkit-details-marker{display:none}
+.node-live>summary b{font-size:10px}
+.node-live-age{margin-left:auto;color:var(--muted-2);font-size:9px}
+.node-live-pulse{width:6px;height:6px;border-radius:50%;background:var(--blue);animation:nl-pulse 1.4s ease-in-out infinite}
+.node-live-follow{border:0;background:transparent;color:var(--blue);font-size:9px;cursor:pointer;padding:0}
+.node-live-follow[hidden],.node-live-pulse[hidden]{display:none}
+.node-live-list{max-height:320px;overflow:auto;padding:5px 0;scroll-behavior:smooth}
+.nl-item{display:grid;grid-template-columns:54px 32px minmax(0,1fr);gap:8px;align-items:start;padding:4px 10px;font-size:10px;line-height:1.5}
+.nl-item time{color:var(--muted-2);font:9px/1.7 var(--mono);white-space:nowrap}
+.nl-tag{align-self:start;padding:0 4px;border:1px solid var(--line);border-radius:4px;color:var(--muted-2);font-size:8px;line-height:14px;text-align:center;white-space:nowrap}
+.nl-text{min-width:0;white-space:pre-wrap;word-break:break-word;color:var(--text);animation:nl-enter .16s ease-out}
+.nl-output .nl-text,.nl-think .nl-text{font:10px/1.6 var(--mono)}
+.nl-think .nl-text,.nl-item:not(.nl-output) .nl-text{
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;
+}
+.nl-tool .nl-text b{font-weight:600}
+.nl-tool .nl-text i{margin-left:6px;color:var(--muted-2);font-size:9px;font-style:normal}
+.nl-tool .nl-text i.is-running{color:var(--blue)}
+.nl-tool.is-done .nl-text b{color:var(--text)}
+.nl-item.nl-meta .nl-text{color:var(--muted-2)}
+.nl-tool{cursor:pointer}
+.nl-tool:hover .nl-text b{color:var(--blue)}
+.nl-tool.is-loading .nl-text i{opacity:.4}
+.nl-tool-detail{grid-column:1/-1;margin:2px 0 2px 94px;padding:6px 8px;border-left:2px solid var(--line-strong);background:var(--bg-soft);border-radius:0 6px 6px 0}
+.nl-tool-detail pre{max-height:180px;margin:0;overflow:auto;white-space:pre-wrap;word-break:break-word;color:var(--text);font:9px/1.55 var(--mono)}
+.nl-tool-detail p{margin:0;color:var(--muted-2);font-size:9px}
+.nl-tool-detail small{display:block;margin-top:4px;color:var(--muted-2);font-size:8px}
+.nl-text.md{font:10px/1.6 system-ui}
+.nl-text.md>*:first-child{margin-top:0}
+.nl-text.md>*:last-child{margin-bottom:0}
+.nl-text.md p,.nl-text.md ul,.nl-text.md ol{margin:0 0 4px}
+.nl-text.md h1,.nl-text.md h2,.nl-text.md h3,.nl-text.md h4{margin:7px 0 4px;font-size:12px;line-height:1.4;font-weight:600}
+.nl-text.md h1{font-size:13px}
+.nl-text.md ul,.nl-text.md ol{padding-left:16px}
+.nl-text.md li{margin:1px 0}
+.nl-text.md code{padding:1px 3px;border-radius:3px;background:var(--panel-2);font:9px var(--mono)}
+.nl-text.md pre{margin:4px 0;padding:7px;border-radius:6px;background:#0b1220;overflow:auto;font:9px/1.55 var(--mono)}
+.nl-text.md pre code{padding:0;background:none}
+.nl-text.md table{width:100%;margin:4px 0;border-collapse:collapse;font-size:9px}
+.nl-text.md th,.nl-text.md td{border:1px solid var(--line);padding:3px 5px;text-align:left}
+.nl-text.md blockquote{margin:4px 0;padding-left:8px;border-left:2px solid var(--line-strong);color:var(--muted-2)}
+.node-live.is-stale .node-live-age{color:var(--amber)}
+.node-live.is-stuck .node-live-age{color:var(--red)}
+.node-live.is-stuck .node-live-pulse{background:var(--red);animation-duration:2.4s}
+@keyframes nl-pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes nl-enter{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .node-live-pulse,.nl-text{animation:none}
+  .node-live-list{scroll-behavior:auto}
+}
+
+/* ask_human：等待回答时的结构化问题卡片（选项可点，开放题填输入框）。 */
+.pending-questions .pending-question{margin-top:8px}
+.pending-options{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.pending-option{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--line-strong);border-radius:999px;background:var(--panel);font-size:11px;cursor:pointer;transition:border-color .12s ease,background .12s ease}
+.pending-option:hover{border-color:var(--blue)}
+.pending-option input{margin:0;accent-color:var(--blue)}
+.pending-option:has(input:checked){border-color:var(--blue);background:var(--blue-soft)}
+.pending-free{width:100%;margin-top:5px;padding:6px 9px;border:1px solid var(--line-strong);border-radius:7px;background:var(--panel);color:var(--text);font-size:11px}
+.pending-free:focus{outline:none;border-color:var(--blue)}

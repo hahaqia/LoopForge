@@ -98,8 +98,10 @@ type InvocationOptions struct {
 	NodeID          string
 	ResumeSessionID string
 	GateResultPath  string
-	Repositories    []domain.RepositoryContext
-	RunnerLogin     bool
+	// AskLimit 是本次调用还允许向人提问的次数；0 表示不限制。
+	AskLimit     int
+	Repositories []domain.RepositoryContext
+	RunnerLogin  bool
 	// BrowserMCP is resolved on the executing host, never sent to a runner.
 	BrowserMCP *domain.MCPServerDefinition `json:"-"`
 }

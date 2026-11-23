@@ -375,6 +375,240 @@ function isOTLPAdapter(adapter){return adapter==='otlp-v1'||adapter==='codebuddy
 function isHookAdapter(adapter){return adapter==='agent-hooks-v1'||adapter==='codebuddy-hooks-v1'}
 function hookTraceDetails(e){const a=e.attributes||{},facts=[["ID",a.hookId],["事件",a.hook],["仓库",a.repositoryName||a.repositoryDir||a.repositoryId],["阶段",a.executionPhase],["语言",a.language],["Matcher",a.matcher],["耗时",a.durationMs!=null?`${a.durationMs} ms`:""],["退出码",a.exitCode!=null?String(a.exitCode):""]].filter(x=>x[1]!==''&&x[1]!=null);return `${facts.length?`<dl class="hook-trace-facts">${facts.map(([k,v])=>`<div><dt>${k}</dt><dd>${escapeHTML(v)}</dd></div>`).join('')}</dl>`:''}${a.stdout?`<details class="hook-trace-output"><summary>stdout</summary><pre>${escapeHTML(a.stdout)}</pre></details>`:''}${a.stderr?`<details class="hook-trace-output error"><summary>stderr</summary><pre>${escapeHTML(a.stderr)}</pre></details>`:''}`}
 function telemetryItemHTML(e){const hook=isHookAdapter(e.source?.adapter),tag=hook?'Hook':isOTLPAdapter(e.source?.adapter)?'OTEL':'',title=hook?(e.attributes?.hookName||e.attributes?.hookId||e.name):e.name,repository=e.attributes?.repositoryName||e.attributes?.repositoryDir||e.attributes?.repositoryId||'';return `<article class="telemetry-event ${e.category}"><time>${new Date(e.timestamp).toLocaleTimeString()}</time><span class="telemetry-category">${telemetryLabel(e)}${tag?`<em class="adapter-tag">${tag}</em>`:''}</span><div><b>${escapeHTML(title)}</b><p>${escapeHTML(e.message||'')}</p>${hook?hookTraceDetails(e):''}<small>${escapeHTML(e.nodeId||'run')}${repository?` · ${escapeHTML(repository)}`:''}${hook&&e.source?.provider?` · ${escapeHTML(e.source.provider)}`:''}${e.model?` · ${escapeHTML(e.model)}`:''}${e.toolCallId?` · ${escapeHTML(e.toolCallId)}`:''}</small></div></article>`}
+/** 运行中节点的实时执行流：工具合并成一行、文本原地增长，供概览页直接展示。 */
+function nodeLiveAgeMs(ms){
+  if(!isFinite(ms)||ms<0)return '';
+  if(ms<2000)return '刚刚';
+  if(ms<60000)return `${Math.round(ms/1000)} 秒前`;
+  const m=Math.floor(ms/60000);
+  return m<60?`${m} 分钟前`:`${Math.floor(m/60)} 小时前`;
+}
+function nodeLiveAge(ts){
+  if(!ts)return '';
+  return nodeLiveAgeMs(Date.now()-new Date(ts).getTime());
+}
+/** 运行中把“多久没动”说清楚：60 秒起提示无新事件，3 分钟起提示可能卡住。 */
+function nodeLiveAgeLabel(ms,running){
+  if(!running)return '';
+  if(!isFinite(ms))return '等待首个事件…';
+  const age=nodeLiveAgeMs(ms);
+  if(ms>180000)return `${age} · 可能卡住`;
+  if(ms>60000)return `最后活动 ${age} · 无新事件`;
+  return `最后活动 ${age}`;
+}
+function nodeLiveEvents(nodeId,limit=60){
+  const page=state.runTelemetry;
+  const source=page?.nodeId===nodeId&&page.loaded?page.items:(state.activeRun?.telemetry||[]).filter(e=>e&&e.nodeId===nodeId);
+  return nodeMergeToolEvents(compactTelemetry(source)).slice(-limit);
+}
+/** 同一次工具调用会先后报 use/result，按 toolCallId 合并成一行；id 保留首次事件，供 DOM 复用。 */
+function nodeMergeToolEvents(events){
+  const out=[],byCall=new Map();
+  for(const e of events||[]){
+    if(e.category!=='tool'||!e.toolCallId){out.push(e);continue}
+    const prev=byCall.get(e.toolCallId);
+    if(!prev){const copy={...e,inputSeq:e.sequence};byCall.set(e.toolCallId,copy);out.push(copy);continue}
+    prev.message=(e.message||prev.message||'').replace(/\s*完成$/,'')||prev.message;
+    prev.phase=e.phase||prev.phase;
+    prev.level=e.level||prev.level;
+    prev.timestamp=e.timestamp||prev.timestamp;
+    prev.sequence=Math.max(Number(prev.sequence||0),Number(e.sequence||0));
+    prev.inputSeq=prev.inputSeq||e.sequence;
+  }
+  return out;
+}
+function nodeLiveToolName(e){
+  const raw=(e.message||'').replace(/\s*完成$/,'').trim();
+  return raw||e.name||'工具调用';
+}
+/** 当前正在执行（尚未返回 result）的工具，用于显示“已跑多久”。 */
+function nodeLiveRunningTool(events){
+  for(let i=events.length-1;i>=0;i--){
+    const e=events[i];
+    if(e.category!=='tool')continue;
+    return e.phase==='finish'?null:e;
+  }
+  return null;
+}
+function nodeLiveDuration(ts){
+  const ms=Date.now()-new Date(ts).getTime();
+  if(!isFinite(ms)||ms<0)return '';
+  const s=Math.floor(ms/1000);
+  if(s<60)return `${s}s`;
+  const m=Math.floor(s/60);
+  return m<60?`${m}m${String(s%60).padStart(2,'0')}s`:`${Math.floor(m/60)}h${String(m%60).padStart(2,'0')}m`;
+}
+function nodeLiveActionText(events,nr){
+  for(let i=events.length-1;i>=0;i--){
+    const e=events[i];
+    if(e.category==='tool')return `⚙ ${nodeLiveToolName(e)}`;
+    if(e.category==='reasoning')return '🧠 思考中';
+    if(e.category==='output')return '✍ 输出中';
+    if(e.category==='verification')return '✓ 验证中';
+    if(e.category==='process')return `▸ ${(e.message||'').split('\n')[0]}`;
+  }
+  return nr?.activity?`▸ ${nr.activity}`:'';
+}
+/** 拓扑卡片上的一行实时摘要：在做什么 + 最后活动多久前。 */
+function nodeLiveSummaryHTML(r,nodeId){
+  const nr=r.nodes?.[nodeId]||{};
+  if(nr.status!=='running')return '';
+  const events=nodeLiveEvents(nodeId,20);
+  const tool=nodeLiveRunningTool(events);
+  const text=tool?`⚙ ${nodeLiveToolName(tool)} · ${nodeLiveDuration(tool.timestamp)}`:nodeLiveActionText(events,nr);
+  const age=tool?nodeLiveAge(tool.timestamp):(nodeLiveAge(events[events.length-1]?.timestamp)||nodeLiveAge(nr.startedAt));
+  if(!text&&!age)return '';
+  return `<span class="graph-node-live">${text?`<b>${escapeHTML(text)}</b>`:''}${age?`<em>${escapeHTML(age)}</em>`:''}</span>`;
+}
+function nodeLiveItemHTML(e,markdown=false){
+  const time=e.timestamp?new Date(e.timestamp).toLocaleTimeString([], {hour12:false}):'';
+  const cat=e.category||'',id=escapeHTML(String(e.id||e.sequence||''));
+  const text=escapeHTML(e.message||'');
+  if(cat==='output'){
+    // 运行中保持纯文本，让增量能逐字追上来；节点结束后再排版成 Markdown。
+    const body=markdown?renderMarkdown(e.message||''):text;
+    return `<div class="nl-item nl-output" data-live-id="${id}"><time>${time}</time><span class="nl-tag">输出</span><div class="nl-text${markdown?' md':''}">${body}</div></div>`;
+  }
+  if(cat==='reasoning')return `<div class="nl-item nl-think" data-live-id="${id}"><time>${time}</time><span class="nl-tag">思考</span><div class="nl-text">${text}</div></div>`;
+  if(cat==='tool'){
+    const done=e.phase==='finish',seq=Number(e.inputSeq||e.sequence||0);
+    return `<div class="nl-item nl-tool${done?' is-done':''}" data-live-id="${id}" data-live-seq="${seq}" title="点击查看调用详情"><time>${time}</time><span class="nl-tag">工具</span><div class="nl-text"><b>${escapeHTML(nodeLiveToolName(e))}</b><i class="${done?'':'is-running'}">${done?'完成':'执行中'}</i></div></div>`;
+  }
+  if(cat==='usage'||cat==='model')return '';
+  return `<div class="nl-item nl-meta" data-live-id="${id}"><time>${time}</time><span class="nl-tag">${escapeHTML(telemetryLabel(e))}</span><div class="nl-text">${escapeHTML((e.message||'').split('\n')[0])}</div></div>`;
+}
+function nodeLiveStreamHTML(nr,events,running){
+  events=nodeMergeToolEvents(events||[]);
+  if(!running&&!events.length)return '';
+  const lastTs=events[events.length-1]?.timestamp;
+  const ageLabel=nodeLiveAgeLabel(lastTs?Date.now()-new Date(lastTs).getTime():NaN,running);
+  return `<details class="node-live" data-node-live${running?' open':''}><summary><b>执行流</b><span class="node-live-pulse" ${running?'':'hidden'}></span><span class="node-live-age" data-node-live-age>${escapeHTML(ageLabel)}</span><button type="button" class="node-live-follow" data-node-live-follow ${running?'':'hidden'}>跟随中</button></summary><div class="node-live-list" data-node-live-list>${events.map(e=>nodeLiveItemHTML(e,!running)).join('')||`<div class="empty-inline"><p>${running?'等待首个事件…':'该节点没有执行事件'}</p></div>`}</div></details>`;
+}
+/**
+ * 打字机：上游把增量合并后，一条事件的文本会一次变长一段。
+ * 这里只补「新增的后缀」，用 rAF 分几帧追上去；非前缀变化（纠错/重写）直接替换。
+ */
+function typeNodeLiveText(el,next){
+  const prev=el.textContent||'';
+  if(next===prev)return;
+  if(!next.startsWith(prev)||next.length-prev.length>600){el.textContent=next;return}
+  const token=String((Number(el.dataset.typingToken||0)+1));
+  el.dataset.typingToken=token;
+  const step=()=>{
+    if(el.dataset.typingToken!==token)return;
+    const shown=el.textContent||'';
+    if(shown.length>=next.length){el.textContent=next;delete el.dataset.typingToken;return}
+    const take=Math.max(1,Math.ceil((next.length-shown.length)/6));
+    el.textContent=next.slice(0,shown.length+take);
+    const list=el.closest('.node-live-list');
+    if(list&&state.nodeLiveStick!==false)list.scrollTop=list.scrollHeight;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+/** 原地更新：同一事件只改文本，不重建 DOM，文本会随上游增量逐段变长。 */
+function syncNodeLiveList(list,events,running){
+  if(!list)return;
+  const keep=new Set();
+  for(const e of events){
+    const id=String(e.id||e.sequence||'');
+    let el=id?list.querySelector(`[data-live-id="${CSS.escape(id)}"]`):null;
+    if(!el){
+      list.insertAdjacentHTML('beforeend',nodeLiveItemHTML(e));
+      el=list.lastElementChild;
+    }else if(el){
+      const text=el.querySelector('.nl-text');
+      if(text&&!text.classList.contains('md')&&e.category!=='tool')typeNodeLiveText(text,e.message||'');
+      if(e.category==='tool'){
+        const done=e.phase==='finish';
+        el.classList.toggle('is-done',done);
+        const mark=el.querySelector('.nl-text i');
+        if(mark){mark.className=done?'':'is-running';mark.textContent=done?'完成':'执行中'}
+      }
+    }
+    if(el)keep.add(el);
+  }
+  [...list.children].forEach(ch=>{if(!keep.has(ch))ch.remove()});
+  if(!list.children.length)list.innerHTML=`<div class="empty-inline"><p>${running?'等待首个事件…':'该节点没有执行事件'}</p></div>`;
+}
+function patchNodeLive(host,r){
+  const box=host.querySelector('[data-node-live]');
+  if(!box)return;
+  const nodeId=state.selectedRunNode,nr=r.nodes?.[nodeId]||{},running=nodeInspectorIsRunning(r,nodeId);
+  const events=nodeLiveEvents(nodeId);
+  const list=box.querySelector('[data-node-live-list]');
+  syncNodeLiveList(list,events,running);
+  const lastTs=events[events.length-1]?.timestamp;
+  const ms=lastTs?Date.now()-new Date(lastTs).getTime():NaN;
+  const ageEl=box.querySelector('[data-node-live-age]');
+  if(ageEl)ageEl.textContent=nodeLiveAgeLabel(ms,running);
+  box.classList.toggle('is-stale',running&&isFinite(ms)&&ms>60000&&ms<=180000);
+  box.classList.toggle('is-stuck',running&&isFinite(ms)&&ms>180000);
+  const follow=box.querySelector('[data-node-live-follow]');
+  if(follow)follow.textContent=state.nodeLiveStick===false?'回到最新':'跟随中';
+  if(list&&state.nodeLiveStick!==false)list.scrollTop=list.scrollHeight;
+  box.querySelector('.node-live-pulse')?.toggleAttribute('hidden',!running);
+}
+function nodeLiveToolDetailHTML(e){
+  const tool=e?.tool||{},input=e?.attributes?.input,facts=[];
+  if(tool.durationMs)facts.push(`耗时 ${tool.durationMs} ms`);
+  if(tool.success===false)facts.push('执行失败');
+  if(tool.callId)facts.push(`call ${tool.callId}`);
+  const body=input
+    ? `<pre>${escapeHTML(typeof input==='string'?input:JSON.stringify(input,null,2))}</pre>`
+    : '<p>该调用没有记录可展示的入参。</p>';
+  return `<div class="nl-tool-detail">${body}${facts.length?`<small>${escapeHTML(facts.join(' · '))}</small>`:''}</div>`;
+}
+/** 点击工具行时按 sequence 单条拉 expanded 事件：只有这条请求会带回脱敏后的入参。 */
+async function expandNodeLiveTool(ev){
+  if(ev.target?.closest?.('.nl-tool-detail'))return;
+  const row=ev.target?.closest?.('.nl-tool[data-live-seq]');
+  if(!row)return;
+  const opened=row.querySelector('.nl-tool-detail');
+  if(opened){opened.remove();return}
+  const seq=Number(row.dataset.liveSeq||0),run=state.activeRun;
+  if(!seq||!run)return;
+  const pg=runPageTarget(run,state.selectedRunNode);
+  const key=`${pg.runId}:${seq}`;
+  let event=state.nodeLiveDetails?.[key];
+  if(event===undefined){
+    row.classList.add('is-loading');
+    try{
+      const params=new URLSearchParams({after:String(seq-1),limit:'1',expanded:'true'});
+      if(pg.nodeId)params.set('nodeId',pg.nodeId);
+      const page=await api(`/api/runs/${encodeURIComponent(pg.runId)}/telemetry?${params}`,{silent:true});
+      event=(page.events||[]).find(item=>Number(item.sequence)===seq)||(page.events||[])[0]||null;
+      state.nodeLiveDetails={...(state.nodeLiveDetails||{}),[key]:event};
+    }catch(e){toast(e.message,'err');return}
+    finally{row.classList.remove('is-loading')}
+  }
+  if(!event)return;
+  // 等待网络期间列表可能已随新事件重建，按 id 重新定位。
+  const target=$('#runDetail')?.querySelector(`[data-live-id="${CSS.escape(row.dataset.liveId||'')}"]`);
+  if(!target||target.querySelector('.nl-tool-detail'))return;
+  target.insertAdjacentHTML('beforeend',nodeLiveToolDetailHTML(event));
+}
+function bindNodeLiveActions(host){
+  const box=host.querySelector('[data-node-live]');
+  if(!box)return;
+  const list=box.querySelector('[data-node-live-list]'),follow=box.querySelector('[data-node-live-follow]');
+  list?.addEventListener('click',expandNodeLiveTool);
+  follow?.addEventListener('click',ev=>{
+    ev.preventDefault();ev.stopPropagation();
+    state.nodeLiveStick=true;
+    if(list)list.scrollTop=list.scrollHeight;
+    follow.textContent='跟随中';
+  });
+  // 没有新事件时也要让“最后活动 N 秒前”继续走，否则页面会停在旧数字上，看不出卡住。
+  clearInterval(state.nodeLiveTimer);
+  state.nodeLiveTimer=setInterval(()=>{
+    const target=$('#runDetail');
+    if(!target?.querySelector('[data-node-live]')||!state.activeRun){
+      clearInterval(state.nodeLiveTimer);state.nodeLiveTimer=null;return;
+    }
+    patchNodeLive(target,state.activeRun);
+  },5000);
+}
 async function loadRunLogs(runId,nodeId,more=false){
   if(!more&&state.runLogs?.runId===runId&&state.runLogs?.nodeId===nodeId&&state.runLogs.loading)return;
   const params=new URLSearchParams({limit:'100'});
@@ -434,8 +668,14 @@ function restoreScrollBox(el,saved,fallbackBottom){if(!el)return;if(saved){el.sc
 function resetRunScroll(runId){state.uiScroll={runId,nodeId:'',graphLeft:0,feedTop:0,telTop:0,mainTop:0,feedStick:true,telStick:true}}
 function bindRunScrollLocks(host,runId,nodeId){
   if(!state.uiScroll||state.uiScroll.runId!==runId)resetRunScroll(runId);
-  if(state.uiScroll.nodeId!==nodeId){state.uiScroll.nodeId=nodeId;state.uiScroll.feedTop=0;state.uiScroll.telTop=0;state.uiScroll.feedStick=true;state.uiScroll.telStick=true}
-  const graph=host.querySelector('.run-graph'),feed=host.querySelector('.worker-log-feed'),tel=host.querySelector('.telemetry-feed'),main=host.querySelector('.run-detail-main');
+  if(state.uiScroll.nodeId!==nodeId){state.uiScroll.nodeId=nodeId;state.uiScroll.feedTop=0;state.uiScroll.telTop=0;state.uiScroll.feedStick=true;state.uiScroll.telStick=true;state.nodeLiveStick=true;state.nodeLiveTop=0}
+  const graph=host.querySelector('.run-graph'),feed=host.querySelector('.worker-log-feed'),tel=host.querySelector('.telemetry-feed'),main=host.querySelector('.run-detail-main'),live=host.querySelector('.node-live-list');
+  if(live){live.scrollTop=state.nodeLiveStick===false?(state.nodeLiveTop||0):live.scrollHeight;live.onscroll=()=>{
+    state.nodeLiveTop=live.scrollTop;
+    state.nodeLiveStick=(live.scrollHeight-live.clientHeight-live.scrollTop)<40;
+    const follow=host.querySelector('[data-node-live-follow]');
+    if(follow)follow.textContent=state.nodeLiveStick?'跟随中':'回到最新';
+  }}
   if(graph){graph.scrollLeft=state.uiScroll.graphLeft||0;graph.onscroll=()=>{state.uiScroll.graphLeft=graph.scrollLeft}}
   if(main){main.scrollTop=state.uiScroll.mainTop||0;main.onscroll=()=>{state.uiScroll.mainTop=main.scrollTop}}
   const bindBottom=(el,key,stickKey)=>{if(!el)return;el.scrollTop=state.uiScroll[stickKey]?el.scrollHeight:state.uiScroll[key];el.onscroll=()=>{state.uiScroll[key]=el.scrollTop;state.uiScroll[stickKey]=(el.scrollHeight-el.clientHeight-el.scrollTop)<72}};
@@ -574,6 +814,14 @@ function patchRunLive(r){
   const host=$('#runDetail');if(!host||host.dataset.runId!==r.id||host.dataset.controlSignature!==runControlSignature(r)){renderRunDetail(r);return}
   const usageHost=host.querySelector('[data-run-usage]');
   if(usageHost){const html=liveUsageHTML(r);if(usageHost.innerHTML!==html)usageHost.innerHTML=html}
+  // 节点从“未开始”进入运行态、或历史事件晚于首屏到达时，执行流容器还不存在，
+  // 需要补一次整块渲染（否则节点结束后执行流永远出不来）。
+  if(!host.querySelector('[data-node-live]')){
+    const running=nodeInspectorIsRunning(r,state.selectedRunNode);
+    const pg2=runPageTarget(r,state.selectedRunNode);
+    const loaded=state.runTelemetry?.runId===pg2.runId&&state.runTelemetry?.nodeId===pg2.nodeId&&state.runTelemetry.loaded;
+    if(running||(loaded&&state.runTelemetry.items.length)){renderRunDetail(r);return}
+  }
   if(inspectorNeedsRefresh(host,r)){renderRunDetail(r);return}
   const headerStatus=host.querySelector('.run-header-main .status');if(headerStatus){headerStatus.className=`status ${runDisplayStatusClass(r)}`;headerStatus.textContent=runDisplayStatus(r)}
   const progress=runProgress(r),bar=host.querySelector('.run-progress.large i'),pct=host.querySelector('.run-progress-pct'),count=host.querySelector('.run-progress-cell>b');
@@ -586,6 +834,9 @@ function patchRunLive(r){
     const count=(r.artifacts||[]).filter(a=>a.nodeId===btn.dataset.runNode).length;
     let em=btn.querySelector('em');
     if(count){if(!em){em=document.createElement('em');btn.appendChild(em)}em.textContent=`${count} 产物`}else if(em)em.remove();
+    const live=btn.querySelector('.graph-node-live'),liveHTML=nodeLiveSummaryHTML(r,btn.dataset.runNode);
+    if(liveHTML){if(live)live.outerHTML=liveHTML;else btn.querySelector('div')?.insertAdjacentHTML('beforeend',liveHTML)}
+    else if(live)live.remove();
   });
   const selected=state.selectedRunNode,nr=r.nodes?.[selected]||{};
   /** 保留现有元素，让连续日志更新不重启动效。 */
@@ -599,6 +850,7 @@ function patchRunLive(r){
   const artifactTotal=host.querySelector('.run-context-grid > div:last-child b');
   if(artifactTotal)artifactTotal.textContent=`${(r.artifacts||[]).length} 个不可变快照`;
   const activity=host.querySelector('.node-activity-inline');if(activity){activity.classList.toggle('is-running',inspectorRunning);if(nr.activity){activity.hidden=false;const b=activity.querySelector('b');if(b&&b.textContent!==nr.activity)b.textContent=nr.activity}else{activity.hidden=true}}
+  patchNodeLive(host,r);
   const feed=host.querySelector('.worker-log-feed'),tel=host.querySelector('.telemetry-feed');
   const pg=runPageTarget(r,selected);
   const logPage=state.runLogs?.runId===pg.runId&&state.runLogs.nodeId===pg.nodeId&&state.runLogs.loaded?state.runLogs:null;
@@ -1202,7 +1454,7 @@ function renderRunDetail(r){
   const runTabs=['overview:概览','trace:实时轨迹','logs:Worker日志','workspace:工作区'];
   if(previewEnabled)runTabs.push('preview:前端预览');
   runTabs.push('eval:智能评测');
-  host.innerHTML=`<div class="run-detail-main"><header class="run-detail-header"><div class="run-detail-topbar"><button class="button ghost small run-back-inline" data-run-back>← 返回运行列表</button><div class="run-breadcrumb"><span>${issueRef}</span><i>›</i><span>${escapeHTML(wf.name)}</span></div>${r.executionContext?.parentRunId?`<button class="button ghost small" data-open-parent-run="${escapeHTML(r.executionContext.parentRunId)}">↑ 返回父 SOP 运行</button>`:''}<div class="run-header-actions">${issueId?`<button class="button primary small" data-open-issue="${escapeHTML(issueId)}">打开需求</button>`:''}${!r.pauseRequested?refreshRunSOPButtonHTML(r):''}<button class="button ghost small" data-open-flow>查看流程定义</button>${['queued','running','waiting'].includes(r.status)?'<button class="button danger-outline small" data-cancel-run>取消运行</button>':'<button class="button danger-outline small" data-delete-run>删除记录</button>'}</div></div><div class="run-header-main"><div><h2>${escapeHTML(ctx.issue?.title||wf.name)}</h2><p>${escapeHTML(r.input||'无运行输入')}</p></div><div class="run-status-wrap">${workspaceRestoreButtonHTML()}<span class="status ${runDisplayStatusClass(r)}">${runDisplayStatus(r)}</span>${r.status==='failed'&&!gongfengIssueClosed(ctx.issue)?'<button class="button primary small" data-resume-run>↻ 重试运行</button>':''}${canManuallyPassFailedNode(r)&&!gongfengIssueClosed(ctx.issue)?`<button class="button ghost small" data-pass-node="${escapeHTML(r.id)}" data-node="${escapeHTML(failedNodeId(r))}">手动通过</button>`:''}</div></div><div class="run-header-meta"><span class="run-meta-chip run-id-chip" title="${escapeHTML(r.id)}">Run <code>${escapeHTML(r.id.slice(-12))}</code><button type="button" class="run-id-copy" data-copy-run title="复制完整 Run ID" aria-label="复制 Run ID"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9A1.5 1.5 0 0 0 3.5 10.5H5.5"/></svg></button></span>${runModeChipHTML(r,wf)}${runExecutionChipHTML(r)}<span class="run-meta-chip"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>启动于 ${new Date(r.createdAt).toLocaleString()}</span><span class="run-meta-chip" title="${escapeHTML(runTimingTitle(r))}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>执行 ${runElapsed(r)}${runWallNote(r)}</span></div></header><div class="run-section-label"><b>执行详情</b><div class="run-section-label-actions"><button class="button ghost small" data-export-logs title="下载本次运行全部节点的 Worker 日志">导出全部日志</button><div class="run-tabs" role="tablist">${runTabs.map(t=>{const[k,label]=t.split(':');return `<button class="run-tab ${runDetailTab===k?'active':''}" data-run-tab="${k}">${label}</button>`}).join('')}</div></div></div><div class="run-pane" data-run-pane="overview" ${runDetailTab==='overview'?'':'hidden'}><section class="run-context-grid">${runProgressCellHTML(r,wf,progress,graphNodes)}<div data-run-usage>${liveUsageHTML(r)}</div><div><span>交付物</span><b>${(r.artifacts||[]).length} 个不可变快照</b><small>按节点和尝试次数保留版本</small></div></section></section>${alignPanelHTML}${runIsGroupMode(r)?`<details class="run-sop-snapshot"><summary><div><b>已冷冻 SOP 快照</b><span>历史协作 · ${graphNodes.length} 个节点可展开审计</span></div></summary>`:''}<section class="run-graph-section"><div class="section-heading"><div><h3>节点执行拓扑</h3><span>点击节点查看该节点的输出、产物和执行事件</span></div><div class="graph-legend"><span><i class="succeeded"></i>完成</span><span><i class="running"></i>运行中</span><span><i class="waiting_approval"></i>待审批</span><span><i></i>未开始</span></div></div><div class="run-graph">${graphNodes.map((n,index)=>{const gv=graphNodeView(r,n.id),meta=nodeMeta(n),arts=(r.artifacts||[]).filter(a=>a.nodeId===n.id).length;return `${index?'<span class="graph-arrow">→</span>':''}<button class="graph-node ${gv.cls} ${state.selectedRunNode===n.id?'selected':''}" data-run-node="${escapeHTML(n.id)}"><span class="node-icon ${meta.kind}">${runNodeIcon(meta.kind)}</span><div><b>${escapeHTML(n.name)}</b><small>${escapeHTML(gv.text)}</small></div>${arts?`<em>${arts} 产物</em>`:''}</button>`}).join('')}</div></section><div class="node-drilldown"><section class="node-inspector"><div class="section-heading"><div class="node-inspector-title"><h3>${escapeHTML(selected?.name||'节点详情')}</h3><span class="node-activity-inline${inspectorRunning?' is-running':''}" ${nr.activity?'':'hidden'}>当前活动：<b>${escapeHTML(nr.activity||'')}</b></span><span class="node-inspector-model">${escapeHTML(nr.provider||'未分配')}${nr.model?` · ${escapeHTML(nr.model)}`:''}</span></div><span class="status node-inspector-status ${nr.status||'pending'}${inspectorRunning?' is-running':''}">${statusText(nr.status)||'待执行'}</span></div><div class="node-facts"><div><span>执行次数</span><b>${nr.attempt||0}</b></div><div><span>返工</span><b>${nr.reworkCount||0}</b></div><div><span>Token</span><b>${formatTokens(nr.usage?.totalTokens)}</b></div><div><span>工具调用</span><b>${nr.toolCalls||0}</b></div></div>${childSOPPanelHTML(r,selected?.id)}${gateResultCardHTML(nr)}${canRerunFromHere(r,selected?.id)?`<div class="node-rerun-row"><button type="button" class="button ghost small" data-rerun-from-here="${escapeHTML(selected.id)}">从这里重跑</button><small>保留上游结果，从本节点及下游重跑</small></div>`:''}${nr.output?`<div class="node-output"><div><b>节点输出</b><button data-copy-output>复制</button></div><pre>${escapeHTML(displayNodeOutput(nr.output))}</pre></div>`:'<div class="node-output empty"><b>节点输出</b><p>节点完成后，结构化输出会显示在这里。</p></div>'}<div class="runtime-details"><span>Sandbox <code>${escapeHTML(nr.sandboxId||'—')}</code></span><span>Session <code>${escapeHTML(nr.sessionId||'—')}</code></span></div></section><section class="node-artifacts"><div class="section-heading"><div><h3>节点交付物</h3><span>${nodeArtifacts.length} 个版本</span></div></div><div class="node-artifact-list">${nodeArtifacts.map(a=>`<button class="node-artifact-card" data-artifact="${escapeHTML(a.id)}"><span class="artifact-file-icon">${a.mediaType==='application/json'?'{}':'MD'}</span><div><b>${escapeHTML(a.name)}</b><span>${escapeHTML(a.path)}</span><small>attempt ${a.attempt} · ${Math.max(1,Math.ceil((a.size||0)/1024))} KB · ${(a.sha256||'').slice(0,10)}</small></div><i>预览 ›</i></button>`).join('')||'<div class="empty-inline"><span>◇</span><p>此节点还没有登记交付物</p></div>'}</div></section></div>${runIsGroupMode(r)?'</details>':''}</div><div class="run-pane" data-run-pane="trace" ${runDetailTab==='trace'?'':'hidden'}><section class="trace-section"><div class="section-heading"><div><h3>${telemetrySectionTitle(telAdapter)}</h3><span>${telPage?`${telemetry.length} 条已加载`:'加载最近 100 条'}</span></div><div class="trace-heading-actions">${telemetrySourceTabs(telAdapter,'data-tel-adapter')}${telPage?.hasMore?`<button class="button ghost small" data-tel-more>加载更早的 100 条</button>`:''}</div></div><div class="telemetry-feed">${telPage?([...telemetry].reverse().map(telemetryItemHTML).join('')||`<div class="empty-inline"><p>${telemetryEmptyHint(telAdapter)}</p></div>`):'<div class="empty-inline"><p>正在加载轨迹…</p></div>'}</div></section></div><div class="run-pane" data-run-pane="logs" ${runDetailTab==='logs'?'':'hidden'}><section class="worker-log-section"><div class="section-heading"><div><h3>Worker 日志</h3><span>${logPage?`${visibleWorkerLogs(logPage.items).length} 条调用`:(logBusy?'正在接收…':'实时加载最近调用')}</span></div><div class="worker-log-heading-actions">${logPage?.hasMore?`<button class="button ghost small" data-logs-more>加载更早的 100 条</button>`:''}</div></div><div class="worker-log-feed">${logPage?(visibleWorkerLogs(logPage.items).map(logLineHTML).join('')||'<div class="empty-inline"><p>该节点没有日志</p></div>'):'<div class="empty-inline"><p>正在加载 Worker 实时日志…</p></div>'}</div></section></div></div>`;  host.querySelector('.run-detail-main')?.insertAdjacentHTML('beforeend',`<div class="run-pane" data-run-pane="workspace" ${runDetailTab==='workspace'?'':'hidden'}>${workspacePaneHTML(r)}</div>${previewEnabled?`<div class="run-pane" data-run-pane="preview" ${runDetailTab==='preview'?'':'hidden'}>${previewPaneHTML(r)}</div>`:''}<div class="run-pane" data-run-pane="eval" ${runDetailTab==='eval'?'':'hidden'}>${runEvalPaneHTML(r)}</div>`);
+  host.innerHTML=`<div class="run-detail-main"><header class="run-detail-header"><div class="run-detail-topbar"><button class="button ghost small run-back-inline" data-run-back>← 返回运行列表</button><div class="run-breadcrumb"><span>${issueRef}</span><i>›</i><span>${escapeHTML(wf.name)}</span></div>${r.executionContext?.parentRunId?`<button class="button ghost small" data-open-parent-run="${escapeHTML(r.executionContext.parentRunId)}">↑ 返回父 SOP 运行</button>`:''}<div class="run-header-actions">${issueId?`<button class="button primary small" data-open-issue="${escapeHTML(issueId)}">打开需求</button>`:''}${!r.pauseRequested?refreshRunSOPButtonHTML(r):''}<button class="button ghost small" data-open-flow>查看流程定义</button>${['queued','running','waiting'].includes(r.status)?'<button class="button danger-outline small" data-cancel-run>取消运行</button>':'<button class="button danger-outline small" data-delete-run>删除记录</button>'}</div></div><div class="run-header-main"><div><h2>${escapeHTML(ctx.issue?.title||wf.name)}</h2><p>${escapeHTML(r.input||'无运行输入')}</p></div><div class="run-status-wrap">${workspaceRestoreButtonHTML()}<span class="status ${runDisplayStatusClass(r)}">${runDisplayStatus(r)}</span>${r.status==='failed'&&!gongfengIssueClosed(ctx.issue)?'<button class="button primary small" data-resume-run>↻ 重试运行</button>':''}${canManuallyPassFailedNode(r)&&!gongfengIssueClosed(ctx.issue)?`<button class="button ghost small" data-pass-node="${escapeHTML(r.id)}" data-node="${escapeHTML(failedNodeId(r))}">手动通过</button>`:''}</div></div><div class="run-header-meta"><span class="run-meta-chip run-id-chip" title="${escapeHTML(r.id)}">Run <code>${escapeHTML(r.id.slice(-12))}</code><button type="button" class="run-id-copy" data-copy-run title="复制完整 Run ID" aria-label="复制 Run ID"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9A1.5 1.5 0 0 0 3.5 10.5H5.5"/></svg></button></span>${runModeChipHTML(r,wf)}${runExecutionChipHTML(r)}<span class="run-meta-chip"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>启动于 ${new Date(r.createdAt).toLocaleString()}</span><span class="run-meta-chip" title="${escapeHTML(runTimingTitle(r))}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>执行 ${runElapsed(r)}${runWallNote(r)}</span></div></header><div class="run-section-label"><b>执行详情</b><div class="run-section-label-actions"><button class="button ghost small" data-export-logs title="下载本次运行全部节点的 Worker 日志">导出全部日志</button><div class="run-tabs" role="tablist">${runTabs.map(t=>{const[k,label]=t.split(':');return `<button class="run-tab ${runDetailTab===k?'active':''}" data-run-tab="${k}">${label}</button>`}).join('')}</div></div></div><div class="run-pane" data-run-pane="overview" ${runDetailTab==='overview'?'':'hidden'}><section class="run-context-grid">${runProgressCellHTML(r,wf,progress,graphNodes)}<div data-run-usage>${liveUsageHTML(r)}</div><div><span>交付物</span><b>${(r.artifacts||[]).length} 个不可变快照</b><small>按节点和尝试次数保留版本</small></div></section></section>${alignPanelHTML}${runIsGroupMode(r)?`<details class="run-sop-snapshot"><summary><div><b>已冷冻 SOP 快照</b><span>历史协作 · ${graphNodes.length} 个节点可展开审计</span></div></summary>`:''}<section class="run-graph-section"><div class="section-heading"><div><h3>节点执行拓扑</h3><span>点击节点查看该节点的输出、产物和执行事件</span></div><div class="graph-legend"><span><i class="succeeded"></i>完成</span><span><i class="running"></i>运行中</span><span><i class="waiting_approval"></i>待审批</span><span><i></i>未开始</span></div></div><div class="run-graph">${graphNodes.map((n,index)=>{const gv=graphNodeView(r,n.id),meta=nodeMeta(n),arts=(r.artifacts||[]).filter(a=>a.nodeId===n.id).length;return `${index?'<span class="graph-arrow">→</span>':''}<button class="graph-node ${gv.cls} ${state.selectedRunNode===n.id?'selected':''}" data-run-node="${escapeHTML(n.id)}"><span class="node-icon ${meta.kind}">${runNodeIcon(meta.kind)}</span><div><b>${escapeHTML(n.name)}</b><small>${escapeHTML(gv.text)}</small>${nodeLiveSummaryHTML(r,n.id)}</div>${arts?`<em>${arts} 产物</em>`:''}</button>`}).join('')}</div></section><div class="node-drilldown"><section class="node-inspector"><div class="section-heading"><div class="node-inspector-title"><h3>${escapeHTML(selected?.name||'节点详情')}</h3><span class="node-activity-inline${inspectorRunning?' is-running':''}" ${nr.activity?'':'hidden'}>当前活动：<b>${escapeHTML(nr.activity||'')}</b></span><span class="node-inspector-model">${escapeHTML(nr.provider||'未分配')}${nr.model?` · ${escapeHTML(nr.model)}`:''}</span></div><span class="status node-inspector-status ${nr.status||'pending'}${inspectorRunning?' is-running':''}">${statusText(nr.status)||'待执行'}</span></div><div class="node-facts"><div><span>执行次数</span><b>${nr.attempt||0}</b></div><div><span>返工</span><b>${nr.reworkCount||0}</b></div><div><span>Token</span><b>${formatTokens(nr.usage?.totalTokens)}</b></div><div><span>工具调用</span><b>${nr.toolCalls||0}</b></div></div>${childSOPPanelHTML(r,selected?.id)}${gateResultCardHTML(nr)}${canRerunFromHere(r,selected?.id)?`<div class="node-rerun-row"><button type="button" class="button ghost small" data-rerun-from-here="${escapeHTML(selected.id)}">从这里重跑</button><small>保留上游结果，从本节点及下游重跑</small></div>`:''}${nodeLiveStreamHTML(nr,telemetry.slice(-60),inspectorRunning)}${nr.output?`<div class="node-output"><div><b>节点输出</b><button data-copy-output>复制</button></div><pre>${escapeHTML(displayNodeOutput(nr.output))}</pre></div>`:(inspectorRunning?'':'<div class="node-output empty"><b>节点输出</b><p>节点完成后，结构化输出会显示在这里。</p></div>')}<div class="runtime-details"><span>Sandbox <code>${escapeHTML(nr.sandboxId||'—')}</code></span><span>Session <code>${escapeHTML(nr.sessionId||'—')}</code></span></div></section><section class="node-artifacts"><div class="section-heading"><div><h3>节点交付物</h3><span>${nodeArtifacts.length} 个版本</span></div></div><div class="node-artifact-list">${nodeArtifacts.map(a=>`<button class="node-artifact-card" data-artifact="${escapeHTML(a.id)}"><span class="artifact-file-icon">${a.mediaType==='application/json'?'{}':'MD'}</span><div><b>${escapeHTML(a.name)}</b><span>${escapeHTML(a.path)}</span><small>attempt ${a.attempt} · ${Math.max(1,Math.ceil((a.size||0)/1024))} KB · ${(a.sha256||'').slice(0,10)}</small></div><i>预览 ›</i></button>`).join('')||'<div class="empty-inline"><span>◇</span><p>此节点还没有登记交付物</p></div>'}</div></section></div>${runIsGroupMode(r)?'</details>':''}</div><div class="run-pane" data-run-pane="trace" ${runDetailTab==='trace'?'':'hidden'}><section class="trace-section"><div class="section-heading"><div><h3>${telemetrySectionTitle(telAdapter)}</h3><span>${telPage?`${telemetry.length} 条已加载`:'加载最近 100 条'}</span></div><div class="trace-heading-actions">${telemetrySourceTabs(telAdapter,'data-tel-adapter')}${telPage?.hasMore?`<button class="button ghost small" data-tel-more>加载更早的 100 条</button>`:''}</div></div><div class="telemetry-feed">${telPage?([...telemetry].reverse().map(telemetryItemHTML).join('')||`<div class="empty-inline"><p>${telemetryEmptyHint(telAdapter)}</p></div>`):'<div class="empty-inline"><p>正在加载轨迹…</p></div>'}</div></section></div><div class="run-pane" data-run-pane="logs" ${runDetailTab==='logs'?'':'hidden'}><section class="worker-log-section"><div class="section-heading"><div><h3>Worker 日志</h3><span>${logPage?`${visibleWorkerLogs(logPage.items).length} 条调用`:(logBusy?'正在接收…':'实时加载最近调用')}</span></div><div class="worker-log-heading-actions">${logPage?.hasMore?`<button class="button ghost small" data-logs-more>加载更早的 100 条</button>`:''}</div></div><div class="worker-log-feed">${logPage?(visibleWorkerLogs(logPage.items).map(logLineHTML).join('')||'<div class="empty-inline"><p>该节点没有日志</p></div>'):'<div class="empty-inline"><p>正在加载 Worker 实时日志…</p></div>'}</div></section></div></div>`;  host.querySelector('.run-detail-main')?.insertAdjacentHTML('beforeend',`<div class="run-pane" data-run-pane="workspace" ${runDetailTab==='workspace'?'':'hidden'}>${workspacePaneHTML(r)}</div>${previewEnabled?`<div class="run-pane" data-run-pane="preview" ${runDetailTab==='preview'?'':'hidden'}>${previewPaneHTML(r)}</div>`:''}<div class="run-pane" data-run-pane="eval" ${runDetailTab==='eval'?'':'hidden'}>${runEvalPaneHTML(r)}</div>`);
   if(keepFrame){const fresh=host.querySelector('iframe[data-vscode-frame]');if(fresh)fresh.replaceWith(existingFrame);}
   if(keepPreview){const fresh=host.querySelector('iframe[data-preview-frame]');if(fresh)fresh.replaceWith(existingPreviewFrame);}
   const headerActions=host.querySelector('.run-header-actions');if(r.status==='running'&&headerActions)headerActions.querySelector('[data-cancel-run]')?.insertAdjacentHTML('beforebegin','<button class="button ghost small" data-pause-run>暂停运行</button>');
@@ -1246,6 +1498,7 @@ function renderRunDetail(r){
     if(runDetailTab==='preview')loadRunPreview(r.id);
   }
   bindRunScrollLocks(host,r.id,state.selectedRunNode||'');
+  bindNodeLiveActions(host);
   if(state._scrollToDrill){state._scrollToDrill=false;requestAnimationFrame(()=>{const main=host.querySelector('.run-detail-main'),drill=host.querySelector('.node-drilldown');if(main&&drill){const top=drill.getBoundingClientRect().top-main.getBoundingClientRect().top+main.scrollTop-12;main.scrollTo({top:Math.max(0,top),behavior:'smooth'});state.uiScroll&&(state.uiScroll.mainTop=Math.max(0,top))}})}
   ensureRunPages(pg.runId,pg.nodeId);
   bindChildSOPActions(host,r,pg);

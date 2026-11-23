@@ -571,12 +571,18 @@ func (e *Engine) retryContext(ctx context.Context, runID, nodeID, reason, humanC
 		}
 	}
 	overlayLatestNodeBindings(e.repo, &r, reset)
+	scriptNode := false
 	for _, node := range r.WorkflowSnapshot.Nodes {
 		if node.ID == nodeID && isScriptNode(node) {
+			scriptNode = true
 			humanContext = ""
 			break
 		}
 	}
+	// A node parked on 人工确认 is waiting for an answer, not for a fresh
+	// start: keep its CLI session so the operator's note continues the same
+	// conversation instead of discarding everything the Agent already asked.
+	resumeWaitingSession := nodeStatus == "waiting_approval" && !scriptNode
 	note := recordHumanContext(&r, nodeID, reason, humanContext)
 	var stale []string
 	for id := range reset {
@@ -587,6 +593,7 @@ func (e *Engine) retryContext(ctx context.Context, runID, nodeID, reason, humanC
 			nr.Status = "pending"
 			nr.Error = ""
 			nr.Output = ""
+			nr.PendingQuestions = nil
 			nr.ChildRunID = ""
 			if id == nodeID {
 				nr.ChildRunID = keepChildRunID
@@ -594,8 +601,17 @@ func (e *Engine) retryContext(ctx context.Context, runID, nodeID, reason, humanC
 			nr.FinishedAt = time.Time{}
 			if id == nodeID {
 				nr.Feedback = note
+				if resumeWaitingSession && strings.TrimSpace(nr.SessionID) != "" {
+					nr.ResumeSessionID = strings.TrimSpace(nr.SessionID)
+				}
+				if !resumeWaitingSession {
+					// 人工点的是“从头重跑”，提问配额也重新给。
+					nr.AskCount = 0
+				}
 			} else {
 				nr.Feedback = ""
+				// 下游会被重新调度，旧会话属于上一轮 attempt，不能带进去。
+				nr.ResumeSessionID = ""
 			}
 		}
 	}

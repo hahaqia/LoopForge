@@ -18,7 +18,7 @@ const gateMCPServerID = "agentflow-gate"
 
 var gateMCPBuildMu sync.Mutex
 
-func materializeGateMCP(workspace, configRoot, binaryRel, resultPath, driver string) (domain.MCPServerDefinition, error) {
+func materializeGateMCP(workspace, configRoot, binaryRel, resultPath string, askLimit int, driver string) (domain.MCPServerDefinition, error) {
 	resultPath = filepath.ToSlash(filepath.Clean(strings.TrimSpace(resultPath)))
 	if resultPath == "." || filepath.IsAbs(resultPath) || resultPath == ".." || strings.HasPrefix(resultPath, "../") {
 		return domain.MCPServerDefinition{}, fmt.Errorf("invalid gate result path %q", resultPath)
@@ -39,15 +39,30 @@ func materializeGateMCP(workspace, configRoot, binaryRel, resultPath, driver str
 	if err := writeManagedFile(workspace, binaryPath, raw, 0o700); err != nil {
 		return domain.MCPServerDefinition{}, err
 	}
+	environment := map[string]string{"AGENTFLOW_GATE_RESULT_PATH": resultPath}
+	if askPath := GateAskPath(resultPath); askPath != "" {
+		environment["AGENTFLOW_ASK_PATH"] = askPath
+		if askLimit >= 0 {
+			environment["AGENTFLOW_ASK_LIMIT"] = strconv.Itoa(askLimit)
+		}
+	}
 	return domain.MCPServerDefinition{
-		ID:        gateMCPServerID,
-		Name:      "智研工坊 Gate",
-		Transport: "stdio",
-		Command:   filepath.ToSlash(binaryRel),
-		Environment: map[string]string{
-			"AGENTFLOW_GATE_RESULT_PATH": resultPath,
-		},
+		ID:          gateMCPServerID,
+		Name:        "智研工坊 Gate",
+		Transport:   "stdio",
+		Command:     filepath.ToSlash(binaryRel),
+		Environment: environment,
 	}, nil
+}
+
+// GateAskPath 把一次 attempt 的提问文件和终态文件放在一起：两者属于同一轮
+// 执行，节点重跑时一起清掉，不会把上一轮的问题带给下一轮。
+func GateAskPath(resultPath string) string {
+	trimmed := strings.TrimSpace(resultPath)
+	if trimmed == "" {
+		return ""
+	}
+	return strings.TrimSuffix(trimmed, ".json") + ".questions.json"
 }
 
 // resolveGateMCPBinary follows the runner distribution convention: production
