@@ -154,7 +154,7 @@ func TestWorkflowAgentsAreFilteredAndValidatedByProject(t *testing.T) {
 	for _, agent := range agents {
 		visible[agent.ID] = true
 	}
-	if !visible["alpha-role"] || !visible["beta-shared-role"] || visible["beta-private-role"] || visible["legacy-role"] {
+	if !visible["alpha-role"] || !visible["beta-shared-role"] || visible["beta-private-role"] || !visible["legacy-role"] {
 		t.Fatalf("unexpected workflow role visibility: %#v", visible)
 	}
 

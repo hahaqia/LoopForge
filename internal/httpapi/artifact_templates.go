@@ -14,8 +14,11 @@ import (
 func (h *catalogHandlers) artifactTemplates(c *gin.Context) {
 	if c.Request.Method == http.MethodGet {
 		items := h.repo.ArtifactTemplates()
+		scope := strings.TrimSpace(c.Query("scope"))
 		if projectID := strings.TrimSpace(c.Query("projectId")); projectID != "" {
 			items = filterOwnedByProject(items, projectID, func(item domain.ArtifactTemplate) string { return item.ProjectID })
+		} else if scope == "shared" {
+			items = filterOwnedByProject(items, "", func(item domain.ArtifactTemplate) string { return item.ProjectID })
 		}
 		c.JSON(http.StatusOK, items)
 		return

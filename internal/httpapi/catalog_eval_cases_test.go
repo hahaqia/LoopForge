@@ -165,7 +165,8 @@ func TestCatalogSandboxDependencyAndScopeHelpers(t *testing.T) {
 		{ID: "mine", ProjectID: "platform"}, {ID: "shared", ProjectID: "other", Shared: true},
 		{ID: "private", ProjectID: "other"}, {ID: "unowned"},
 	}, "platform")
-	if len(filtered) != 2 {
+	// unowned（projectId 为空）是平台共享角色，任何项目都应当能看到。
+	if len(filtered) != 3 {
 		t.Fatalf("filtered agents: %#v", filtered)
 	}
 }

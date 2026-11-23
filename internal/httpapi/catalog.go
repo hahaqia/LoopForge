@@ -316,7 +316,17 @@ func (h *catalogHandlers) repository(c *gin.Context) {
 func (h *catalogHandlers) agents(c *gin.Context) {
 	if c.Request.Method == http.MethodGet {
 		agents := h.repo.Agents()
-		if projectID := strings.TrimSpace(c.Query("projectId")); projectID != "" {
+		scope := strings.TrimSpace(c.Query("scope"))
+		projectID := strings.TrimSpace(c.Query("projectId"))
+		switch {
+		case scope == "shared":
+			// 平台共享层：projectId 为空的那部分。
+			agents = filterOwnedByProject(agents, "", func(item domain.AgentDefinition) string { return item.ProjectID })
+		case projectID != "" && scope == "owned":
+			// 项目自有：不含共享，供项目管理页使用。
+			agents = filterOwnedByProject(agents, projectID, func(item domain.AgentDefinition) string { return item.ProjectID })
+		case projectID != "":
+			// 项目可用：自有 + 共享 + 其他项目显式共享的。
 			agents = filterAgentsForProject(agents, projectID)
 		}
 		c.JSON(200, agents)
@@ -408,7 +418,8 @@ func filterAgentsForProject(agents []domain.AgentDefinition, projectID string) [
 	out := make([]domain.AgentDefinition, 0, len(agents))
 	for _, agent := range agents {
 		owner := strings.TrimSpace(agent.ProjectID)
-		if owner == projectID || (owner != "" && agent.Shared) {
+		// owner=="" 是平台共享角色（projectId 为空），任何项目都应该能用。
+		if owner == "" || owner == projectID || agent.Shared {
 			out = append(out, agent)
 		}
 	}
