@@ -354,6 +354,18 @@ func (h *catalogHandlers) agents(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 				return
 			}
+			// 产物绑定的结构模板必须在目录里存在，否则运行到该节点才发现，
+			// 用户要等到一次完整执行失败才能定位。
+			for _, contract := range v.ArtifactOutputs {
+				templateID := strings.TrimSpace(contract.TemplateID)
+				if templateID == "" {
+					continue
+				}
+				if _, ok := h.repo.ArtifactTemplate(templateID); !ok {
+					c.JSON(http.StatusBadRequest, map[string]string{"error": "产物 " + strings.TrimSpace(contract.Path) + " 引用的结构模板 " + templateID + " 不存在"})
+					return
+				}
+			}
 			if v.Version == 0 {
 				v.Version = 1
 			}

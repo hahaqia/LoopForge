@@ -447,6 +447,9 @@ func newWithNotifications(s *repo.Store, e *engine.Engine, syncSvc *tracker.Serv
 	g.GET("/api/rules", api.catalog.rules)
 	g.PUT("/api/rules", api.catalog.rules)
 	g.DELETE("/api/rules", api.catalog.rules)
+	g.GET("/api/artifact-templates", api.catalog.artifactTemplates)
+	g.PUT("/api/artifact-templates", api.catalog.artifactTemplates)
+	g.DELETE("/api/artifact-templates", api.catalog.artifactTemplates)
 	g.GET("/api/skills", api.catalog.skills)
 	g.PUT("/api/skills", api.catalog.skills)
 	g.DELETE("/api/skills", api.catalog.skills)
@@ -786,6 +789,7 @@ func (s *Server) bootstrap(c *gin.Context) {
 	c.JSON(200, map[string]any{
 		"businessDomains": businessDomains, "projects": domain.PublicProjects(projects), "repositories": domain.PublicRepositories(repositories),
 		"agents": catalogAgents(agents), "rules": rules, "skills": skills, "mcpServers": mcpServers,
+		"templates": s.repo.ArtifactTemplates(),
 		"executors": executors, "dockerfiles": dockerfiles, "environments": environments, "sandboxes": sandboxes,
 		"workflows": workflows, "syncConfig": syncConfig, "scheduleJobs": scheduleJobs, "schedulerEnabled": schedulerEnabled(),
 		"users":        domain.PublicUsers(users),

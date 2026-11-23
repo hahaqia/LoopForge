@@ -167,6 +167,17 @@ func materializeInvocationForDriver(workspace, invocationID string, ex domain.Ex
 		}
 		mergedMCP = append(mergedMCP, gateServer)
 	}
+	if len(options.Templates) > 0 {
+		templateRoot := filepath.Join(workspace, ".agentflow", "templates")
+		if err := os.MkdirAll(templateRoot, 0o755); err != nil {
+			return compiled, err
+		}
+		for id, body := range options.Templates {
+			if err := os.WriteFile(filepath.Join(templateRoot, id+".md"), []byte(body), 0o644); err != nil {
+				return compiled, err
+			}
+		}
+	}
 	if options.BrowserMCP != nil {
 		mergedMCP = append(mergedMCP, *options.BrowserMCP)
 	}

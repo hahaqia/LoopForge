@@ -153,6 +153,15 @@ type skillRow struct {
 
 func (skillRow) TableName() string { return "skills" }
 
+type artifactTemplateRow struct {
+	ID      string     `gorm:"column:id;primaryKey;size:64"`
+	Name    string     `gorm:"column:name;size:255"`
+	Payload []byte     `gorm:"column:payload;type:json"`
+	Updated *time.Time `gorm:"column:updated_at"`
+}
+
+func (artifactTemplateRow) TableName() string { return "artifact_templates" }
+
 // skillFileRow stores one binary skill file. Content lives in a MEDIUMBLOB
 // column so binary payloads never bloat the skills payload JSON.
 type skillFileRow struct {
@@ -762,7 +771,7 @@ func allModels() []any {
 		userRow{}, localAccountRow{}, userConfigRow{}, gitSSHKeyRow{}, gitHTTPCredentialRow{}, authIntegrationRow{}, platformCodeBuddyKeyRow{}, apiTokenRow{}, genericTemplateRow{},
 		insightSourceRow{}, insightExecutionRow{},
 		projectRow{}, projectMemberRow{}, repositoryRow{}, businessDomainRow{}, businessDomainAssignmentRow{},
-		agentRow{}, ruleRow{}, skillRow{}, skillFileRow{}, mcpServerRow{}, mcpFileRow{}, executorRow{},
+		agentRow{}, ruleRow{}, skillRow{}, skillFileRow{}, artifactTemplateRow{}, mcpServerRow{}, mcpFileRow{}, executorRow{},
 		dockerfileRow{}, environmentRow{}, sandboxRow{},
 		workflowRow{}, syncConfigRow{}, scheduleJobRow{}, scheduleJobExecutionRow{}, scheduleJobExecutionStatRow{}, sharedScheduleVersionRow{},
 		issueRow{}, issueCommentRow{}, taskRow{},

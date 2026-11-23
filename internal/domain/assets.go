@@ -24,6 +24,70 @@ type RuleDefinition struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
+// ArtifactTemplate is the section skeleton a role's deliverable must follow.
+// Artifact contracts point at it by ID; the engine materializes the skeleton
+// into the workspace and derives a structure gate from its headings, so the
+// outline lives in exactly one place.
+type ArtifactTemplate struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	ProjectID   string    `json:"projectId,omitempty"`
+	Shared      bool      `json:"shared,omitempty"`
+	Description string    `json:"description,omitempty"`
+	MediaType   string    `json:"mediaType"`
+	Content     string    `json:"content"`
+	Version     int       `json:"version"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+// ArtifactTemplateHeading is one "## " section parsed out of a template.
+// Optional sections are marked with an `<!-- optional -->` comment.
+type ArtifactTemplateHeading struct {
+	Title    string `json:"title"`
+	Level    int    `json:"level"`
+	Optional bool   `json:"optional"`
+}
+
+// ParseArtifactTemplateHeadings extracts the level-2 headings that a delivered
+// file must contain. A heading is optional when the line above it (ignoring
+// blanks) carries an `optional` HTML comment.
+func ParseArtifactTemplateHeadings(content string) []ArtifactTemplateHeading {
+	lines := strings.Split(strings.ReplaceAll(content, "\r\n", "\n"), "\n")
+	headings := make([]ArtifactTemplateHeading, 0, 8)
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "## ") || strings.HasPrefix(trimmed, "###") {
+			continue
+		}
+		title := strings.TrimSpace(strings.TrimPrefix(trimmed, "## "))
+		if title == "" {
+			continue
+		}
+		optional := false
+		for j := i - 1; j >= 0; j-- {
+			prev := strings.TrimSpace(lines[j])
+			if prev == "" {
+				continue
+			}
+			optional = strings.Contains(strings.ToLower(prev), "<!-- optional -->")
+			break
+		}
+		headings = append(headings, ArtifactTemplateHeading{Title: title, Level: 2, Optional: optional})
+	}
+	return headings
+}
+
+// RequiredArtifactTemplateHeadings returns just the mandatory section titles.
+func RequiredArtifactTemplateHeadings(content string) []string {
+	titles := make([]string, 0, 8)
+	for _, heading := range ParseArtifactTemplateHeadings(content) {
+		if !heading.Optional {
+			titles = append(titles, heading.Title)
+		}
+	}
+	return titles
+}
+
 type SkillDefinition struct {
 	ID          string            `json:"id"`
 	Name        string            `json:"name"`

@@ -98,6 +98,9 @@ type ArtifactContract struct {
 	Path      string `json:"path"`
 	MediaType string `json:"mediaType,omitempty"`
 	Required  bool   `json:"required"`
+	// TemplateID binds an artifact template: the engine seeds the skeleton in
+	// the workspace and requires the template's mandatory headings at gate time.
+	TemplateID string `json:"templateId,omitempty"`
 }
 
 type WorkflowEdge struct {

@@ -271,6 +271,9 @@ func appendArtifactContract(prompt string, node domain.WorkflowNode, repositorie
 			required = "required"
 		}
 		fmt.Fprintf(&b, "- `%s`: %s (%s, %s)\n", contract.Path, contract.Name, contract.MediaType, required)
+		if id := strings.TrimSpace(contract.TemplateID); id != "" {
+			fmt.Fprintf(&b, "  Skeleton: `.agentflow/templates/%s.md`. Copy its heading structure and keep every mandatory heading; the skeleton defines structure only, all content must come from this run's facts.\n", id)
+		}
 	}
 	return b.String()
 }

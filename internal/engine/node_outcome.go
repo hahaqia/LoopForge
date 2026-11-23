@@ -174,7 +174,13 @@ func mergeArtifactContracts(agentContracts, nodeContracts []domain.ArtifactContr
 			key = strings.TrimSpace(contract.Path)
 		}
 		if i, exists := index[key]; exists {
+			// 节点只做细化：它没声明的模板引用继续沿用角色上的，否则
+			// 每条 SOP 都得重复写一遍模板 id，改模板时还容易漏。
+			templateID := merged[i].TemplateID
 			merged[i] = contract // the SOP node may refine an Agent-owned contract
+			if strings.TrimSpace(merged[i].TemplateID) == "" {
+				merged[i].TemplateID = templateID
+			}
 			continue
 		}
 		index[key] = len(merged)

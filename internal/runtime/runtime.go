@@ -99,7 +99,10 @@ type InvocationOptions struct {
 	ResumeSessionID string
 	GateResultPath  string
 	// AskLimit 是本次调用还允许向人提问的次数；0 表示不限制。
-	AskLimit     int
+	AskLimit int
+	// Templates 是交付物骨架：模板 id → Markdown 内容，运行时写入
+	// .agentflow/templates/<id>.md，供 Agent 复制后填充。
+	Templates    map[string]string
 	Repositories []domain.RepositoryContext
 	RunnerLogin  bool
 	// BrowserMCP is resolved on the executing host, never sent to a runner.

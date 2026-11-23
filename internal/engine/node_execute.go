@@ -714,6 +714,24 @@ func (e *Engine) executeNode(ctx context.Context, runID string, wf domain.Workfl
 				gates = append(gates, verificationRun{gate: domain.VerificationGate{ID: point.ID, Name: point.Name, Mode: "manual", Stage: point.Stage, Required: true}, onFailure: defaultFailure})
 			}
 		}
+		// 产物绑定了模板时，自动补一条章节完整性门禁：模板改了校验立即跟着变，
+		// 角色里不需要再手写一份章节清单。
+		artifactTemplates := map[string]string{}
+		for _, contract := range effectiveNode.ArtifactOutputs {
+			templateID := strings.TrimSpace(contract.TemplateID)
+			if templateID == "" {
+				continue
+			}
+			template, ok := e.repo.ArtifactTemplate(templateID)
+			if !ok {
+				e.observe(runID, node.ID, domain.TelemetryEvent{Category: "verification", Name: "artifact.template.missing", Phase: "progress", Message: "产物 " + contract.Path + " 引用的模板 " + templateID + " 已不存在，跳过结构校验"})
+				continue
+			}
+			artifactTemplates[templateID] = template.Content
+			if gate, ok := artifactStructureGate(template, contract); ok {
+				gates = append(gates, verificationRun{gate: gate, onFailure: defaultFailure})
+			}
+		}
 		if agent.Loop.Enabled {
 			maxIterations = max(1, agent.Loop.MaxIterations)
 			loopOnExhausted = agent.Loop.OnExhausted
@@ -776,7 +794,7 @@ func (e *Engine) executeNode(ctx context.Context, runID string, wf domain.Workfl
 			if warning := knowledgeSkippedWarning(agent, assets); warning != "" {
 				warnMCPSkipped(warning)
 			}
-			options := runtime.InvocationOptions{RunID: runID, NodeID: node.ID, ResumeSessionID: resumeSessionID, Repositories: current.RepositoryContexts()}
+			options := runtime.InvocationOptions{RunID: runID, NodeID: node.ID, ResumeSessionID: resumeSessionID, Repositories: current.RepositoryContexts(), Templates: artifactTemplates}
 			if requiresSubmit {
 				options.GateResultPath = gateResultPath(nodeControlKey(current, node.ID), attempt)
 				askUsed := 0
