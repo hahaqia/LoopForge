@@ -258,7 +258,7 @@ func (h *marketHandlers) mcpCustomInstall(c *gin.Context) {
 	server.Scope = strings.TrimSpace(input.Scope)
 	server.ProjectID = ""
 	server.OwnerUserID = 0
-	ownerKey := ""
+	ownerKey, idScope := "", server.Scope
 	if server.Scope == "project" {
 		server.ProjectID = strings.TrimSpace(input.ProjectID)
 		if server.ProjectID == "" {
@@ -278,15 +278,22 @@ func (h *marketHandlers) mcpCustomInstall(c *gin.Context) {
 		}
 		server.OwnerUserID = user.ID
 		ownerKey = fmt.Sprintf("%d", user.ID)
+	} else if server.Scope == "platform" || server.Scope == "" {
+		// 平台共享 MCP：所有项目可见、可被角色绑定，只有平台管理员能维护
+		// （路由守卫已按 platform 资产校验）。空 scope 是它的存储表示。
+		if !h.requirePlatformAdmin(c) {
+			return
+		}
+		server.Scope, idScope = "", "platform"
 	} else {
-		c.JSON(http.StatusBadRequest, map[string]string{"error": "请选择项目级或个人级"})
+		c.JSON(http.StatusBadRequest, map[string]string{"error": "请选择平台级、项目级或个人级"})
 		return
 	}
 	if baseID == "" {
 		c.JSON(http.StatusBadRequest, map[string]string{"error": "自定义 MCP 需要标识"})
 		return
 	}
-	server.ID = mcpInstallID("custom-"+baseID, server.Scope, ownerKey)
+	server.ID = mcpInstallID("custom-"+baseID, idScope, ownerKey)
 	if _, exists := h.repo.MCPServer(server.ID); exists {
 		c.JSON(http.StatusConflict, map[string]string{"error": "当前范围已经存在相同标识的自定义 MCP"})
 		return

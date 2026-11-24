@@ -27,7 +27,8 @@ func (h *catalogHandlers) artifactTemplates(c *gin.Context) {
 	case http.MethodDelete:
 		h.deleteCatalogAsset(c, "产物模板", "artifact template not found", func(id string) (bool, bool) {
 			item, ok := h.repo.ArtifactTemplate(id)
-			return item.Shared, ok
+			// 平台模板（projectId 为空）由平台管理员维护，不适用"取消共享后才能删"的限制。
+			return item.Shared && strings.TrimSpace(item.ProjectID) != "", ok
 		}, h.agentNamesReferencingTemplate, "角色", h.repo.DeleteArtifactTemplate)
 		return
 	case http.MethodPut:
@@ -41,8 +42,8 @@ func (h *catalogHandlers) artifactTemplates(c *gin.Context) {
 	}
 	v.ID, v.ProjectID = strings.TrimSpace(v.ID), strings.TrimSpace(v.ProjectID)
 	v.Name, v.MediaType = strings.TrimSpace(v.Name), strings.TrimSpace(v.MediaType)
-	if v.ID == "" || v.Name == "" || v.ProjectID == "" {
-		c.JSON(http.StatusBadRequest, map[string]string{"error": "id, name and projectId are required"})
+	if v.ID == "" || v.Name == "" {
+		c.JSON(http.StatusBadRequest, map[string]string{"error": "id and name are required"})
 		return
 	}
 	if strings.TrimSpace(v.Content) == "" {
@@ -56,9 +57,18 @@ func (h *catalogHandlers) artifactTemplates(c *gin.Context) {
 	if v.MediaType == "" {
 		v.MediaType = "text/markdown"
 	}
-	if _, ok := h.repo.Project(v.ProjectID); !ok {
-		c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
+	// projectId 为空表示平台共享模板：所有项目可用，只有平台管理员能维护。
+	if v.ProjectID != "" {
+		if _, ok := h.repo.Project(v.ProjectID); !ok {
+			c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
+			return
+		}
+	} else if !h.requirePlatformAdmin(c) {
 		return
+	}
+	// 平台模板恒为共享，运行时才能被任意项目的角色绑定。
+	if v.ProjectID == "" {
+		v.Shared = true
 	}
 	if existing, ok := h.repo.ArtifactTemplate(v.ID); ok {
 		if existing.ProjectID != "" && existing.ProjectID != v.ProjectID {

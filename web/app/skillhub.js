@@ -137,9 +137,13 @@ function skillhubIdProblem(id,{skills=state.data?.skills}={}){
 // ---------- Market list ----------
 function skillhubSyncChrome(){
   const skills=state.assetType==='skills';
+  // SkillHub 只在平台侧（能力资产页）保留入口；项目侧技能只能新建或从平台技能复制，
+  // 避免项目直接挂载市场技能、让平台技能与项目技能两套口径混在一起。
+  const allowMarket=skills&&!state.assetHosted;
+  if(!allowMarket&&state.skillScope==='skillhub')state.skillScope='project';
   const scope=state[assetScopeKey(state.assetType)];
-  const market=skills&&scope==='skillhub'&&!state.selectedAsset;
-  $$('[data-asset-scope="skillhub"]').forEach(b=>{b.hidden=!skills});
+  const market=allowMarket&&scope==='skillhub'&&!state.selectedAsset;
+  $$('[data-asset-scope="skillhub"]').forEach(b=>{b.hidden=!allowMarket});
   const pane=$('#skillhubMarket');if(pane)pane.hidden=!market;
   for(const id of ['#assetCount','#assetList'])if($(id))$(id).hidden=market;
   const search=$('#assetSearchBox');if(search)search.hidden=market;

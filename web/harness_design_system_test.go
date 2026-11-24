@@ -155,12 +155,29 @@ func TestSettingsAreaUsesOneCenteredContainer(t *testing.T) {
 	}
 
 	privateCap := regexp.MustCompile(`[{;]\s*max-width:\s*(?:920|1160|1180|1280)px`)
+	// #projectAdminForm:has(> [data-pa-panel="assets"]) 是项目配置里双栏资产面板的容器适配，
+	// 属于布局特例而不是页面自设的外层宽度上限，按选择器豁免。
+	privateCapOffender := func(css string) string {
+		offset := 0
+		for {
+			loc := privateCap.FindStringIndex(css[offset:])
+			if loc == nil {
+				return ""
+			}
+			start, end := offset+loc[0], offset+loc[1]
+			selectorStart := strings.LastIndex(css[:start], "}")
+			if !strings.Contains(css[selectorStart+1:start], "#projectAdminForm:has(") {
+				return css[start:end]
+			}
+			offset = end
+		}
+	}
 	for _, path := range []string{"platform.css", "product-v4.css", "access.css", "app/assets-harness.css", "app/mcp.css", "bots.css"} {
 		raw, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if m := privateCap.Find(raw); m != nil {
+		if m := privateCapOffender(string(raw)); m != "" {
 			t.Errorf("%s keeps a private outer width cap %q; the settings container owns the width", path, m)
 		}
 	}

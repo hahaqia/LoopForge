@@ -66,6 +66,13 @@ const ctx = {
   $:sel=>dom[sel]||null,
   $$:()=>[],
 };
+// 角色表格由 app/agents.js 提供，这里只验证项目页自身的排版结构。
+ctx.agentTableHTML=()=>"<div class=\"agent-list-table\"></div>";
+ctx.bindAgentRows=()=>{};
+ctx.agentConfigSummary=()=>"";
+ctx.projectAgentUsage=()=>0;
+ctx.catalogShared=()=>false;
+ctx.catalogOwned=()=>true;
 ctx.document={activeElement:null,contains:()=>false};
 vm.createContext(ctx);
 const gitParsers = fs.readFileSync(require("node:path").join(__dirname, "app", "git-ssh.js"), "utf8");
@@ -207,6 +214,83 @@ assert.equal(ctx.projectDraftDirty({...draft,name:"AgentFlow 2"},base),true);
 assert.equal(ctx.projectDraftDirty({...draft,members:[...draft.members,{userId:0}]},base),true);
 assert.equal(ctx.projectDraftDirty({...draft,ownerId:"1"},base),false);
 assert.equal(ctx.projectDraftDirty({...draft,tapdClear:true},base),true);
+
+// Hosted capability surfaces: the project page mounts the platform nodes and restores them.
+{
+  const paHome = {isConnected: true, children: []};
+  const detach = node => {
+    const list = node.parentElement && node.parentElement.children;
+    const i = list ? list.indexOf(node) : -1;
+    if (i >= 0) list.splice(i, 1);
+  };
+  paHome.insertBefore = (node, next) => {
+    detach(node);
+    const at = next ? paHome.children.indexOf(next) : -1;
+    if (at < 0) paHome.children.push(node); else paHome.children.splice(at, 0, node);
+    node.parentElement = paHome;
+  };
+  const paHost = el({children: []});
+  paHost.appendChild = node => {detach(node); paHost.children.push(node); node.parentElement = paHost};
+  const paNode = id => {
+    const node = el({id, parentElement: paHome});
+    Object.defineProperty(node, "nextElementSibling", {get() {
+      const list = node.parentElement && node.parentElement.children || [];
+      const i = list.indexOf(node);
+      return i >= 0 ? list[i + 1] || null : null;
+    }});
+    return node;
+  };
+  const assetsNode = paNode("assetsView");
+  const mcpNode = paNode("mcpView");
+  paHome.children.push(assetsNode, mcpNode);
+  dom["#assetsView"] = assetsNode;
+  dom["#mcpView"] = mcpNode;
+  dom["#projectAdminForm [data-project-asset-host]"] = paHost;
+  let assetRenders = 0, mcpRenders = 0; const tabSyncs = [];
+  ctx.renderAssets = () => {assetRenders++};
+  ctx.renderMCPManagement = () => {mcpRenders++};
+  ctx.syncAssetTypeTabs = name => tabSyncs.push(name);
+
+  assert.match(ctx.projectAssetsPanelHTML({id: "agentflow"}), /data-project-asset-host/);
+
+  ctx.state.projectAdminDetailId = "agentflow";
+  ctx.state.ruleScope = "shared"; ctx.state.mcpScope = "personal";
+  ctx.mountProjectAssetSurface();
+  assert.equal(assetsNode.parentElement, paHost, "assets view is hosted in the project panel");
+  assert.equal(assetsNode.hidden, false);
+  assert.equal(mcpNode.hidden, true, "the MCP view waits hidden in the same panel");
+  assert.equal(ctx.state.assetHosted, true);
+  assert.equal(ctx.state.paSurface, "assets");
+  assert.equal(ctx.state.ruleScope, "project", "hosted assets are project scoped");
+  assert.equal(ctx.state.mcpHostedProject, "agentflow");
+  assert.equal(assetRenders, 1);
+
+  assert.equal(ctx.setHostedProjectAssetType("mcp"), true);
+  assert.equal(mcpNode.parentElement, paHost, "the MCP view stays in the project panel");
+  assert.equal(mcpNode.hidden, false);
+  assert.equal(assetsNode.hidden, true);
+  assert.equal(ctx.state.paSurface, "mcp");
+  assert.equal(tabSyncs.at(-1), "mcp");
+  assert.equal(mcpRenders, 1);
+
+  assert.equal(ctx.setHostedProjectAssetType("skills"), true);
+  assert.equal(assetsNode.hidden, false);
+  assert.equal(mcpNode.hidden, true);
+  assert.equal(ctx.state.paSurface, "assets");
+  assert.equal(ctx.state.assetType, "skills");
+  assert.equal(assetRenders, 2, "a type switch re-renders the asset pane");
+  assert.equal(mcpRenders, 1, "the MCP pane is not rebuilt on the way back");
+
+  ctx.unmountProjectAssetSurface();
+  assert.equal(ctx.state.assetHosted, false);
+  assert.equal(ctx.state.mcpHostedProject, "");
+  assert.equal(ctx.state.ruleScope, "shared", "scope switches are restored on leave");
+  assert.equal(ctx.state.mcpScope, "personal");
+  same(paHome.children.map(n => n.id), ["assetsView", "mcpView"], "original order is kept");
+  assert.equal(paHost.children.length, 0);
+  assert.equal(assetsNode.hidden, false, "restored nodes must not stay hidden");
+  delete dom["#assetsView"]; delete dom["#mcpView"]; delete dom["#projectAdminForm [data-project-asset-host]"];
+}
 
 (async()=>{
   // New project: occupied identifiers never reach POST /api/projects.

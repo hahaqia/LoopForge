@@ -179,10 +179,13 @@ func TestResolveAssetsEnforcesProjectAndPersonalScope(t *testing.T) {
 	if len(assets.Rules) != 2 || assets.Rules[0].ID != "p1-rule" || assets.Rules[1].ID != "shared-rule" {
 		t.Fatalf("resolved rules = %#v", assets.Rules)
 	}
-	if len(assets.Skills) != 2 || assets.Skills[0].ID != "p1-skill" || assets.Skills[1].ID != "shared-skill" {
+	// 技能按项目隔离：平台技能（无 projectId）与其他项目共享的技能都不注入，
+	// 项目必须先复制一份到本项目才能绑定。
+	if len(assets.Skills) != 1 || assets.Skills[0].ID != "p1-skill" {
 		t.Fatalf("resolved skills = %#v", assets.Skills)
 	}
-	if len(assets.MCPServers) != 2 || assets.MCPServers[0].ID != "p1-mcp" || assets.MCPServers[1].ID != "mine" {
+	// legacy 无 scope 无 projectId，是平台共享 MCP：所有项目可见、可绑定。
+	if len(assets.MCPServers) != 3 || assets.MCPServers[0].ID != "legacy" || assets.MCPServers[1].ID != "p1-mcp" || assets.MCPServers[2].ID != "mine" {
 		t.Fatalf("resolved MCPs = %#v", assets.MCPServers)
 	}
 	script := e.resolveScriptMCPAssets("p1", 2)
@@ -190,7 +193,7 @@ func TestResolveAssetsEnforcesProjectAndPersonalScope(t *testing.T) {
 	for _, server := range script.MCPServers {
 		got[server.ID] = true
 	}
-	if len(got) != 2 || !got["p1-mcp"] || !got["mine"] {
+	if len(got) != 3 || !got["legacy"] || !got["p1-mcp"] || !got["mine"] {
 		t.Fatalf("script MCPs = %#v", script.MCPServers)
 	}
 }

@@ -32,6 +32,7 @@ const ctx = {
   api: async (url, opts) => { calls.push(['api', url, opts]); return {}; },
   afConfirm: async () => true,
   activeViewName: () => ctx.state.assetType,
+  isPlatformAdmin: () => true,
   $: () => null,
   $$: () => [],
   renderWorkflowMeta() {},
@@ -43,15 +44,18 @@ vm.runInContext(assetsSrc, ctx);
 vm.runInContext(slice(appSrc, 'function routePart(', 'function runRouteId('), ctx);
 vm.runInContext(slice(appSrc, 'function assetRouteId(', 'async function applyAgentRoute('), ctx);
 
-function reset(type, data) {
+function reset(type, data, { hosted = true, admin = true } = {}) {
   ctx.state = {
     projectFilter: 'p1',
+    assetHosted: hosted,
+    assetHostedProject: hosted ? 'p1' : '',
     assetType: type,
     selectedAsset: null,
     assetQuery: '',
     ruleScope: 'project', skillScope: 'project', dockerfileScope: 'project', environmentScope: 'project', sandboxScope: 'project',
     data: { projects: [{ id: 'p1', name: '本项目' }, { id: 'p2', name: '平台公共' }], agents: [], sandboxes: [], workflows: [], rules: [], skills: [], dockerfiles: [], environments: [], ...data },
   };
+  ctx.isPlatformAdmin = () => admin;
 }
 
 // ---------- Cards: three share states, no actions on the card ----------
@@ -76,10 +80,12 @@ const foreign = ctx.assetCardHTML(ctx.state.data.rules[2]);
 assert.ok(foreign.includes('<span class="asset-status is-from"><i></i>来自 平台公共</span>'), foreign);
 assert.ok(foreign.includes('查看<i data-icon="chevron-right">'), foreign);
 for (const html of [own, shared, foreign]) {
-  assert.ok(!/<button/.test(html), 'cards carry no buttons');
+  assert.ok(html.includes('data-asset-card-more'), 'cards expose the ⋯ menu');
   assert.ok(!/data-(share|delete)-asset/.test(html), 'share/delete moved off the card');
   assert.ok(!/class="[^"]*\bopen\b/.test(html), 'card classes must not collide with .open menu state');
 }
+assert.ok(own.includes('data-asset-card-delete="core"'), 'own card can delete');
+assert.ok(own.includes('role="menuitem"') && own.includes('删除规则'), own);
 for (const [type, icon] of [['rules', 'gate'], ['skills', 'skills'], ['dockerfiles', 'layers'], ['environments', 'terminal'], ['sandboxes', 'server']]) {
   assert.strictEqual(ctx.assetIconName(type), icon);
 }
@@ -140,6 +146,61 @@ reset('rules', { rules: [{ id: 'tapd', name: 'TAPD', projectId: 'p2', shared: tr
 head = ctx.assetDetailHeadHTML(ctx.state.data.rules[0], {});
 assert.deepStrictEqual(buttons(head), ['back']);
 assert.ok(head.includes('来自 平台公共') && head.includes('只读 · 可直接在本项目使用'));
+
+// ---------- Platform surface: AGENT 能力 → 能力资产只维护平台资产 ----------
+reset('rules', {
+  rules: [
+    { id: 'public-engineering', name: '工程与验证约束', description: '平台规则', projectId: '', shared: true, priority: 100 },
+    { id: 'shared-from-p1', name: 'P1 共享', projectId: 'p1', shared: true },
+    { id: 'owned-p1', name: 'P1 私有', projectId: 'p1', shared: false },
+  ],
+}, { hosted: false });
+ctx.state.ruleScope = 'shared';
+assert.deepStrictEqual(ctx.assetScopeItems('shared').map(a => a.id), ['public-engineering'], '平台页只列平台资产');
+assert.strictEqual(ctx.assetScopeItems('project').length, 2, '项目范围仍按归属过滤');
+assert.strictEqual(ctx.assetDeleteBlocked(ctx.state.data.rules[0]), '', '平台规则只要没引用就可删');
+assert.strictEqual(ctx.assetDeleteBlocked(ctx.state.data.rules[1]), '共享状态的规则不能删除，请先取消共享');
+const platformCard = ctx.assetCardHTML(ctx.state.data.rules[0]);
+assert.ok(platformCard.includes('<span class="asset-status is-on"><i></i>平台共享</span>'), platformCard);
+assert.ok(platformCard.includes('data-asset-card-more') && platformCard.includes('data-asset-card-delete="public-engineering"'), platformCard);
+assert.ok(ctx.assetGridEmptyHTML().includes('还没有平台共享规则') && ctx.assetGridEmptyHTML().includes('新建平台规则'));
+head = ctx.assetDetailHeadHTML(ctx.state.data.rules[0], {});
+assert.ok(head.includes('<span class="asset-badge is-on">平台共享</span>'), head);
+assert.ok(!head.includes('data-asset-share'), '平台规则不再出现共享按钮');
+assert.deepStrictEqual(buttons(head), ['back', 'delete', 'save']);
+
+// 平台页非管理员：只读、删除标注原因
+reset('rules', { rules: [{ id: 'public-engineering', name: '工程与验证约束', projectId: '', shared: true }] }, { hosted: false, admin: false });
+ctx.state.ruleScope = 'shared';
+const viewerCard = ctx.assetCardHTML(ctx.state.data.rules[0]);
+assert.ok(viewerCard.includes('查看规则') && viewerCard.includes('disabled aria-disabled="true"'), viewerCard);
+assert.ok(viewerCard.includes('平台资产只能由平台管理员在平台资产页删除'), viewerCard);
+const viewerHead = ctx.assetDetailHeadHTML(ctx.state.data.rules[0], {});
+assert.ok(viewerHead.includes('只读 · 仅平台管理员可维护'), viewerHead);
+assert.deepStrictEqual(buttons(viewerHead), ['back']);
+
+// 项目配置页里同一份平台规则只读，不能删也不能共享
+reset('rules', { rules: [{ id: 'public-engineering', name: '工程与验证约束', projectId: '', shared: true }] });
+head = ctx.assetDetailHeadHTML(ctx.state.data.rules[0], {});
+assert.ok(head.includes('只读 · 可直接在本项目使用') && !head.includes('data-asset-share'), head);
+assert.deepStrictEqual(buttons(head), ['back']);
+assert.strictEqual(ctx.assetDeleteBlocked(ctx.state.data.rules[0]), '平台资产只能由平台管理员在平台资产页删除');
+
+// ---------- 技能按项目隔离：平台技能需复制到本项目 ----------
+reset('skills', {
+  skills: [
+    { id: 'platform-skill', name: '平台技能', projectId: '', shared: true },
+    { id: 'p1-skill', name: '项目技能', projectId: 'p1', shared: false },
+  ],
+});
+ctx.state.skillScope = 'project';
+assert.deepStrictEqual(ctx.assetScopeItems('project').map(a => a.id), ['p1-skill'], '项目技能页只列本项目技能');
+const projectSkillHead = ctx.assetDetailHeadHTML(ctx.state.data.skills[1], {});
+assert.ok(projectSkillHead.includes('>本项目<'), projectSkillHead);
+assert.ok(!projectSkillHead.includes('data-asset-share'), '项目技能不再有共享入口');
+const platformSkillHead = ctx.assetDetailHeadHTML(ctx.state.data.skills[0], {});
+assert.ok(platformSkillHead.includes('只读 · 可直接在本项目使用'), platformSkillHead);
+assert.ok(!platformSkillHead.includes('data-asset-share'), '平台技能在项目侧只读');
 
 // ---------- Routes ----------
 const route = hash => { ctx.location.hash = hash; return ctx.assetRouteId(); };

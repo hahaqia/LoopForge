@@ -35,18 +35,26 @@ function mcpCatalogSuggestionsHTML(installed,query){
   if(!items.length)return '';
   return `<section class="mcp-catalog-suggest" aria-label="平台目录"><div><b>平台目录</b><span>通用模板按名称绑定这些 MCP，添加到本项目后即可使用。</span></div><div class="mcp-catalog-actions">${items.map(item=>`<button class="button ghost small" type="button" data-mcp-install="${escapeHTML(item.id)}">＋ ${escapeHTML(item.name)}</button>`).join('')}</div></section>`;
 }
+// 项目配置页复用 MCP 视图时，作用项目跟随被编辑的项目，而不是工作区项目。
+function mcpProjectId(){return state.mcpHostedProject||state.projectFilter||''}
+function mcpProject(){const id=mcpProjectId();return (state.data?.projects||[]).find(p=>p.id===id)||currentProject()}
+// 「AGENT 能力 → 能力资产」维护的是平台共享 MCP（无 scope、无 projectId，所有项目可见）；
+// 只有从「项目配置 → Agent 能力资产」进入时才是项目/个人范围。
+function mcpPlatformSurface(){return !state.mcpHostedProject}
+function isPlatformMCP(item){return !item?.scope&&!item?.projectId}
 async function installMarketMCP(marketId,button){
-  if(!state.projectFilter)return toast('请先选择项目');
+  if(!mcpProjectId())return toast('请先选择项目');
   button.disabled=true;const label=button.textContent;button.textContent='添加中…';
   try{
-    const saved=await api('/api/mcp-market/install',{method:'POST',body:JSON.stringify({marketId,scope:'project',projectId:state.projectFilter})});
+    const saved=await api('/api/mcp-market/install',{method:'POST',body:JSON.stringify({marketId,scope:'project',projectId:mcpProjectId()})});
     state.data.mcpServers=[...(state.data.mcpServers||[]).filter(item=>item.id!==saved.id),saved];
     renderMCPManagement();renderAgents();toast('已添加到当前项目','ok');
   }catch(e){toast(e.message,'err');button.disabled=false;button.textContent=label}
 }
 function scopedMCPInstallations(){
+  if(mcpPlatformSurface())return (state.data?.mcpServers||[]).filter(isPlatformMCP);
   const uid=state.currentUser&&!state.currentUser.isGuest?Number(state.currentUser.id):0;
-  return (state.data?.mcpServers||[]).filter(item=>state.mcpScope==='personal'?item.scope==='personal'&&!item.marketId&&Number(item.ownerUserId)===uid:item.scope==='project'&&item.projectId===state.projectFilter);
+  return (state.data?.mcpServers||[]).filter(item=>state.mcpScope==='personal'?item.scope==='personal'&&!item.marketId&&Number(item.ownerUserId)===uid:item.scope==='project'&&item.projectId===mcpProjectId());
 }
 function mcpSearchHaystack(item){
   return [item.id,item.name,item.description,item.category,item.url,item.marketId,...(item.tags||[]),...(item.aliases||[])].join(' ').toLowerCase();
@@ -136,9 +144,13 @@ async function importMCPJSONText(text){
 function openCustomMCPModal(item=null){
   const form=$('#customMcpForm'),editing=Boolean(item?.id);state.editingMCPId=editing?item.id:'';form.reset();
   const jsonImport=$('#mcpJsonImport');if(jsonImport)jsonImport.open=false;
-  form.elements.scope.value=editing?item.scope:state.mcpScope;form.elements.id.value=editing?item.id:'';form.elements.name.value=editing?item.name||'':'';form.elements.transport.value=editing?item.transport||'http':'http';form.elements.description.value=editing?item.description||'':'';form.elements.authType.value=editing?item.authType||'':'';form.elements.timeoutSecHttp.value=editing?item.timeoutSec||60:60;form.elements.timeoutSecStdio.value=editing?item.timeoutSec||60:60;form.elements.url.value=editing?item.url||'':'';form.elements.command.value=editing?item.command||'':'';form.elements.args.value=editing?(item.args||[]).join('\n'):'';form.elements.installScript.value=editing?item.installScript||'':'';form.elements.workingDirectory.value=editing?item.workingDirectory||'':'';form.elements.pathEntries.value=editing?(item.pathEntries||[]).join('\n'):'';
+  form.elements.scope.value=editing?(item.scope||''):state.mcpScope;form.elements.id.value=editing?item.id:'';form.elements.name.value=editing?item.name||'':'';form.elements.transport.value=editing?item.transport||'http':'http';form.elements.description.value=editing?item.description||'':'';form.elements.authType.value=editing?item.authType||'':'';form.elements.timeoutSecHttp.value=editing?item.timeoutSec||60:60;form.elements.timeoutSecStdio.value=editing?item.timeoutSec||60:60;form.elements.url.value=editing?item.url||'':'';form.elements.command.value=editing?item.command||'':'';form.elements.args.value=editing?(item.args||[]).join('\n'):'';form.elements.installScript.value=editing?item.installScript||'':'';form.elements.workingDirectory.value=editing?item.workingDirectory||'':'';form.elements.pathEntries.value=editing?(item.pathEntries||[]).join('\n'):'';
   mcpRenderKV('environment',editing?item.environment||{}:{});mcpRenderKV('headers',editing?item.headers||{}:{});mcpSetTransport(form.elements.transport.value);mcpUpdateFileSummary(null,editing?item.fileRefs||[]:[]);
-  form.elements.scope.disabled=editing;form.elements.id.disabled=editing;$('#customMcpTitle').textContent=editing?'修改自定义 MCP':'添加自定义 MCP';$('#customMcpSubmit').textContent=editing?'保存修改':'添加 MCP';$('#customMcpModal').classList.add('open');setTimeout(()=>form.elements.name.focus(),0)
+  // 平台页新建的是平台共享 MCP，没有「范围」可选，整行隐藏。
+  const platform=mcpPlatformSurface(),scopeField=$('#mcpScopeField');if(scopeField){scopeField.hidden=platform;scopeField.style.display=platform?'none':''}
+  form.elements.scope.disabled=platform||editing||!!state.mcpHostedProject;form.elements.id.disabled=editing;$('#customMcpTitle').textContent=editing?'修改自定义 MCP':'添加自定义 MCP';$('#customMcpSubmit').textContent=editing?'保存修改':'添加 MCP';
+  const hint=$('#customMcpHint');if(hint)hint.textContent=platform?'保存后对所有项目生效，项目里的角色都能绑定；安装脚本仅在隔离 sandbox 内执行。':'配置只保存在所选范围内；安装脚本仅在隔离 sandbox 内执行。';
+  $('#customMcpModal').classList.add('open');setTimeout(()=>form.elements.name.focus(),0)
 }
 function mcpSetTransport(value){
   $$('[data-mcp-http]').forEach(el=>el.hidden=value!=='http');$$('[data-mcp-stdio]').forEach(el=>el.hidden=value!=='stdio');
@@ -172,7 +184,7 @@ async function saveCustomMCP(e){
     const editing=state.editingMCPId&&state.data.mcpServers.find(item=>item.id===state.editingMCPId);
     let saved;
     if(editing){Object.assign(server,{id:editing.id,scope:editing.scope,projectId:editing.projectId||'',ownerUserId:editing.ownerUserId||0,marketId:'',iconUrl:''});saved=await api('/api/mcp-servers',{method:'PUT',body:JSON.stringify(server)});toast('自定义 MCP 已更新','ok')}
-    else{const scope=form.elements.scope.value;saved=await api('/api/mcp-servers/custom',{method:'POST',body:JSON.stringify({server,scope,projectId:scope==='project'?state.projectFilter:''})});state.mcpScope=scope;state.mcpTab='installed';toast('自定义 MCP 已添加','ok')}
+    else{const platform=mcpPlatformSurface(),scope=platform?'platform':form.elements.scope.value;saved=await api('/api/mcp-servers/custom',{method:'POST',body:JSON.stringify({server,scope,projectId:scope==='project'?mcpProjectId():''})});if(!platform)state.mcpScope=scope;state.mcpTab='installed';toast(platform?'平台共享 MCP 已添加':'自定义 MCP 已添加','ok')}
     if(transport==='stdio'){const uploaded=await uploadMCPSelection(saved.id);if(uploaded)saved=uploaded}
     const index=state.data.mcpServers.findIndex(item=>item.id===saved.id);if(index>=0)state.data.mcpServers[index]=saved;else state.data.mcpServers.push(saved);
     state.editingMCPId='';$('#customMcpModal').classList.remove('open');renderMCPManagement();renderAgents()
@@ -181,18 +193,28 @@ async function saveCustomMCP(e){
 function renderMCPManagement(){
   const grid=$('#mcpMarketGrid'),hint=$('#mcpScopeHint');if(!grid||!hint)return;
   state.mcpTab='installed';
-  const personal=state.mcpScope==='personal';
-  const scopeSelect=$('#mcpScopeSelect');if(scopeSelect&&scopeSelect.value!==state.mcpScope)scopeSelect.value=state.mcpScope;
-  const project=currentProject(),installed=scopedMCPInstallations(),query=state.mcpQuery;
+  const platform=mcpPlatformSurface(),admin=isPlatformAdmin(),personal=!platform&&state.mcpScope==='personal';
+  const scopeSelect=$('#mcpScopeSelect');
+  // 平台页没有「本项目 / 个人」这种范围概念，整行隐藏；样式表给 .select 设了 display，hidden 不可靠。
+  if(scopeSelect){scopeSelect.hidden=platform;scopeSelect.style.display=platform?'none':'';if(!platform&&scopeSelect.value!==state.mcpScope)scopeSelect.value=state.mcpScope}
+  // 平台共享 MCP 只有平台管理员能新建，其他人在本页只读。
+  const addBtn=$('#newCustomMcp');if(addBtn)addBtn.hidden=platform&&!admin;
+  const project=mcpProject(),installed=scopedMCPInstallations(),query=state.mcpQuery;
   const matchedInstalled=installed.filter(item=>mcpMatchesQuery(item,query));
   const installedCount=$('#mcpInstalledCount');
   if(installedCount)installedCount.textContent=String(matchedInstalled.length);
-  hint.innerHTML=personal?`<b>个人 MCP</b><span>仅 ${escapeHTML(userDisplay(state.currentUser)||'当前用户')} 可见。</span>`:`<b>项目 MCP</b><span>添加到「${escapeHTML(project?.name||'未选择项目')}」，不会出现在其他项目中。</span>`;
+  hint.innerHTML=platform
+    ?`<b>平台共享 MCP</b><span>${admin?'所有项目都能绑定这些外部工具；项目自己的 MCP 在「项目配置 → Agent 能力资产」里维护。':'所有项目都能绑定这些外部工具；只有平台管理员能新增、修改或移除。'}</span>`
+    :personal?`<b>个人 MCP</b><span>仅 ${escapeHTML(userDisplay(state.currentUser)||'当前用户')} 可见。</span>`:`<b>项目 MCP</b><span>添加到「${escapeHTML(project?.name||'未选择项目')}」，不会出现在其他项目中；平台共享 MCP 在「AGENT 能力 → 能力资产」里统一维护。</span>`;
   if(personal&&(!state.currentUser||state.currentUser.isGuest)){grid.innerHTML='<div class="mcp-market-empty"><b>登录后才能管理个人 MCP</b><p>项目级 MCP 仍可在当前项目中管理。</p></div>';return}
   const pagedMCP=paginateList('mcp',matchedInstalled);
-  const catalog=personal?'':mcpCatalogSuggestionsHTML(installed,query);
-  const cards=pagedMCP.items.map(item=>`<article class="mcp-market-card is-installed"><div class="mcp-card-head"><span class="mcp-card-logo">${mcpMarketLogo(item)}</span><div><h3>${escapeHTML(item.name)}</h3><small>${personal?'个人专属':escapeHTML(project?.name||item.projectId)}</small></div><span class="mcp-installed-badge ${item.marketId?'is-market':'is-custom'}">${item.marketId?'市场':'自定义'}</span></div><p>${escapeHTML(item.description||'暂无说明')}</p><div class="mcp-card-meta">${item.authType==='github-token'?'<span>GitHub 令牌认证</span>':'<span>自定义认证</span>'}<span>${escapeHTML(item.transport||'http')}</span></div><div class="mcp-card-actions"><div class="mcp-action-buttons">${item.marketId?'':`<button class="button ghost small" type="button" data-mcp-edit="${escapeHTML(item.id)}">修改</button>`}<button class="button ghost small danger" type="button" data-mcp-remove="${escapeHTML(item.id)}">移除</button></div></div></article>`).join('');
-  grid.innerHTML=catalog+(cards||(query?'<div class="mcp-market-empty"><b>没有匹配的 MCP</b><p>换个关键词试试。</p></div>':`<div class="mcp-market-empty"><b>当前范围还没有 MCP</b><p>点击右上角「添加 MCP」，${personal?'创建个人专属配置':'为本项目接入工具'}。</p></div>`));
+  const catalog=platform||personal?'':mcpCatalogSuggestionsHTML(installed,query);
+  const editable=!platform||admin;
+  const cards=pagedMCP.items.map(item=>`<article class="mcp-market-card is-installed"><div class="mcp-card-head"><span class="mcp-card-logo">${mcpMarketLogo(item)}</span><div><h3>${escapeHTML(item.name)}</h3><small>${platform?'平台共享':personal?'个人专属':escapeHTML(project?.name||item.projectId)}</small></div><span class="mcp-installed-badge ${item.marketId?'is-market':'is-custom'}">${item.marketId?'市场':'自定义'}</span></div><p>${escapeHTML(item.description||'暂无说明')}</p><div class="mcp-card-meta">${item.authType==='github-token'?'<span>GitHub 令牌认证</span>':'<span>自定义认证</span>'}<span>${escapeHTML(item.transport||'http')}</span></div><div class="mcp-card-actions">${editable?`<div class="mcp-action-buttons">${item.marketId?'':`<button class="button ghost small" type="button" data-mcp-edit="${escapeHTML(item.id)}">修改</button>`}<button class="button ghost small danger" type="button" data-mcp-remove="${escapeHTML(item.id)}">移除</button></div>`:''}</div></article>`).join('');
+  const empty=query?'<div class="mcp-market-empty"><b>没有匹配的 MCP</b><p>换个关键词试试。</p></div>'
+    :platform?`<div class="mcp-market-empty"><b>还没有平台共享 MCP</b><p>${admin?'点击右上角「添加 MCP」，所有项目都能使用这些外部工具。':'平台管理员还没有配置共享 MCP。'}</p></div>`
+    :`<div class="mcp-market-empty"><b>当前范围还没有 MCP</b><p>点击右上角「添加 MCP」，${personal?'创建个人专属配置':'为本项目接入工具'}。</p></div>`;
+  grid.innerHTML=catalog+(cards||empty);
   if(cards)grid.insertAdjacentHTML('beforeend',pagerHTML('mcp',pagedMCP));
   bindMCPLogoFallbacks(grid);
   grid.querySelectorAll('[data-mcp-install]').forEach(button=>button.onclick=()=>installMarketMCP(button.dataset.mcpInstall,button));

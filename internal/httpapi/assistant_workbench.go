@@ -144,8 +144,10 @@ func (h *assistantHandlers) accessibleWorkbenchReference(c *gin.Context, userID 
 			project, shared = v.ProjectID, v.Shared
 		}
 	case "skill":
+		// 技能按项目隔离：平台技能和其他项目的技能都不能直接引用，
+		// 项目需先把技能复制到本项目。
 		if v, ok := h.repo.Skill(ref.ID); ok {
-			project, shared = v.ProjectID, v.Shared
+			project = v.ProjectID
 		}
 	case "sop":
 		if v, ok := h.repo.Workflow(ref.ID); ok {
@@ -463,7 +465,9 @@ func (h *assistantHandlers) workbenchReferences(c *gin.Context) {
 		add("sop", v.ID, v.Name, v.ProjectID, v.Shared || v.Generic)
 	}
 	for _, v := range h.repo.Skills() {
-		add("skill", v.ID, v.Name, v.ProjectID, v.Shared)
+		// 技能按项目隔离：平台技能与其他项目的共享技能都不再进入引用检索，
+		// 需要时先把平台技能复制到本项目。
+		add("skill", v.ID, v.Name, v.ProjectID, false)
 	}
 	for _, v := range h.repo.Issues() {
 		add("issue", v.ID, v.Title, v.ProjectID, false)

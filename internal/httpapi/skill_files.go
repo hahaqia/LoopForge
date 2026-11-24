@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	"agentflow/internal/domain"
 	"agentflow/internal/repo"
@@ -380,6 +381,78 @@ func sharedTopDir(names []string) (string, bool) {
 		}
 	}
 	return first, true
+}
+
+// copySkill handles POST /api/skills/:id/copy — clones one skill (payload and
+// binary files) into the target project. Skills are project-scoped at runtime,
+// so a platform skill must be copied into a project before a role can bind it.
+func (h *catalogHandlers) copySkill(c *gin.Context) {
+	var body struct {
+		ProjectID string `json:"projectId"`
+	}
+	if !decode(c, &body) {
+		return
+	}
+	sourceID := strings.TrimSpace(c.Param("id"))
+	projectID := strings.TrimSpace(body.ProjectID)
+	source, ok := h.repo.Skill(sourceID)
+	if !ok {
+		c.JSON(http.StatusNotFound, map[string]string{"error": "skill not found"})
+		return
+	}
+	if projectID == "" {
+		c.JSON(http.StatusBadRequest, map[string]string{"error": "projectId is required"})
+		return
+	}
+	if _, found := h.repo.Project(projectID); !found {
+		c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
+		return
+	}
+	if !h.requireProjectWriter(c, projectID) {
+		return
+	}
+	skill := source
+	skill.ID = h.availableSkillCopyID(sourceID)
+	skill.ProjectID = projectID
+	skill.Shared = false
+	// 副本不再跟随 SkillHub 来源，避免平台更新提示把项目副本当成原装市场技能。
+	skill.Source = nil
+	skill.UpdatedAt = time.Now().UTC()
+	var files []repo.SkillFileInput
+	for _, ref := range h.repo.SkillFileRefs(sourceID) {
+		content, found := h.repo.SkillFileContent(sourceID, ref.Path)
+		if !found {
+			continue
+		}
+		files = append(files, repo.SkillFileInput{Path: ref.Path, Content: content, Mode: ref.Mode})
+	}
+	if len(files) == 0 {
+		if err := h.repo.PutSkill(skill); err != nil {
+			c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, skill)
+		return
+	}
+	if err := h.repo.PutSkillSnapshot(skill, files, true); err != nil {
+		c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, skill)
+}
+
+// availableSkillCopyID returns the first free "<source>-copy[-n]" id, so copying
+// the same platform skill twice keeps both copies instead of overwriting.
+func (h *catalogHandlers) availableSkillCopyID(sourceID string) string {
+	for n := 1; ; n++ {
+		id := sourceID + "-copy"
+		if n > 1 {
+			id = fmt.Sprintf("%s-copy-%d", sourceID, n)
+		}
+		if _, taken := h.repo.Skill(id); !taken {
+			return id
+		}
+	}
 }
 
 // pathEscapeRFC5987 encodes a filename for the Content-Disposition header.

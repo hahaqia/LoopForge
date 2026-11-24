@@ -1385,7 +1385,7 @@ html[data-theme="dark"] .agent-studio-v2{box-shadow:0 18px 56px rgba(0,0,0,.42),
   transform:translateY(-2px);border-color:color-mix(in srgb,var(--blue) 40%,var(--line));
   box-shadow:0 12px 32px color-mix(in srgb,var(--blue) 8%,transparent);
 }
-#agentsView .agent-runtime-summary span{
+:is(#agentsView,.pa-agent-surface) .agent-runtime-summary span{
   border-radius:999px;padding:5px 10px;font-size:10.5px;
 }
 #agentsView .definition-avatar{border-radius:14px;font-size:12px}
@@ -3086,45 +3086,45 @@ html[data-theme="dark"] #runnersView .runner-runtime-icon:is(.codex,.claude-code
 #agentModal [hidden],#agentsView [hidden]{display:none!important}
 
 /* --- Tab：复刻 grasp StudioTabStrip --- */
-#agentsView .agent-tabs,#agentModal .agent-tabs{
+:is(#agentsView,.pa-agent-surface) .agent-tabs,#agentModal .agent-tabs{
   position:relative;display:flex;align-items:stretch;gap:2px;min-width:max-content;
   margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;
 }
-#agentsView .agent-tab,#agentModal .agent-tab{
+:is(#agentsView,.pa-agent-surface) .agent-tab,#agentModal .agent-tab{
   position:relative;display:inline-flex;align-items:center;gap:6px;height:40px;min-height:40px;padding:0 10px;margin:0;
   border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--hu-txt3);
   font:inherit;font-size:13px;font-weight:400;line-height:1;white-space:nowrap;cursor:pointer;outline:0;
   transform:none;transition:color var(--hu-dur);
   -webkit-tap-highlight-color:transparent;
 }
-#agentsView .agent-tab:hover,#agentModal .agent-tab:hover{color:var(--hu-text-2);background:transparent}
-#agentsView .agent-tab::after,#agentModal .agent-tab::after{
+:is(#agentsView,.pa-agent-surface) .agent-tab:hover,#agentModal .agent-tab:hover{color:var(--hu-text-2);background:transparent}
+:is(#agentsView,.pa-agent-surface) .agent-tab::after,#agentModal .agent-tab::after{
   content:"";position:absolute;left:10px;right:10px;bottom:0;height:2px;border-radius:2px;
   background:transparent;transition:background-color var(--hu-dur);pointer-events:none;
 }
-#agentsView .agent-tab:not(.on):not([disabled]):hover::after,#agentModal .agent-tab:not(.on):not([disabled]):hover::after{background:var(--hu-line-strong)}
-#agentsView .agent-tab.on,#agentModal .agent-tab.on{color:var(--hu-text);font-weight:500;background:transparent;box-shadow:none}
-#agentsView .agent-tab:focus,#agentModal .agent-tab:focus{outline:0;box-shadow:none}
-#agentsView .agent-tab:focus-visible,#agentModal .agent-tab:focus-visible{outline:0;box-shadow:inset 0 0 0 2px var(--hu-accent-soft);border-radius:var(--hu-r)}
-#agentsView .agent-tab[disabled],#agentModal .agent-tab[disabled]{cursor:default;color:var(--hu-faint)}
-#agentsView .agent-tab-count,#agentModal .agent-tab-count{
+:is(#agentsView,.pa-agent-surface) .agent-tab:not(.on):not([disabled]):hover::after,#agentModal .agent-tab:not(.on):not([disabled]):hover::after{background:var(--hu-line-strong)}
+:is(#agentsView,.pa-agent-surface) .agent-tab.on,#agentModal .agent-tab.on{color:var(--hu-text);font-weight:500;background:transparent;box-shadow:none}
+:is(#agentsView,.pa-agent-surface) .agent-tab:focus,#agentModal .agent-tab:focus{outline:0;box-shadow:none}
+:is(#agentsView,.pa-agent-surface) .agent-tab:focus-visible,#agentModal .agent-tab:focus-visible{outline:0;box-shadow:inset 0 0 0 2px var(--hu-accent-soft);border-radius:var(--hu-r)}
+:is(#agentsView,.pa-agent-surface) .agent-tab[disabled],#agentModal .agent-tab[disabled]{cursor:default;color:var(--hu-faint)}
+:is(#agentsView,.pa-agent-surface) .agent-tab-count,#agentModal .agent-tab-count{
   display:inline-block;min-width:18px;height:18px;padding:0 6px;margin:0;border:0;border-radius:999px;box-sizing:border-box;
   background:var(--hu-overlay);color:var(--hu-txt3);font-size:11px;font-weight:500;line-height:18px;text-align:center;
   font-variant-numeric:tabular-nums;transition:background-color var(--hu-dur),color var(--hu-dur);
 }
-#agentsView .agent-tab:hover .agent-tab-count,#agentModal .agent-tab:hover .agent-tab-count{color:var(--hu-text-2)}
-#agentsView .agent-tab.on .agent-tab-count,#agentModal .agent-tab.on .agent-tab-count{background:var(--hu-accent-soft);color:var(--hu-accent-2)}
+:is(#agentsView,.pa-agent-surface) .agent-tab:hover .agent-tab-count,#agentModal .agent-tab:hover .agent-tab-count{color:var(--hu-text-2)}
+:is(#agentsView,.pa-agent-surface) .agent-tab.on .agent-tab-count,#agentModal .agent-tab.on .agent-tab-count{background:var(--hu-accent-soft);color:var(--hu-accent-2)}
 #agentModal .agent-tab-num{
   width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;flex:none;
   background:var(--hu-overlay);color:var(--hu-txt3);font-size:11px;font-weight:500;font-style:normal;
   transition:background-color var(--hu-dur),color var(--hu-dur);
 }
 #agentModal .agent-tab.on .agent-tab-num,#agentModal .agent-tab.done .agent-tab-num{background:var(--hu-accent-soft);color:var(--hu-accent-2)}
-#agentsView .agent-tab-ind,#agentModal .agent-tab-ind{
+:is(#agentsView,.pa-agent-surface) .agent-tab-ind,#agentModal .agent-tab-ind{
   position:absolute;left:0;bottom:0;height:2px;width:0;border-radius:2px;background:var(--hu-accent);pointer-events:none;opacity:0;
   transition:transform var(--hu-dur) var(--hu-ease),width var(--hu-dur) var(--hu-ease),opacity var(--hu-dur);
 }
-@media (prefers-reduced-motion:reduce){#agentsView .agent-tab-ind,#agentModal .agent-tab-ind{transition:none}}
+@media (prefers-reduced-motion:reduce){:is(#agentsView,.pa-agent-surface) .agent-tab-ind,#agentModal .agent-tab-ind{transition:none}}
 
 /* --- 通用控件：按钮 / 输入框 / 勾选 --- */
 #agentsView .button,#agentModal .button{
@@ -3162,7 +3162,7 @@ html[data-theme="dark"] #runnersView .runner-runtime-icon:is(.codex,.claude-code
 }
 #agentModal .ai-model-toggle:hover{border-color:var(--hu-border-strong)!important}
 #agentModal .ai-model-toggle[aria-expanded="true"],#agentModal .ai-model-toggle:focus-visible{border-color:var(--hu-accent)!important;box-shadow:0 0 0 3px var(--hu-accent-soft)!important;outline:0}
-#agentModal .agent-link,#agentsView .agent-link{
+#agentModal .agent-link,:is(#agentsView,.pa-agent-surface) .agent-link{
   display:inline;padding:0;margin:0;border:0;background:none;color:var(--hu-accent);font:inherit;font-size:12px;cursor:pointer;border-radius:4px;
 }
 #agentModal .agent-link:hover{color:var(--hu-accent-hover);text-decoration:underline}
@@ -3171,74 +3171,74 @@ html[data-theme="dark"] #runnersView .runner-runtime-icon:is(.codex,.claude-code
 /* --- 角色定义页：标题、工具栏、搜索 --- */
 #agentsView .page-heading{align-items:flex-end;margin-bottom:16px}
 #agentsView .page-heading h1{margin:0 0 4px}
-#agentsView .agent-toolbar{
+:is(#agentsView,.pa-agent-surface) .agent-toolbar{
   display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;margin:0 0 4px;padding:0;
   border:0;border-bottom:1px solid var(--hu-border);background:transparent;box-shadow:none;box-sizing:border-box;
 }
-#agentsView .agent-toolbar .agent-tabs{margin-bottom:-1px}
-#agentsView .agent-search{
+:is(#agentsView,.pa-agent-surface) .agent-toolbar .agent-tabs{margin-bottom:-1px}
+:is(#agentsView,.pa-agent-surface) .agent-search{
   display:flex;align-items:center;gap:6px;width:260px;max-width:40vw;height:32px;min-height:32px;padding:0 10px;margin:0 0 4px;
   border:1px solid var(--hu-border);border-radius:var(--hu-r);background:var(--hu-surface);color:var(--hu-faint);
   box-shadow:none;box-sizing:border-box;transition:border-color var(--hu-dur),box-shadow var(--hu-dur);
 }
-#agentsView .agent-search>span{color:var(--hu-faint);font-size:14px;line-height:1}
-#agentsView .agent-search input{flex:1;min-width:0;height:100%;padding:0;border:0;outline:0;background:transparent;color:var(--hu-text);font-size:13px;box-shadow:none}
-#agentsView .agent-search:focus-within{border-color:var(--hu-accent);box-shadow:0 0 0 3px var(--hu-accent-soft)}
+:is(#agentsView,.pa-agent-surface) .agent-search>span{color:var(--hu-faint);font-size:14px;line-height:1}
+:is(#agentsView,.pa-agent-surface) .agent-search input{flex:1;min-width:0;height:100%;padding:0;border:0;outline:0;background:transparent;color:var(--hu-text);font-size:13px;box-shadow:none}
+:is(#agentsView,.pa-agent-surface) .agent-search:focus-within{border-color:var(--hu-accent);box-shadow:0 0 0 3px var(--hu-accent-soft)}
 
 /* --- 角色定义页：单行列表 --- */
-#agentsView .agent-list-table{display:block;width:100%;margin:4px 0 0}
-#agentsView .agent-row{
+:is(#agentsView,.pa-agent-surface) .agent-list-table{display:block;width:100%;margin:4px 0 0}
+:is(#agentsView,.pa-agent-surface) .agent-row{
   display:grid;grid-template-columns:minmax(0,1fr) 180px 220px 76px 32px;align-items:center;gap:16px;
   height:72px;padding:0 14px;border-radius:var(--hu-r);color:var(--hu-text);font-size:14px;cursor:pointer;outline:0;
   transition:background-color var(--hu-dur);
 }
-#agentsView .agent-row>*{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#agentsView .agent-row-head{height:34px;cursor:default;color:var(--hu-faint);font-size:12px}
-#agentsView .agent-row-head>.agent-col-uses{text-align:right}
-#agentsView .agent-row:not(.agent-row-head):hover,#agentsView .agent-row.menu-open{background:var(--hu-hover)}
-#agentsView .agent-row:focus-visible{box-shadow:inset 0 0 0 2px var(--hu-accent-soft)}
-#agentsView .agent-row+.agent-row:not(.agent-row-head){box-shadow:0 -1px 0 var(--hu-border)}
-#agentsView .agent-row:not(.agent-row-head):hover,#agentsView .agent-row:hover+.agent-row,#agentsView .agent-row.menu-open,#agentsView .agent-row.menu-open+.agent-row{box-shadow:none}
-#agentsView .agent-row-who{display:flex;align-items:center}
-#agentsView .agent-row-who>div{flex:1;min-width:0;overflow:hidden;line-height:20px}
-#agentsView .agent-row-who b{font-weight:500;line-height:20px;color:var(--hu-text)}
-#agentsView .agent-row-who small{display:block;margin-top:6px;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--hu-muted);font-size:12px}
-#agentsView .agent-row-tag{margin-left:6px;color:var(--hu-muted);font-size:12px;font-weight:400;line-height:1}
-#agentsView .agent-row-tag.shared{color:var(--hu-accent)}
-#agentsView .agent-row-model{color:var(--hu-text);font-size:13px}
-#agentsView .agent-row-model.none{color:var(--hu-faint)}
-#agentsView .agent-row-config{color:var(--hu-muted);font-size:13px}
-#agentsView .agent-row-config .loop{color:var(--hu-accent)}
-#agentsView .agent-row-config .empty{color:var(--hu-faint)}
-#agentsView .agent-row-uses{color:var(--hu-muted);font-size:13px;text-align:right}
-#agentsView .agent-row-uses.zero{color:var(--hu-faint)}
-#agentsView .agent-row-more{display:flex;justify-content:flex-end;overflow:visible}
-#agentsView .agent-more-btn{
+:is(#agentsView,.pa-agent-surface) .agent-row>*{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:is(#agentsView,.pa-agent-surface) .agent-row-head{height:34px;cursor:default;color:var(--hu-faint);font-size:12px}
+:is(#agentsView,.pa-agent-surface) .agent-row-head>.agent-col-uses{text-align:right}
+:is(#agentsView,.pa-agent-surface) .agent-row:not(.agent-row-head):hover,:is(#agentsView,.pa-agent-surface) .agent-row.menu-open{background:var(--hu-hover)}
+:is(#agentsView,.pa-agent-surface) .agent-row:focus-visible{box-shadow:inset 0 0 0 2px var(--hu-accent-soft)}
+:is(#agentsView,.pa-agent-surface) .agent-row+.agent-row:not(.agent-row-head){box-shadow:0 -1px 0 var(--hu-border)}
+:is(#agentsView,.pa-agent-surface) .agent-row:not(.agent-row-head):hover,:is(#agentsView,.pa-agent-surface) .agent-row:hover+.agent-row,:is(#agentsView,.pa-agent-surface) .agent-row.menu-open,:is(#agentsView,.pa-agent-surface) .agent-row.menu-open+.agent-row{box-shadow:none}
+:is(#agentsView,.pa-agent-surface) .agent-row-who{display:flex;align-items:center}
+:is(#agentsView,.pa-agent-surface) .agent-row-who>div{flex:1;min-width:0;overflow:hidden;line-height:20px}
+:is(#agentsView,.pa-agent-surface) .agent-row-who b{font-weight:500;line-height:20px;color:var(--hu-text)}
+:is(#agentsView,.pa-agent-surface) .agent-row-who small{display:block;margin-top:6px;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--hu-muted);font-size:12px}
+:is(#agentsView,.pa-agent-surface) .agent-row-tag{margin-left:6px;color:var(--hu-muted);font-size:12px;font-weight:400;line-height:1}
+:is(#agentsView,.pa-agent-surface) .agent-row-tag.shared{color:var(--hu-accent)}
+:is(#agentsView,.pa-agent-surface) .agent-row-model{color:var(--hu-text);font-size:13px}
+:is(#agentsView,.pa-agent-surface) .agent-row-model.none{color:var(--hu-faint)}
+:is(#agentsView,.pa-agent-surface) .agent-row-config{color:var(--hu-muted);font-size:13px}
+:is(#agentsView,.pa-agent-surface) .agent-row-config .loop{color:var(--hu-accent)}
+:is(#agentsView,.pa-agent-surface) .agent-row-config .empty{color:var(--hu-faint)}
+:is(#agentsView,.pa-agent-surface) .agent-row-uses{color:var(--hu-muted);font-size:13px;text-align:right}
+:is(#agentsView,.pa-agent-surface) .agent-row-uses.zero{color:var(--hu-faint)}
+:is(#agentsView,.pa-agent-surface) .agent-row-more{display:flex;justify-content:flex-end;overflow:visible}
+:is(#agentsView,.pa-agent-surface) .agent-more-btn{
   width:28px;height:28px;display:inline-grid;place-items:center;padding:0;border:0;border-radius:var(--hu-r);
   background:transparent;color:var(--hu-faint);cursor:pointer;opacity:0;outline:0;
   transition:opacity var(--hu-dur),background-color var(--hu-dur),color var(--hu-dur);
 }
-#agentsView .agent-row:hover .agent-more-btn,#agentsView .agent-more-btn[aria-expanded="true"],#agentsView .agent-more-btn:focus-visible{opacity:1}
-#agentsView .agent-more-btn:hover,#agentsView .agent-more-btn[aria-expanded="true"]{background:var(--hu-overlay);color:var(--hu-text)}
-#agentsView .agent-more-btn:focus-visible{box-shadow:0 0 0 3px var(--hu-accent-soft)}
-#agentsView .agent-list-table .catalog-empty{margin-top:12px;padding:56px 0;border:0;background:transparent;box-shadow:none;text-align:center;color:var(--hu-muted)}
-#agentsView .agent-row-menu{
+:is(#agentsView,.pa-agent-surface) .agent-row:hover .agent-more-btn,:is(#agentsView,.pa-agent-surface) .agent-more-btn[aria-expanded="true"],:is(#agentsView,.pa-agent-surface) .agent-more-btn:focus-visible{opacity:1}
+:is(#agentsView,.pa-agent-surface) .agent-more-btn:hover,:is(#agentsView,.pa-agent-surface) .agent-more-btn[aria-expanded="true"]{background:var(--hu-overlay);color:var(--hu-text)}
+:is(#agentsView,.pa-agent-surface) .agent-more-btn:focus-visible{box-shadow:0 0 0 3px var(--hu-accent-soft)}
+:is(#agentsView,.pa-agent-surface) .agent-list-table .catalog-empty{margin-top:12px;padding:56px 0;border:0;background:transparent;box-shadow:none;text-align:center;color:var(--hu-muted)}
+.agent-row-menu{
   position:fixed;z-index:1200;min-width:168px;max-width:240px;padding:4px;box-sizing:border-box;
   border:1px solid var(--hu-border);border-radius:var(--hu-r-lg);background:var(--hu-surface);box-shadow:var(--hu-shadow);
 }
-#agentsView .agent-row-menu button{
+.agent-row-menu button{
   display:flex;align-items:center;width:100%;height:32px;padding:0 10px;border:0;border-radius:var(--hu-r);
   background:transparent;color:var(--hu-text);font:inherit;font-size:13px;text-align:left;cursor:pointer;outline:0;
 }
-#agentsView .agent-row-menu button:hover,#agentsView .agent-row-menu button:focus-visible{background:var(--hu-hover)}
-#agentsView .agent-row-menu button.danger{color:var(--hu-danger)}
-#agentsView .agent-row-menu button[disabled]{color:var(--hu-faint);background:none;cursor:not-allowed}
-#agentsView .agent-row-menu hr{margin:4px 0;border:0;border-top:1px solid var(--hu-border)}
-#agentsView .agent-row-menu small{display:block;padding:2px 10px 6px;color:var(--hu-faint);font-size:12px;line-height:1.45;white-space:normal}
+.agent-row-menu button:hover,.agent-row-menu button:focus-visible{background:var(--hu-hover)}
+.agent-row-menu button.danger{color:var(--hu-danger)}
+.agent-row-menu button[disabled]{color:var(--hu-faint);background:none;cursor:not-allowed}
+.agent-row-menu hr{margin:4px 0;border:0;border-top:1px solid var(--hu-border)}
+.agent-row-menu small{display:block;padding:2px 10px 6px;color:var(--hu-faint);font-size:12px;line-height:1.45;white-space:normal}
 @media (max-width:960px){
-  #agentsView .agent-row{grid-template-columns:minmax(0,1fr) 150px 32px}
-  #agentsView .agent-row>.agent-col-config,#agentsView .agent-row>.agent-col-uses{display:none}
-  #agentsView .agent-search{width:180px}
+  :is(#agentsView,.pa-agent-surface) .agent-row{grid-template-columns:minmax(0,1fr) 150px 32px}
+  :is(#agentsView,.pa-agent-surface) .agent-row>.agent-col-config,:is(#agentsView,.pa-agent-surface) .agent-row>.agent-col-uses{display:none}
+  :is(#agentsView,.pa-agent-surface) .agent-search{width:180px}
 }
 
 /* --- 角色弹窗：外框、标题、导航、底栏 --- */

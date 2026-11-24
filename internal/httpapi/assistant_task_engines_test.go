@@ -150,7 +150,8 @@ printf '{"type":"result","result":"skills: %s"}\n' "$skills"
 	if err := h.executeAssistantTask(context.Background(), user, &task); err != nil {
 		t.Fatalf("run = %v %+v", err, task)
 	}
-	if !strings.Contains(task.LastMessage, "repo-reader") || !strings.Contains(task.LastMessage, "golang-defect-scanner") || strings.Contains(task.LastMessage, "private-scanner") {
+	// 技能按项目隔离：定时任务只带本项目技能，平台/其他项目共享技能不再自动装载。
+	if !strings.Contains(task.LastMessage, "repo-reader") || strings.Contains(task.LastMessage, "golang-defect-scanner") || strings.Contains(task.LastMessage, "private-scanner") {
 		t.Fatalf("CLI home skills = %q", task.LastMessage)
 	}
 }

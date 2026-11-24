@@ -46,7 +46,7 @@ func TestProjectContentWritesRequireMembership(t *testing.T) {
 	call := func(cookie *http.Cookie, method, path, body string) int {
 		return request(cookie, method, path, body).Code
 	}
-	session("admin")
+	admin := session("admin")
 	owner, member, viewer, other := session("owner"), session("member"), session("viewer"), session("other")
 	ownerUser, _ := s.UserByLoginName("owner")
 	memberUser, _ := s.UserByLoginName("member")
@@ -137,6 +137,99 @@ func TestProjectContentWritesRequireMembership(t *testing.T) {
 	if saved, _ := s.Agent("a1"); saved.ProjectID != "p1" || saved.Name != "Dev" {
 		t.Fatalf("agent changed by a non-member: %+v", saved)
 	}
+	// 平台共享角色（projectId 为空）对所有项目可用，只有平台管理员能维护。
+	platformAgent := `{"id":"pa-global","name":"Global","projectId":""}`
+	if code := call(other, "PUT", "/api/agents", platformAgent); code != 403 {
+		t.Fatalf("non-admin writes platform agent: %d", code)
+	}
+	if code := call(admin, "PUT", "/api/agents", platformAgent); code != 200 {
+		t.Fatalf("admin writes platform agent: %d", code)
+	}
+	if code := call(admin, "DELETE", "/api/agents/pa-global", ""); code != 204 {
+		t.Fatalf("admin deletes platform agent: %d", code)
+	}
+	// 平台共享规则同理：普通项目成员不能写，平台管理员可以。
+	platformRule := `{"id":"pa-global-rule","name":"Global rule","projectId":""}`
+	if code := call(other, "PUT", "/api/rules", platformRule); code != 403 {
+		t.Fatalf("non-admin writes platform rule: %d", code)
+	}
+	if code := call(admin, "PUT", "/api/rules", platformRule); code != 200 {
+		t.Fatalf("admin writes platform rule: %d", code)
+	}
+	if code := call(admin, "DELETE", "/api/rules?id=pa-global-rule", ""); code != 204 {
+		t.Fatalf("admin deletes platform rule: %d", code)
+	}
+	// 平台规则按 shared=true 落库（运行时跨项目可见依赖它），但不再因此拒绝删除。
+	sharedPlatformRule := `{"id":"pa-shared-rule","name":"Shared platform rule","projectId":"","shared":true}`
+	if code := call(admin, "PUT", "/api/rules", sharedPlatformRule); code != 200 {
+		t.Fatalf("admin writes shared platform rule: %d", code)
+	}
+	if saved, ok := s.Rule("pa-shared-rule"); !ok || !saved.Shared || saved.ProjectID != "" {
+		t.Fatalf("platform rule must persist shared=true: %+v", saved)
+	}
+	if code := call(other, "DELETE", "/api/rules?id=pa-shared-rule", ""); code != 403 {
+		t.Fatalf("non-admin deletes shared platform rule: %d", code)
+	}
+	if code := call(admin, "DELETE", "/api/rules?id=pa-shared-rule", ""); code != 204 {
+		t.Fatalf("admin deletes shared platform rule: %d", code)
+	}
+	// 不带 shared 的平台规则也会被归一为共享。
+	if code := call(admin, "PUT", "/api/rules", `{"id":"pa-normalized","name":"Normalized","projectId":""}`); code != 200 {
+		t.Fatalf("admin writes normalized platform rule: %d", code)
+	}
+	if saved, ok := s.Rule("pa-normalized"); !ok || !saved.Shared {
+		t.Fatalf("platform rule shared must be normalized to true: %+v", saved)
+	}
+	if code := call(admin, "DELETE", "/api/rules?id=pa-normalized", ""); code != 204 {
+		t.Fatalf("admin deletes normalized platform rule: %d", code)
+	}
+	// 平台技能：shared 归一后仍可删除。
+	if code := call(admin, "PUT", "/api/skills", `{"id":"pa-skill","name":"Platform skill","projectId":"","shared":true}`); code != 200 {
+		t.Fatalf("admin writes shared platform skill: %d", code)
+	}
+	if saved, ok := s.Skill("pa-skill"); !ok || !saved.Shared || saved.ProjectID != "" {
+		t.Fatalf("platform skill must persist shared=true: %+v", saved)
+	}
+	if code := call(other, "DELETE", "/api/skills?id=pa-skill", ""); code != 403 {
+		t.Fatalf("non-admin deletes shared platform skill: %d", code)
+	}
+	if code := call(admin, "DELETE", "/api/skills?id=pa-skill", ""); code != 204 {
+		t.Fatalf("admin deletes shared platform skill: %d", code)
+	}
+	// 平台产物模板同理。
+	if code := call(admin, "PUT", "/api/artifact-templates", `{"id":"pa-template","name":"Platform template","projectId":"","content":"## 目标\n说明"}`); code != 200 {
+		t.Fatalf("admin writes shared platform template: %d", code)
+	}
+	if saved, ok := s.ArtifactTemplate("pa-template"); !ok || !saved.Shared || saved.ProjectID != "" {
+		t.Fatalf("platform template must persist shared=true: %+v", saved)
+	}
+	if code := call(other, "DELETE", "/api/artifact-templates?id=pa-template", ""); code != 403 {
+		t.Fatalf("non-admin deletes shared platform template: %d", code)
+	}
+	if code := call(admin, "DELETE", "/api/artifact-templates?id=pa-template", ""); code != 204 {
+		t.Fatalf("admin deletes shared platform template: %d", code)
+	}
+	// 技能按项目隔离：平台技能不会自动生效，项目角色必须先复制一份到本项目。
+	source := domain.SkillDefinition{ID: "pa-copy-src", Name: "Platform skill", ProjectID: ""}
+	if err := s.PutSkillSnapshot(source, []repo.SkillFileInput{{Path: "SKILL.md", Content: []byte("# 平台技能"), Mode: 0o644}}, true); err != nil {
+		t.Fatal(err)
+	}
+	if code := call(owner, "POST", "/api/skills/pa-copy-src/copy", `{"projectId":"p1"}`); code != 201 {
+		t.Fatalf("owner copies platform skill into project: %d", code)
+	}
+	copied, ok := s.Skill("pa-copy-src-copy")
+	if !ok || copied.ProjectID != "p1" || copied.Shared || copied.Name != "Platform skill" {
+		t.Fatalf("copied skill = %+v (ok=%v)", copied, ok)
+	}
+	if content, found := s.SkillFileContent("pa-copy-src-copy", "SKILL.md"); !found || string(content) != "# 平台技能" {
+		t.Fatalf("copied skill files = %q (found=%v)", content, found)
+	}
+	if code := call(other, "POST", "/api/skills/pa-copy-src/copy", `{"projectId":"p1"}`); code != 403 {
+		t.Fatalf("non-member copies platform skill: %d", code)
+	}
+	if code := call(owner, "POST", "/api/skills/pa-copy-src/copy", `{"projectId":"missing"}`); code != 404 {
+		t.Fatalf("copy into missing project: %d", code)
+	}
 
 	if err := s.PutRun(domain.Run{ID: "r1", Status: "succeeded", ExecutionContext: domain.TelemetryContext{ProjectID: "p1"}, Nodes: map[string]*domain.NodeRun{}}); err != nil {
 		t.Fatal(err)
@@ -163,6 +256,22 @@ func TestProjectContentWritesRequireMembership(t *testing.T) {
 	}
 	if code := call(other, "DELETE", "/api/rules?id=rule1", ""); code != 403 {
 		t.Fatalf("non-member delete rule: %d", code)
+	}
+	if code := call(owner, "PUT", "/api/rules", `{"id":"rule1-shared","projectId":"p1","name":"Shared","shared":true}`); code != 200 {
+		t.Fatalf("owner writes shared project rule: %d", code)
+	}
+	if code := call(owner, "DELETE", "/api/rules?id=rule1-shared", ""); code != 409 {
+		t.Fatalf("shared project rule must stay undeletable: %d", code)
+	}
+	// 平台规则被角色引用时同样要拦住。
+	if code := call(admin, "PUT", "/api/rules", `{"id":"pa-referenced","name":"Referenced","projectId":""}`); code != 200 {
+		t.Fatalf("admin writes referenced platform rule: %d", code)
+	}
+	if code := call(owner, "PUT", "/api/agents", `{"id":"a-ref","projectId":"p1","name":"Dev","instructions":"x","rules":["pa-referenced"]}`); code != 200 {
+		t.Fatalf("owner binds platform rule: %d", code)
+	}
+	if code := call(admin, "DELETE", "/api/rules?id=pa-referenced", ""); code != 409 {
+		t.Fatalf("referenced platform rule must stay undeletable: %d", code)
 	}
 	if err := s.PutDockerfile(domain.DockerfileDefinition{ID: "df-global", Name: "Base", Content: "FROM alpine"}); err != nil {
 		t.Fatal(err)

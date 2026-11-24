@@ -14,7 +14,7 @@ const state = {
   projectAdminDetailId:null, projectAdminTab:'basic', projectAdminQuery:'', projectAdminFilter:'all', projectDraftFor:'', projectDraftBase:null, projectIdentCustom:false, projectIdentSeed:'', projectAdminErrors:{},
   sopScope:'project', agentScope:'shared', ruleScope:'shared', skillScope:'shared', dockerfileScope:'shared', environmentScope:'shared', sandboxScope:'shared', templateScope:'shared',
   issueRunFilter:'', issueStatusFilter:'', issueAssigneeFilter:'', issueQuery:'', issueView:localStorage.getItem('agentflow.issueView')||'table',
-  assetType:'dockerfiles', selectedAsset:null, assetQuery:'', assetDirty:false, mcpTab:'installed', mcpScope:'project', mcpMarket:[], mcpQuery:'', editingMCPId:'', poll:null, runStream:null,
+  assetType:'dockerfiles', selectedAsset:null, assetQuery:'', assetDirty:false, assetCreateGlobal:false, agentCreateGlobal:false, mcpTab:'installed', mcpScope:'project', mcpMarket:[], mcpQuery:'', editingMCPId:'', poll:null, runStream:null,
   obsTab:'overview', obsDeliveryFilter:'all', obsTraceRunId:null, obsTraceAdapter:'live', obsScope:localStorage.getItem('agentflow.obsScope')==='project'?'project':'user', obsUserFilter:'', obsSourceFilter:'', obsUserFilterReady:false, obsTrendGrain:['day','week','month','all'].includes(localStorage.getItem('agentflow.obsTrendGrain'))?localStorage.getItem('agentflow.obsTrendGrain'):'all', obsPeriodKey:'', obsTrendMetric:['runs','issues','cost'].includes(localStorage.getItem('agentflow.obsTrendMetric'))?localStorage.getItem('agentflow.obsTrendMetric'):'tokens', obsCrossProject:null, drawerOpen:false, issueDetailTab:'overview', issueDetailData:null, propTab:'basic',
   uiScroll:{runId:'', nodeId:'', graphLeft:0, feedTop:0, telTop:0, feedStick:true, telStick:true},
   runLogs:null, runTelemetry:null, runTelemetryAdapter:'live', runWorkspace:null,
@@ -786,7 +786,9 @@ async function refreshGenericWorkflowRoles(){
 }
 function scopedAgents(){const all=state.data?.agents||[];return state.agentScope==='shared'?all.filter(a=>catalogShared(a.projectId,a.shared)):all.filter(a=>catalogOwned(a.projectId))}
 function visibleAssets(items){return (items||[]).filter(assetVisible)}
-function visibleMCPAssets(items){const uid=state.currentUser&&!state.currentUser.isGuest?Number(state.currentUser.id):0;return (items||[]).filter(item=>item.scope==='project'?item.projectId===state.projectFilter:item.scope==='personal'&&!item.marketId&&uid>0&&Number(item.ownerUserId)===uid)}
+// 平台共享 MCP（无 scope、无 projectId）对所有项目可见，可以直接绑到角色上；
+// 项目 MCP 只在所属项目内可见；个人 MCP 只对本人可见且不含市场安装。
+function visibleMCPAssets(items){const uid=state.currentUser&&!state.currentUser.isGuest?Number(state.currentUser.id):0;return (items||[]).filter(item=>item.scope==='project'?item.projectId===state.projectFilter:item.scope==='personal'?(item.marketId?false:uid>0&&Number(item.ownerUserId)===uid):!item.projectId)}
 function projectQuery(){return state.projectFilter?`?projectId=${encodeURIComponent(state.projectFilter)}`:''}
 function projectQueryWith(extra){const q=projectQuery();return q?q+`&${extra}`:`?${extra}`}
 function runProjectId(r){
@@ -1102,7 +1104,7 @@ function bind(){
   $$('.generic-template-close').forEach(b=>b.onclick=()=>$('#genericTemplateModal').classList.remove('open'));
   $('#confirmGenericTemplate')&&($('#confirmGenericTemplate').onclick=adoptGenericTemplate);
   $('#runGenericTemplateDirect')&&($('#runGenericTemplateDirect').onclick=()=>{const id=state.genericTemplateId;$('#genericTemplateModal').classList.remove('open');if(!id)return toast('请先选择通用模板');openRunModal(id)});
-  $('#confirmRun').onclick=startRun; $('#newAgent').onclick=()=>{const pid=state.projectFilter||'';if(!pid){toast('请先在左上角选择项目');return}toast('平台页只维护共享角色；项目角色在项目配置里创建','warn');location.hash=`#/projects/${encodeURIComponent(pid)}/agents`};
+  $('#confirmRun').onclick=startRun; $('#newAgent').onclick=()=>{if(!isPlatformAdmin())return toast('只有平台管理员可以维护平台共享角色','warn');openAgentWizard(null,1,{global:true})};
   $('#agentForm').onsubmit=saveAgent;
   $('#agentForm').elements.executorId?.addEventListener('change',e=>applyAgentModelUI(e.target.value,'','',true));
   bindAgentPicker('#agentModelPicker',renderAgentModelPicker);
@@ -1120,6 +1122,8 @@ function bind(){
   $('#runFilters').onclick=e=>{const button=e.target.closest('[data-run-filter]');if(!button)return;state.runFilter=button.dataset.runFilter;resetListPage('runs');$$('[data-run-filter]').forEach(x=>x.classList.toggle('active',x===button));renderRuns()};
   $$('[data-asset-scope]').forEach(btn=>btn.onclick=()=>{if(state.selectedAsset)return;const key=assetScopeKey(state.assetType);if(state[key]!==btn.dataset.assetScope)state.assetQuery='';state[key]=btn.dataset.assetScope;renderAssets()});
   $('#newAsset').onclick=()=>openAssetDetail('__new__');
+  $('#copyPlatformSkill')&&($('#copyPlatformSkill').onclick=()=>openSkillCopyDialog());
+  bindSkillCopyDialog();
   $('#assetSearch').oninput=e=>{state.assetQuery=e.target.value;renderAssetGrid()};
   $('#assetForm').onsubmit=saveAsset;
   const markAssetFormDirty=e=>{if(e.target instanceof HTMLInputElement&&e.target.type==='file')return;markAssetDirty()};
@@ -1196,6 +1200,7 @@ function bind(){
   $$('[data-asset-type-tab]').forEach(btn=>{
     btn.onclick=async()=>{
       const next=btn.dataset.assetTypeTab;
+      if(typeof setHostedProjectAssetType==='function'&&setHostedProjectAssetType(next))return;
       if(next===activeViewName()||!(await confirmAssetLeave()))return;
       switchView(next);
       $$(`[data-asset-type-tab="${next}"]`).find(tab=>tab.getClientRects().length)?.focus();
@@ -1949,6 +1954,8 @@ function persistView(name,push=false){
   else history.replaceState(null,'',next);
 }
 function switchView(name){
+  // 项目配置页签里临时挂载的资产双栏，离开前先归还到平台位置。
+  if(state.assetHosted&&typeof unmountProjectAssetSurface==='function')unmountProjectAssetSurface();
   $$('details.collab-settings').forEach(menu=>menu.open=false);
   const titles=viewTitles();
   if(name==='dashboard')name='collaboration';

@@ -12,7 +12,8 @@ func TestRoleMCPServerVisible(t *testing.T) {
 		server domain.MCPServerDefinition
 		want   bool
 	}{
-		{"no scope", domain.MCPServerDefinition{}, false},
+		{"platform shared", domain.MCPServerDefinition{}, true},
+		{"legacy empty scope with project", domain.MCPServerDefinition{ProjectID: "p2"}, false},
 		{"project same", domain.MCPServerDefinition{Scope: "project", ProjectID: "p1"}, true},
 		{"project other", domain.MCPServerDefinition{Scope: "project", ProjectID: "p2"}, false},
 		{"personal own", domain.MCPServerDefinition{Scope: "personal", OwnerUserID: 7}, true},

@@ -94,7 +94,13 @@ func (e *Engine) resolveAssets(agent domain.AgentDefinition, projectID, workflow
 	}
 	for _, id := range agent.Skills {
 		if v, ok := e.repo.Skill(id); ok {
-			if v.ProjectID != projectID && !v.Shared {
+			// 技能按项目隔离：平台技能（projectId 为空）不再自动对所有项目生效，
+			// 项目必须先把技能拷贝到本项目再绑定，避免平台技能越加越多时
+			// 每个项目的技能集都被动膨胀、影响技能命中精度。
+			if v.ProjectID == "" {
+				continue
+			}
+			if v.ProjectID != projectID {
 				if tmpl, found := e.repo.GenericSkillByID(id); found {
 					bundle.Skills = append(bundle.Skills, tmpl)
 				}
@@ -144,13 +150,14 @@ func (e *Engine) resolveAssets(agent domain.AgentDefinition, projectID, workflow
 }
 
 // roleMCPServerVisible reports whether a catalog MCP server listed on a role
-// may be injected for this run: servers without a scope are skipped, project
-// servers must belong to the run's project, and personal servers must be the
-// caller's own and not installed from the market.
+// may be injected for this run: platform servers carry no scope and no project,
+// project servers must belong to the run's project, and personal servers must be
+// the caller's own and not installed from the market.
 func roleMCPServerVisible(server domain.MCPServerDefinition, projectID string, userID int64) bool {
 	switch server.Scope {
 	case "":
-		return false
+		// 平台共享 MCP 对所有项目可见；空 scope 且带 projectId 的历史行仍然跳过。
+		return strings.TrimSpace(server.ProjectID) == ""
 	case "project":
 		return server.ProjectID == projectID
 	case "personal":
@@ -287,6 +294,12 @@ func (e *Engine) resolveScriptMCPAssets(projectID string, userID int64) domain.A
 	bundle := domain.AgentAssetBundle{}
 	projectID = strings.TrimSpace(projectID)
 	for _, v := range e.repo.MCPServers() {
+		// 平台共享 MCP 对所有项目可见，脚本节点同样能拿到。
+		if v.Scope == "" && strings.TrimSpace(v.ProjectID) == "" {
+			bundle.MCPServers = append(bundle.MCPServers, v)
+			e.loadMCPFiles(&bundle, v)
+			continue
+		}
 		if v.Scope == "project" && strings.TrimSpace(v.ProjectID) == projectID {
 			bundle.MCPServers = append(bundle.MCPServers, v)
 			e.loadMCPFiles(&bundle, v)

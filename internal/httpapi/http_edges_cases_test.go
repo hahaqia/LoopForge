@@ -81,12 +81,23 @@ func TestMCPMarketFileAndBotIdentityErrors(t *testing.T) {
 		{`{"scope":"project","projectId":"missing","server":{"id":"x"}}`, 404},
 		{`{"scope":"project","projectId":"mcp-p","server":{}}`, 400},
 		{`{"scope":"personal","server":{"id":"x"}}`, 401},
+		// 平台共享 MCP：无 scope、无 projectId，空 scope 是它的存储表示。
+		{`{"scope":"platform","server":{"id":"plat","name":"plat","transport":"http","url":"https://example.test/mcp"}}`, 201},
 	} {
 		c, rec := cvAContext(t, http.MethodPost, "/api/mcp-servers/custom", tc.body, nil)
 		market.mcpCustomInstall(c)
 		if rec.Code != tc.code {
 			t.Errorf("custom %s = %d: %s", tc.body, rec.Code, rec.Body.String())
 		}
+	}
+	var platformMCP domain.MCPServerDefinition
+	for _, item := range st.MCPServers() {
+		if item.Name == "plat" {
+			platformMCP = item
+		}
+	}
+	if platformMCP.ID == "" || platformMCP.Scope != "" || platformMCP.ProjectID != "" || platformMCP.OwnerUserID != 0 {
+		t.Fatalf("platform MCP = %#v", platformMCP)
 	}
 	if err := st.PutMCPServer(domain.MCPServerDefinition{ID: "market", Name: "market", MarketID: "70", Scope: "project", ProjectID: "mcp-p", Transport: "http", URL: "https://example.test/mcp"}); err != nil {
 		t.Fatal(err)

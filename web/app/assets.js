@@ -13,21 +13,39 @@ function parseTemplateHeadings(content){
   return out;
 }
 function assetScopeKey(type){return ({rules:'ruleScope',skills:'skillScope',dockerfiles:'dockerfileScope',environments:'environmentScope',sandboxes:'sandboxScope',templates:'templateScope'})[type]||'ruleScope'}
+/** 项目配置页复用资产双栏时，归属判定与新建都跟随被编辑的项目，而不是工作区项目。 */
+function assetOwnerProject(){return state.assetHosted?(state.assetHostedProject||''):(state.projectFilter||'')}
+function assetOwned(projectId){const owner=assetOwnerProject();return !!owner&&String(projectId||'')===String(owner)}
+// 平台级资产（projectId 为空）对所有项目可见，且只能在平台页由平台管理员维护。
+function assetWritable(a){const id=String(a?.projectId||'');if(!id)return !state.assetHosted&&isPlatformAdmin();return assetOwned(id)}
+/** 平台能力资产页：规则/技能/产物模板的平台维护入口，只管理 projectId 为空的资产。 */
+function assetPlatformSurface(){return !state.assetHosted&&['rules','skills','templates'].includes(state.assetType)}
 function isProjectSharedAsset(type){return ['rules','skills','dockerfiles','environments','sandboxes','templates'].includes(type)}
 function assetPageCopy(type=state.assetType){
   return ({
     rules:{group:'Agent 能力',page:'能力资产',tab:'规则',desc:'维护当前项目的行为约束和执行规则。',create:'新建规则'},
-    skills:{group:'Agent 能力',page:'能力资产',tab:'技能',desc:'维护当前项目可供角色使用的技能和附加文件。',create:'新建技能'},
+    skills:{group:'Agent 能力',page:'能力资产',tab:'技能',desc:'维护本项目角色可用的技能；平台技能需要先复制到本项目才能绑定。',create:'新建技能'},
     dockerfiles:{group:'运行环境',page:'环境资产',tab:'Dockerfile',desc:'维护当前项目的容器构建定义。',create:'新建 Dockerfile'},
     environments:{group:'运行环境',page:'环境资产',tab:'安装脚本',desc:'维护安装到隔离执行环境中的工具与依赖。',create:'新建安装脚本'},
     sandboxes:{group:'运行环境',page:'环境资产',tab:'沙箱',desc:'维护当前项目的运行隔离方式及环境依赖。',create:'新建沙箱'},
     templates:{group:'Agent 能力',page:'能力资产',tab:'产物模板',desc:'维护交付物的章节骨架；角色绑定后，节点结束时会校验必填章节是否存在。',create:'新建产物模板'}
   })[type]||{group:'运行环境',page:'环境资产',tab:'Dockerfile',desc:'维护当前项目的容器构建定义。',create:'新建 Dockerfile'};
 }
-function assetSharedDescription(type=state.assetType){return type==='rules'?'查看其他项目共享的规则；共享规则只读，可直接绑定到本项目角色。':type==='skills'?'查看其他项目共享的技能；共享技能只读，会自动装入平台上所有对话和定时任务，也可绑定到本项目角色。':type==='templates'?'查看其他项目共享的产物模板；共享模板只读，可直接绑定到本项目角色的交付物。':'查看其他项目共享的环境资产；共享资产只读，可直接用于本项目。'}
+function assetSharedDescription(type=state.assetType){
+  if(assetPlatformSurface())return type==='rules'?'平台规则对所有项目生效，项目里的角色可直接绑定；仅平台管理员可维护。':type==='skills'?'平台技能由平台管理员集中维护，但不会自动对项目生效；项目需先把技能复制到本项目，才能绑定给角色。':'平台模板可直接绑定到任意项目角色的交付物；仅平台管理员可维护。';
+  return type==='rules'?'查看其他项目与平台共享的规则；平台规则由平台管理员维护，其他项目共享的规则只读，可直接绑定到本项目角色。':type==='skills'?'查看平台技能与共享来源；平台技能不自动生效，需先复制到本项目才能绑定角色。':type==='templates'?'查看其他项目与平台共享的产物模板；平台模板由平台管理员维护，可直接绑定到本项目角色的交付物。':'查看其他项目共享的环境资产；共享资产只读，可直接用于本项目。'
+}
 function assetIconName(type=state.assetType){return ({rules:'gate',skills:'skills',dockerfiles:'layers',environments:'terminal',sandboxes:'server',templates:'doc'})[type]||'layers'}
 function assetRefIconName(type=state.assetType){return ({rules:'robot',skills:'robot',dockerfiles:'server',environments:'server',sandboxes:'workflow',templates:'robot'})[type]||'layers'}
-function assetScopeItems(scope){return (state.data[state.assetType]||[]).filter(item=>scope==='shared'?catalogShared(item.projectId,item.shared):catalogOwned(item.projectId))}
+function assetScopeItems(scope){
+  const items=state.data[state.assetType]||[];
+  if(scope==='shared'){
+    // 平台页只维护平台资产；项目配置页的「共享」才包含其他项目共享过来的资产。
+    if(assetPlatformSurface())return items.filter(item=>!String(item.projectId||''));
+    return items.filter(item=>catalogShared(item.projectId,item.shared));
+  }
+  return items.filter(item=>assetOwned(item.projectId));
+}
 function assetMatchesQuery(a,query){const q=String(query||'').trim().toLowerCase();if(!q)return true;return [a?.name,a?.id,a?.description].some(v=>String(v||'').toLowerCase().includes(q))}
 function assetFilteredItems(){return assetScopeItems(state[assetScopeKey(state.assetType)]).filter(a=>assetMatchesQuery(a,state.assetQuery))}
 // Owned assets win over a same-id shared copy so the editable one opens.
@@ -35,7 +53,8 @@ function assetFindVisible(id){if(!id)return null;const owned=assetScopeItems('pr
 function assetProjectName(a){return (state.data.projects||[]).find(p=>p.id===a?.projectId)?.name||a?.projectId||'平台'}
 function assetIsBuiltin(a,type=state.assetType){return (type==='sandboxes'&&(a?.id==='local'||a?.id==='generic-docker'))||(type==='dockerfiles'&&a?.id==='generic-backend')}
 function assetStatusHTML(a){
-  if(!catalogOwned(a.projectId))return `<span class="asset-status is-from"><i></i>来自 ${escapeHTML(assetProjectName(a))}</span>`;
+  if(!String(a.projectId||''))return `<span class="asset-status is-on"><i></i>平台共享</span>`;
+  if(!assetOwned(a.projectId))return `<span class="asset-status is-from"><i></i>来自 ${escapeHTML(assetProjectName(a))}</span>`;
   return `<span class="asset-status ${a.shared?'is-on':''}"><i></i>${a.shared?'已共享':'未共享'}</span>`;
 }
 function assetMetaHTML(a){
@@ -55,12 +74,15 @@ function assetMetaHTML(a){
   return meta.join('');
 }
 function assetCardHTML(a){
-  const readonly=!catalogOwned(a.projectId);const go=readonly?'查看':'编辑';
-  return `<article class="asset-card" role="link" tabindex="0" data-asset-id="${escapeHTML(a.id)}" aria-label="${go}${escapeHTML(assetKindLabel())}「${escapeHTML(a.name||a.id)}」"><div class="asset-card-top"><span class="asset-tile">${huiIcon(assetIconName())}</span><div class="asset-card-name"><h3>${escapeHTML(a.name||a.id)}</h3><code class="asset-mono">${escapeHTML(a.id)}</code></div></div><p class="asset-card-desc">${escapeHTML(a.description||'暂无说明')}</p><div class="asset-meta">${assetMetaHTML(a)}</div><div class="asset-card-foot">${assetStatusHTML(a)}<span class="asset-card-go">${go}${huiIcon('chevron-right')}</span></div></article>`;
+  const readonly=!assetWritable(a);const go=readonly?'查看':'编辑';const kind=assetKindLabel();
+  const blocked=assetDeleteBlocked(a);
+  const menu=`<div class="asset-more asset-card-more"><button type="button" class="button hui-icon-button" data-asset-card-more="${escapeHTML(a.id)}" aria-haspopup="menu" aria-expanded="false" aria-label="${escapeHTML(kind)}更多操作" title="更多操作">${huiIcon('more-horizontal')}</button><div class="hui-menu asset-menu" role="menu" inert><button type="button" role="menuitem" class="hui-menu-item" data-asset-card-open="${escapeHTML(a.id)}"><span class="hui-menu-label">${go}${escapeHTML(kind)}</span></button><button type="button" role="menuitem" class="hui-menu-item is-danger" data-asset-card-delete="${escapeHTML(a.id)}" ${blocked?'disabled aria-disabled="true"':''}><span class="hui-menu-label">删除${escapeHTML(kind)}</span></button>${blocked?`<p class="asset-menu-reason">${escapeHTML(blocked)}</p>`:''}</div></div>`;
+  return `<article class="asset-card" role="link" tabindex="0" data-asset-id="${escapeHTML(a.id)}" aria-label="${go}${escapeHTML(kind)}「${escapeHTML(a.name||a.id)}」"><div class="asset-card-top"><span class="asset-tile">${huiIcon(assetIconName())}</span><div class="asset-card-name"><h3>${escapeHTML(a.name||a.id)}</h3><code class="asset-mono">${escapeHTML(a.id)}</code></div>${menu}</div><p class="asset-card-desc">${escapeHTML(a.description||'暂无说明')}</p><div class="asset-meta">${assetMetaHTML(a)}</div><div class="asset-card-foot">${assetStatusHTML(a)}<span class="asset-card-go">${go}${huiIcon('chevron-right')}</span></div></article>`;
 }
 function assetGridEmptyHTML(){
   const kind=assetKindLabel(),copy=assetPageCopy();
   if(String(state.assetQuery||'').trim())return `<div class="asset-empty"><b>没有匹配「${escapeHTML(state.assetQuery.trim())}」的${escapeHTML(kind)}</b><p>换个关键词试试。</p></div>`;
+  if(assetPlatformSurface())return `<div class="asset-empty"><b>还没有平台共享${escapeHTML(kind)}</b><p>${escapeHTML(assetEmptyHint())}</p>${isPlatformAdmin()?`<button type="button" class="button primary" data-empty-new>${huiIcon('plus')}新建平台${escapeHTML(copy.tab)}</button>`:''}</div>`;
   if(state[assetScopeKey(state.assetType)]==='shared'){const hint=['rules','skills'].includes(state.assetType)?'请在资产所属项目中共享，或共享一个引用它的角色。':'请在资产所属项目中共享；共享 SOP 时也会自动共享其环境依赖。';return `<div class="asset-empty"><b>其他项目还没有共享${escapeHTML(kind)}</b><p>${hint}</p></div>`}
   return `<div class="asset-empty"><b>当前项目还没有${/^[A-Za-z]/.test(kind)?' ':''}${escapeHTML(kind)}</b><p>${assetEmptyHint()}</p><button type="button" class="button primary" data-empty-new>${huiIcon('plus')}${escapeHTML(copy.create)}</button></div>`;
 }
@@ -68,27 +90,57 @@ function renderAssetGrid(){
   const list=$('#assetList');if(!list)return;
   const scope=state[assetScopeKey(state.assetType)];
   const items=assetFilteredItems();
-  const count=$('#assetCount');if(count)count.innerHTML=`${scope==='shared'?'共享':'本项目'}${escapeHTML(assetKindLabel())}<b>${items.length}</b>`;
+  const count=$('#assetCount');if(count)count.innerHTML=`${scope==='shared'?(assetPlatformSurface()?'平台':'共享'):'本项目'}${escapeHTML(assetKindLabel())}<b>${items.length}</b>`;
   list.innerHTML=items.map(assetCardHTML).join('')||assetGridEmptyHTML();
   list.querySelector('[data-empty-new]')?.addEventListener('click',()=>openAssetDetail('__new__'));
   list.querySelectorAll('[data-asset-id]').forEach(card=>{
-    card.onclick=()=>openAssetDetail(card.dataset.assetId);
+    card.onclick=e=>{if(e.target instanceof Element&&e.target.closest('.asset-card-more'))return;openAssetDetail(card.dataset.assetId)};
     card.onkeydown=e=>{if(e.key==='Enter'&&e.target===card){e.preventDefault();openAssetDetail(card.dataset.assetId)}};
   });
+  list.querySelectorAll('[data-asset-card-more]').forEach(btn=>btn.onclick=e=>{e.stopPropagation();e.preventDefault();toggleAssetCardMenu(btn)});
+  list.querySelectorAll('[data-asset-card-open]').forEach(el=>el.onclick=e=>{e.stopPropagation();closeAssetCardMenus();openAssetDetail(el.dataset.assetCardOpen)});
+  list.querySelectorAll('[data-asset-card-delete]').forEach(el=>el.onclick=e=>{e.stopPropagation();if(el.disabled)return;closeAssetCardMenus();deleteAsset(el.dataset.assetCardDelete)});
+  bindAssetCardChrome();
+}
+function closeAssetCardMenus(){
+  document.querySelectorAll('#assetList .asset-menu.is-open').forEach(menu=>{
+    menu.classList.remove('is-open');menu.inert=true;
+    menu.closest('.asset-card-more')?.querySelector('[data-asset-card-more]')?.setAttribute('aria-expanded','false');
+  });
+}
+function toggleAssetCardMenu(btn){
+  const menu=btn.parentElement?.querySelector('.asset-menu');if(!menu)return;
+  if(menu.classList.contains('is-open')){closeAssetCardMenus();return}
+  closeAssetCardMenus();closeAssetMenu();window.HuiSelect?.closeAll?.();
+  menu.inert=false;menu.classList.add('is-open');btn.setAttribute('aria-expanded','true');
+  menu.querySelector('[role="menuitem"]:not(:disabled)')?.focus();
+}
+let assetCardChromeBound=false;
+function bindAssetCardChrome(){
+  if(assetCardChromeBound)return;assetCardChromeBound=true;
+  document.addEventListener('pointerdown',e=>{if(!(e.target instanceof Element)||!e.target.closest('.asset-card-more'))closeAssetCardMenus()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('#assetList .asset-menu.is-open')){e.preventDefault();closeAssetCardMenus()}});
 }
 function renderAssetListChrome(){
   const scope=state[assetScopeKey(state.assetType)],copy=assetPageCopy();
   if($('#assetPageEyebrow'))$('#assetPageEyebrow').textContent=copy.group;
   if($('#assetPageTitle'))$('#assetPageTitle').textContent=copy.page;
   if($('#assetPageDescription'))$('#assetPageDescription').textContent=scope==='skillhub'?'从 SkillHub 搜索公开技能，查看质量评测与安全认证后安装到本项目。':scope==='shared'?assetSharedDescription():copy.desc;
-  if($('#newAssetLabel'))$('#newAssetLabel').textContent=copy.create;
-  if($('#newAsset'))$('#newAsset').hidden=scope!=='project';
+  const platformCreatable=['rules','skills','templates'].includes(state.assetType)&&isPlatformAdmin()&&!state.assetHosted;
+  if($('#newAssetLabel'))$('#newAssetLabel').textContent=scope==='shared'&&platformCreatable?`新建平台${copy.tab}`:copy.create;
+  if($('#newAsset'))$('#newAsset').hidden=!(scope==='project'||(scope==='shared'&&platformCreatable));
+  // 技能按项目隔离：项目侧提供「从平台技能复制」，平台侧本身就是平台技能管理页，不需要入口。
+  if($('#copyPlatformSkill'))$('#copyPlatformSkill').hidden=state.assetType!=='skills'||assetPlatformSurface()||scope==='skillhub';
   if(typeof skillhubSyncChrome==='function')skillhubSyncChrome();
   $$('[data-asset-scope]').forEach(btn=>btn.classList.toggle('active',btn.dataset.assetScope===scope));
+  // 平台能力资产页的「共享」实际含义是平台级资产，换成平台口径避免和「共享给其他项目」混淆。
+  const sharedLabel=assetPlatformSurface()?'平台共享':'共享';
+  const sharedBtn=$('[data-asset-scope="shared"]');
+  if(sharedBtn&&sharedBtn.firstChild?.nodeType===3&&sharedBtn.firstChild.textContent.trim()!==sharedLabel)sharedBtn.firstChild.textContent=sharedLabel;
   $$('[data-asset-scope-count]').forEach(el=>el.textContent=String(assetScopeItems(el.dataset.assetScopeCount).length));
   const search=$('#assetSearch');if(search&&search.value!==(state.assetQuery||''))search.value=state.assetQuery||'';
 }
-function resetAssetDetailState(){state.assetCreateDefaults={};state.selectedAsset=null;state.assetDirty=false;state.assetDetailKey='';state.assetTab=null;closeAssetMenu()}
+function resetAssetDetailState(){state.assetCreateDefaults={};state.assetCreateGlobal=false;state.selectedAsset=null;state.assetDirty=false;state.assetDetailKey='';state.assetTab=null;closeAssetMenu()}
 function renderAssets(){
   if(!$('#assetsView')||!state.data)return;
   const selected=state.selectedAsset;
@@ -112,19 +164,22 @@ function assetCurrent(){
   return assetFindVisible(state.selectedAsset)?.asset||null;
 }
 function assetDetailHeadHTML(a,{creating=false,dirty=false}={}){
-  const kind=assetKindLabel(),copy=assetPageCopy(),readonly=!creating&&!catalogOwned(a.projectId);
-  const badge=creating?'':readonly?`<span class="asset-badge is-from">来自 ${escapeHTML(assetProjectName(a))}</span>`:`<span class="asset-badge ${a.shared?'is-on':''}">${a.shared?'已共享':'未共享'}</span>`;
+  const kind=assetKindLabel(),copy=assetPageCopy(),readonly=!creating&&!assetWritable(a);
+  const platformLevel=!creating&&!String(a?.projectId||'');
+  // 技能按项目隔离，项目技能不再有「共享给其他项目」的语义。
+  const skillScoped=state.assetType==='skills'&&!platformLevel;
+  const badge=creating?'':platformLevel?`<span class="asset-badge is-on">平台共享</span>`:readonly?`<span class="asset-badge is-from">来自 ${escapeHTML(assetProjectName(a))}</span>`:skillScoped?`<span class="asset-badge is-from">本项目</span>`:`<span class="asset-badge ${a.shared?'is-on':''}">${a.shared?'已共享':'未共享'}</span>`;
   const title=creating?`新建${kind}`:(a.name||a.id);
   const desc=creating?`填写标识和名称后创建${state.assetType==='skills'?'，创建后即可上传文件':''}。`:(a.description||'暂无说明');
   let actions;
   if(creating)actions=`<button type="button" class="button" data-asset-cancel>取消</button><button type="submit" form="assetForm" class="button primary" data-asset-save>${huiIcon('plus')}创建${escapeHTML(kind)}</button>`;
-  else if(readonly)actions=state.assetType==='templates'
+  else if(readonly)actions=state.assetType==='templates'&&!platformLevel
     ? `<span class="asset-badge is-ro">${huiIcon('lock')}共享模板只读</span><button type="button" class="button" data-asset-copy>复制到本项目</button>`
-    : `<span class="asset-badge is-ro">${huiIcon('lock')}只读 · 可直接在本项目使用</span>`;
+    : `<span class="asset-badge is-ro">${huiIcon('lock')}${platformLevel&&!state.assetHosted?'只读 · 仅平台管理员可维护':'只读 · 可直接在本项目使用'}</span>`;
   else{
     const blocked=assetDeleteBlocked(a);
     actions=`<span class="asset-dirty" data-asset-dirty ${dirty?'':'hidden'}><i></i>未保存</span>`+
-      `<button type="button" class="button" data-asset-share>${huiIcon(a.shared?'close':'arrow-up')}${a.shared?'取消共享':'共享给其他项目'}</button>`+
+      `${platformLevel||skillScoped?'':`<button type="button" class="button" data-asset-share>${huiIcon(a.shared?'close':'arrow-up')}${a.shared?'取消共享':'共享给其他项目'}</button>`}`+
       `<div class="asset-more"><button type="button" class="button hui-icon-button" id="assetMoreBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="assetMoreMenu" aria-label="更多操作" title="更多操作">${huiIcon('more-horizontal')}</button>`+
       `<div id="assetMoreMenu" class="hui-menu asset-menu" role="menu" inert><button type="button" role="menuitem" class="hui-menu-item is-danger" data-asset-delete ${blocked?'disabled aria-disabled="true"':''}>${huiIcon('trash')}<span class="hui-menu-label">删除${escapeHTML(kind)}</span></button>${blocked?`<p class="asset-menu-reason" data-asset-delete-reason>${escapeHTML(blocked)}</p>`:''}</div></div>`+
       `<button type="submit" form="assetForm" class="button primary" data-asset-save>${huiIcon('save')}保存修改</button>`;
@@ -182,13 +237,13 @@ function assetSkillSourceRowsHTML(a){
   return `<dt>来源</dt><dd>${homepage?`<a href="${escapeHTML(homepage)}" target="_blank" rel="noopener noreferrer">SkillHub · ${escapeHTML(src.slug)}</a>`:`SkillHub · ${escapeHTML(src.slug)}`}</dd><dt>版本</dt><dd>v${escapeHTML(src.version)}${latest&&latest!==src.version?` · 最新 v${escapeHTML(latest)}`:''}</dd><dt>安装于</dt><dd>${escapeHTML(date(src.installedAt))}</dd>${src.updatedAt&&src.updatedAt!==src.installedAt?`<dt>更新于</dt><dd>${escapeHTML(date(src.updatedAt))}</dd>`:''}`;
 }
 function assetSkillSourceActionHTML(a){
-  const src=assetSkillSource(a);if(!src||!catalogOwned(a.projectId))return '';
+  const src=assetSkillSource(a);if(!src||!assetWritable(a))return '';
   const latest=assetSkillLatest(src);
   return latest&&latest!==src.version?`<button type="button" class="button primary asset-source-btn" data-skillhub-source-update>${huiIcon('refresh')}更新到 v${escapeHTML(latest)}</button>`:`<button type="button" class="button hui-btn-soft asset-source-btn" data-skillhub-source-check>${huiIcon('refresh')}检查更新</button>`;
 }
 function assetOverviewCardHTML(a){
-  const readonly=!catalogOwned(a.projectId);
-  return `<h4>概览</h4><dl class="asset-kv"><dt>归属</dt><dd>${readonly?escapeHTML(assetProjectName(a)):'本项目'}</dd><dt>共享</dt><dd>${readonly?'其他项目共享':a.shared?'已共享':'未共享'}</dd>${assetIsBuiltin(a)?'<dt>类型</dt><dd>内置</dd>':''}${assetSkillSourceRowsHTML(a)}</dl>${assetSkillSourceActionHTML(a)}`;
+  const readonly=!assetWritable(a),platformLevel=!String(a?.projectId||'');
+  return `<h4>概览</h4><dl class="asset-kv"><dt>归属</dt><dd>${platformLevel?'平台共享':(readonly?escapeHTML(assetProjectName(a)):'本项目')}</dd><dt>共享</dt><dd>${platformLevel?'所有项目可见':readonly?'其他项目共享':a.shared?'已共享':'未共享'}</dd>${assetIsBuiltin(a)?'<dt>类型</dt><dd>内置</dd>':''}${assetSkillSourceRowsHTML(a)}</dl>${assetSkillSourceActionHTML(a)}`;
 }
 function bindAssetSourceActions(a){
   const card=$('#assetForm [data-asset-overview]');if(!card||!assetSkillSource(a))return;
@@ -209,7 +264,7 @@ function renderAssetDetail({force=false}={}){
   renderAssetForm(a);
 }
 function markAssetDirty(){
-  if(!state.selectedAsset||(state.selectedAsset!=='__new__'&&!catalogOwned(assetCurrent()?.projectId)))return;
+  if(!state.selectedAsset||(state.selectedAsset!=='__new__'&&!assetOwned(assetCurrent()?.projectId)))return;
   state.assetDirty=true;$('#assetDetailHead [data-asset-dirty]')?.removeAttribute('hidden');
 }
 function scrollAssetTop(){
@@ -253,10 +308,17 @@ async function copyTemplateToProject(a){
 function openAssetDetail(id,defaults={}){
   if(!id||state.selectedAsset===id)return;
   const type=state.assetType;
-  if(id==='__new__'){state[assetScopeKey(type)]='project';state.assetCreateDefaults=defaults}
+  if(id==='__new__'){
+    // 平台页「共享」范围下的新建 = 平台共享资产（projectId 为空），只有平台管理员能做。
+    const globalNew=!state.assetHosted&&isPlatformAdmin()&&state[assetScopeKey(type)]==='shared'&&['rules','skills','templates'].includes(type);
+    state.assetCreateGlobal=globalNew;
+    if(!globalNew)state[assetScopeKey(type)]='project';
+    state.assetCreateDefaults=defaults;
+  }
   state.selectedAsset=id;state.assetDirty=false;state.assetTab=null;state.assetDetailKey='';state.skillUploadStatus='';
   const next=assetViewHash(type,id);
-  if(location.hash!==next)history.pushState({assetFrom:assetViewHash(type)},'',next);
+  // 项目配置页里复用同一套双栏时，URL 保持项目路由，不写平台资产路由。
+  if(!state.assetHosted&&location.hash!==next)history.pushState({assetFrom:assetViewHash(type)},'',next);
   renderAssets();
   scrollAssetTop();
 }
@@ -264,9 +326,11 @@ async function closeAssetDetail({force=false}={}){
   if(!state.selectedAsset)return true;
   if(!force&&!(await confirmAssetLeave()))return false;
   const type=state.assetType,list=assetViewHash(type);
-  const fromList=history.state?.assetFrom===list&&routePart(0)===type&&!!assetRouteId();
+  const hosted=!!state.assetHosted;
+  const fromList=!hosted&&history.state?.assetFrom===list&&routePart(0)===type&&!!assetRouteId();
   resetAssetDetailState();
-  if(fromList)history.back();
+  if(hosted){}
+  else if(fromList)history.back();
   else if(location.hash!==list)history.replaceState(null,'',list);
   renderAssets();
   scrollAssetTop();
@@ -277,7 +341,8 @@ async function closeAssetDetail({force=false}={}){
 const SHARED_SKILL_NOTICE='共享后，这个技能会自动装入平台上所有用户的对话和定时任务（包括其他项目和无项目的对话），模型可以直接调用。继续？';
 async function toggleAssetShare(id){
   const item=(state.data[state.assetType]||[]).find(x=>x.id===id);
-  if(!item||!catalogOwned(item.projectId))return toast('只能共享本项目的资产');
+  if(!item||!assetWritable(item))return toast('只能共享本项目或平台共享的资产');
+  if(!item.projectId)return toast('平台共享资产对所有项目可见，无需再共享');
   if(!item.shared&&state.assetType==='skills'&&!(await afConfirm({title:'共享技能',message:SHARED_SKILL_NOTICE,confirmText:'共享'})))return;
   try{
     const saved={...item,shared:!item.shared};
@@ -304,9 +369,11 @@ function assetReferenceNames(a){
 }
 function assetDeleteBlocked(a){
   if(!a?.id)return '无法删除';
+  if(!assetWritable(a))return !String(a.projectId||'')?'平台资产只能由平台管理员在平台资产页删除':`只有项目成员可以删除本项目${assetKindLabel()}`;
   if(state.assetType==='sandboxes'&&(a.id==='local'||a.id==='generic-docker'))return `内置沙箱 ${a.id} 不能删除`;
   if(state.assetType==='dockerfiles'&&a.id==='generic-backend')return '内置 Dockerfile generic-backend 不能删除';
-  if(a.shared)return `共享状态的${assetKindLabel()}不能删除，请先取消共享`;
+  // 平台资产（projectId 为空）没有"取消共享"这回事，只要没有引用就可以删。
+  if(a.shared&&String(a.projectId||''))return `共享状态的${assetKindLabel()}不能删除，请先取消共享`;
   const refs=assetReferenceNames(a);
   if(refs.length)return `${assetKindLabel()}仍被 ${refs.length} 个${assetRefKindLabel()}引用（${refs.join('、')}），请先解除引用`;
   return '';
@@ -314,11 +381,13 @@ function assetDeleteBlocked(a){
 async function deleteAsset(id){
   const item=(state.data[state.assetType]||[]).find(x=>x.id===id);
   if(!item)return toast('资产不存在或已删除');
-  if(!catalogOwned(item.projectId))return toast('只能删除本项目的资产');
+  if(!assetWritable(item))return toast('只能删除本项目或平台共享的资产');
   const blocked=assetDeleteBlocked(item);
   if(blocked)return toast(blocked);
   const label=assetKindLabel();
-  if(!await afConfirm({title:`删除${label}确认`,message:`确认删除${label}「${item.name}」？此操作不可恢复。`,confirmText:'确认删除',danger:true}))return;
+  // 平台资产会影响所有项目，删除前把影响面说清楚。
+  const effect=String(item.projectId||'')?'':({skills:'删除后它会从所有对话和定时任务中移除。',templates:'绑定过它的角色交付物将不再校验章节结构。',rules:'绑定过它的角色将不再注入这条规则。'})[state.assetType]||'';
+  if(!await afConfirm({title:`删除${label}确认`,message:`确认删除${label}「${item.name}」？${effect}此操作不可恢复。`,confirmText:'确认删除',danger:true}))return;
   try{
     const delEndpoints={templates:'artifact-templates'};await api(`/api/${delEndpoints[state.assetType]||state.assetType}?id=${encodeURIComponent(id)}`,{method:'DELETE'});
     state.data[state.assetType]=(state.data[state.assetType]||[]).filter(x=>x.id!==id);
@@ -399,7 +468,7 @@ function setAssetTab(key){
 }
 function renderAssetForm(a){
   const f=$('#assetForm');if(!f||!a)return;
-  const creating=state.selectedAsset==='__new__',readonly=!creating&&!catalogOwned(a.projectId);
+  const creating=state.selectedAsset==='__new__',readonly=!creating&&!assetWritable(a);
   let tabs=assetPaneTabs();
   // 共享模板只读：不提供编辑页签，只让看渲染后的章节结构。
   if(readonly&&state.assetType==='templates')tabs=tabs.filter(([k])=>k!=='edit');
@@ -448,7 +517,7 @@ function skillFileLang(path){
   return m[ext]||'TEXT';
 }
 function selectedSkill(){return (state.data.skills||[]).find(x=>x.id===state.selectedAsset)||null}
-function skillWriteBlocked(){const skill=selectedSkill();return !skill||catalogForeign(skill.projectId)||!!assetSkillSource(skill)}
+function skillWriteBlocked(){const skill=selectedSkill();return !skill||!assetWritable(skill)||!!assetSkillSource(skill)}
 function refreshSkillFileTree(){
   const skill=selectedSkill();
   const host=$('#skillFileTree')||$('#assetForm .skill-upload-block > .empty-inline');
@@ -729,16 +798,74 @@ async function openSkillFilePreview(skill, path){
     toast(err.message,'err');
   }
 }
-async function saveAsset(e){e.preventDefault();const f=e.currentTarget,items=state.data[state.assetType]||[],projectScoped=isProjectSharedAsset(state.assetType),identity=resolveAssetSaveIdentity(items,state.selectedAsset,f.elements.id.value.trim());if(identity.error)return toast(identity.error);const existing=identity.existing;if(existing&&projectScoped&&catalogForeign(existing.projectId))return toast('共享资产只读');let value={id:identity.id,name:f.elements.name.value.trim(),description:f.elements.description.value,projectId:existing?(existing.projectId||''):(state.projectFilter||''),shared:projectScoped&&!!existing?.shared};if(!value.id||!value.name)return toast('标识和名称不能为空');try{
+async function saveAsset(e){e.preventDefault();const f=e.currentTarget,items=state.data[state.assetType]||[],projectScoped=isProjectSharedAsset(state.assetType),identity=resolveAssetSaveIdentity(items,state.selectedAsset,f.elements.id.value.trim());if(identity.error)return toast(identity.error);const existing=identity.existing;if(existing&&projectScoped&&!assetWritable(existing))return toast('共享资产只读');const globalCreate=!existing&&!!state.assetCreateGlobal;const ownerProject=existing?(existing.projectId||''):(globalCreate?'':assetOwnerProject());let value={id:identity.id,name:f.elements.name.value.trim(),description:f.elements.description.value,projectId:ownerProject,shared:projectScoped&&(!ownerProject||!!existing?.shared)};if(!value.id||!value.name)return toast('标识和名称不能为空');try{
   if(state.assetType==='rules'){const global=!!f.elements.global?.checked;Object.assign(value,{priority:Number(f.elements.priority.value),content:f.elements.content.value,global,workflowIds:global?selectedRuleWorkflowIds():[]})}
   if(state.assetType==='templates')Object.assign(value,{content:f.elements.content.value,mediaType:'text/markdown'});
   if(state.assetType==='skills'){/* 文件经独立上传接口承载；此处只提交元数据。服务端会强制保留 Content/Files/FileRefs。 */}
   if(state.assetType==='dockerfiles')Object.assign(value,{content:f.elements.content.value,files:JSON.parse(f.elements.files.value||'{}')});
   if(state.assetType==='environments')Object.assign(value,{variables:JSON.parse(f.elements.variables.value||'{}'),pathEntries:lines(f.elements.pathEntries.value),installScript:f.elements.installScript.value});
   if(state.assetType==='sandboxes'){const driver=f.elements.driver.value,sandbox={driver,environment:JSON.parse(f.elements.environment.value||'{}')};if(driver==='docker')Object.assign(sandbox,{dockerfileId:f.elements.dockerfileId.value,readOnlyRootFS:f.elements.readOnlyRootFS.checked});if(driver==='native')Object.assign(sandbox,{environmentId:f.elements.environmentId.value});Object.assign(value,sandbox)}
-  const endpoints={rules:'rules',skills:'skills',dockerfiles:'dockerfiles',environments:'environments',sandboxes:'sandboxes',templates:'artifact-templates'};await api(`/api/${endpoints[state.assetType]}`,{method:'PUT',body:JSON.stringify(value)});const i=items.findIndex(x=>x.id===value.id);if(state.assetType==='skills'&&existing)value={...existing,...value,fileRefs:existing.fileRefs||[],content:existing.content||'',files:existing.files||{}};if(i>=0)items[i]=value;else items.push(value);state.selectedAsset=value.id;state.assetDirty=false;
-  if(identity.created){history.replaceState(history.state,'',assetViewHash(state.assetType,value.id));state.assetDetailKey='';renderAssets()}
+  const endpoints={rules:'rules',skills:'skills',dockerfiles:'dockerfiles',environments:'environments',sandboxes:'sandboxes',templates:'artifact-templates'};await api(`/api/${endpoints[state.assetType]}`,{method:'PUT',body:JSON.stringify(value)});const i=items.findIndex(x=>x.id===value.id);if(state.assetType==='skills'&&existing)value={...existing,...value,fileRefs:existing.fileRefs||[],content:existing.content||'',files:existing.files||{}};if(i>=0)items[i]=value;else items.push(value);state.selectedAsset=value.id;state.assetDirty=false;state.assetCreateGlobal=false;
+  if(identity.created){if(!state.assetHosted)history.replaceState(history.state,'',assetViewHash(state.assetType,value.id));state.assetDetailKey='';renderAssets()}
   else{renderAssetDetailHead(value);refreshAssetAside(value)}
   renderWorkflowMeta();renderProperties();toast(identity.created?'资产已创建':'资产修改已保存');
   }catch(err){toast(err.message)}
+}
+// 技能按项目隔离：平台技能不自动生效，项目需要显式拷贝一份到本项目。
+function platformSkillSources(){return (state.data?.skills||[]).filter(s=>!String(s.projectId||''))}
+function openSkillCopyDialog(){
+  const modal=$('#skillCopyModal');if(!modal)return;
+  state.skillCopyPick='';state.skillCopyQuery='';
+  const search=$('#skillCopySearch');if(search)search.value='';
+  renderSkillCopyList();modal.classList.add('open');
+}
+function closeSkillCopyDialog(){$('#skillCopyModal')?.classList.remove('open')}
+function renderSkillCopyList(){
+  const host=$('#skillCopyList');if(!host)return;
+  const q=String(state.skillCopyQuery||'').trim().toLowerCase();
+  const items=platformSkillSources().filter(s=>!q||`${s.name||''} ${s.id||''} ${s.description||''}`.toLowerCase().includes(q));
+  host.innerHTML=items.length?items.map(s=>`<label class="pa-copy-row"><input type="radio" name="skillCopyPick" value="${escapeHTML(s.id)}" ${state.skillCopyPick===s.id?'checked':''}><span class="pa-copy-tx"><b>${escapeHTML(s.name||s.id)}</b><small>${escapeHTML(s.description||s.id)}</small></span><em>平台技能</em></label>`).join(''):`<div class="pa-rows-empty">${platformSkillSources().length?'没有匹配的平台技能':'平台还没有技能'}</div>`;
+  host.querySelectorAll('input[name="skillCopyPick"]').forEach(el=>el.onchange=()=>{
+    state.skillCopyPick=el.value;syncSkillCopySum();
+  });
+  syncSkillCopySum();
+}
+function syncSkillCopySum(){
+  const picked=String(state.skillCopyPick||'');
+  const source=platformSkillSources().find(s=>s.id===picked);
+  const sum=$('#skillCopySum');if(sum)sum.textContent=source?`已选 ${source.name||source.id}`:'未选择';
+  const btn=$('#skillCopyConfirm');if(btn)btn.disabled=!source;
+}
+async function submitSkillCopy(){
+  const sourceId=String(state.skillCopyPick||'');if(!sourceId)return;
+  const projectId=assetOwnerProject();
+  if(!projectId)return toast('请先选择项目');
+  const btn=$('#skillCopyConfirm');if(btn)btn.disabled=true;
+  try{
+    const created=await api(`/api/skills/${encodeURIComponent(sourceId)}/copy`,{method:'POST',body:JSON.stringify({projectId})});
+    const items=state.data.skills||(state.data.skills=[]);
+    const i=items.findIndex(x=>x.id===created.id);
+    if(i>=0)items[i]=created;else items.push(created);
+    if(state.assetType!=='skills')state.assetType='skills';
+    state.skillScope='project';
+    closeSkillCopyDialog();
+    state.selectedAsset=created.id;state.assetDetailKey='';
+    if(!state.assetHosted)history.replaceState(history.state,'',assetViewHash('skills',created.id));
+    renderAssets();
+    toast(`已复制到本项目：${created.name||created.id}`);
+  }catch(err){
+    toast(err.message);
+  }finally{
+    if(btn)btn.disabled=!state.skillCopyPick;
+  }
+}
+function bindSkillCopyDialog(){
+  const modal=$('#skillCopyModal');if(!modal||modal.dataset.bound)return;
+  modal.dataset.bound='1';
+  modal.querySelectorAll('[data-skill-copy-close]').forEach(el=>el.onclick=closeSkillCopyDialog);
+  modal.onclick=e=>{if(e.target===modal)closeSkillCopyDialog()};
+  modal.addEventListener('keydown',e=>{if(e.key==='Escape')closeSkillCopyDialog()});
+  const search=$('#skillCopySearch');
+  if(search)search.oninput=()=>{state.skillCopyQuery=search.value;renderSkillCopyList()};
+  const confirm=$('#skillCopyConfirm');if(confirm)confirm.onclick=submitSkillCopy;
 }

@@ -453,6 +453,7 @@ func newWithNotifications(s *repo.Store, e *engine.Engine, syncSvc *tracker.Serv
 	g.GET("/api/skills", api.catalog.skills)
 	g.PUT("/api/skills", api.catalog.skills)
 	g.DELETE("/api/skills", api.catalog.skills)
+	g.POST("/api/skills/:id/copy", api.catalog.copySkill)
 	g.POST("/api/skills/:id/files", api.catalog.skillFiles)
 	g.GET("/api/skills/:id/files/*path", api.catalog.skillFile)
 	g.DELETE("/api/skills/:id/files/*path", api.catalog.skillFile)

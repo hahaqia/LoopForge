@@ -345,15 +345,22 @@ func (h *catalogHandlers) agents(c *gin.Context) {
 					return
 				}
 			}
+			// projectId 为空表示平台共享角色：所有项目可用，只有平台管理员能维护。
 			if v.ProjectID == "" {
-				c.JSON(http.StatusBadRequest, map[string]string{"error": "角色需要 projectId"})
-				return
+				if !h.requirePlatformAdmin(c) {
+					return
+				}
+			} else {
+				if _, ok := h.repo.Project(v.ProjectID); !ok {
+					c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
+					return
+				}
+				if !h.requireProjectWriter(c, v.ProjectID) {
+					return
+				}
 			}
-			if _, ok := h.repo.Project(v.ProjectID); !ok {
-				c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
-				return
-			}
-			if !h.requireProjectWriter(c, v.ProjectID) {
+			if strings.TrimSpace(v.Name) == "" {
+				c.JSON(http.StatusBadRequest, map[string]string{"error": "角色需要 name"})
 				return
 			}
 			if err := validateCatalogAgentExecutor(&v); err != nil {
@@ -457,14 +464,22 @@ func (h *catalogHandlers) agent(c *gin.Context) {
 		c.JSON(404, map[string]string{"error": "agent not found"})
 		return
 	}
-	if c.Request.Method != http.MethodGet && c.FullPath() != "/api/agents/:id/clone" && !h.requireProjectWriter(c, current.ProjectID) {
-		return
+	if c.Request.Method != http.MethodGet && c.FullPath() != "/api/agents/:id/clone" {
+		// 平台共享角色（projectId 为空）只有平台管理员能改；项目角色的写权限仍按项目成员校验。
+		if current.ProjectID == "" {
+			if !h.requirePlatformAdmin(c) {
+				return
+			}
+		} else if !h.requireProjectWriter(c, current.ProjectID) {
+			return
+		}
 	}
 	switch c.FullPath() {
 	case "/api/agents/:id":
 		if c.Request.Method == http.MethodDelete {
 			v, _ := h.repo.Agent(id)
-			if v.Shared {
+			// 平台共享角色（projectId 为空）没有「取消共享」这步，直接允许管理员删除。
+			if v.Shared && v.ProjectID != "" {
 				c.JSON(http.StatusConflict, map[string]string{"error": "共享状态的角色不能删除，请先取消共享"})
 				return
 			}
@@ -585,7 +600,14 @@ func (h *catalogHandlers) cloneAgentMCPServers(ids []string, projectID string, u
 	out := make([]string, 0, len(ids))
 	for _, id := range ids {
 		source, ok := h.repo.MCPServer(id)
-		if !ok || source.Scope == "" {
+		if !ok {
+			continue
+		}
+		// 平台共享 MCP 对所有项目可见，复制角色时原样保留即可。
+		if source.Scope == "" {
+			if strings.TrimSpace(source.ProjectID) == "" {
+				out = append(out, source.ID)
+			}
 			continue
 		}
 		ownerKey := projectID
@@ -674,7 +696,8 @@ func (h *catalogHandlers) rules(c *gin.Context) {
 	if c.Request.Method == http.MethodDelete {
 		h.deleteCatalogAsset(c, "规则", "rule not found", func(id string) (bool, bool) {
 			item, ok := h.repo.Rule(id)
-			return item.Shared, ok
+			// 平台规则（projectId 为空）由平台管理员维护，不适用"取消共享后才能删"的限制。
+			return item.Shared && strings.TrimSpace(item.ProjectID) != "", ok
 		}, func(id string) []string { return h.agentNamesReferencing("rule", id) }, "角色", h.repo.DeleteRule)
 		return
 	}
@@ -682,13 +705,22 @@ func (h *catalogHandlers) rules(c *gin.Context) {
 		var v domain.RuleDefinition
 		if decode(c, &v) {
 			v.ID, v.ProjectID = strings.TrimSpace(v.ID), strings.TrimSpace(v.ProjectID)
-			if v.ID == "" || v.Name == "" || v.ProjectID == "" {
-				c.JSON(400, map[string]string{"error": "id, name and projectId are required"})
+			if v.ID == "" || v.Name == "" {
+				c.JSON(400, map[string]string{"error": "id and name are required"})
 				return
 			}
-			if _, ok := h.repo.Project(v.ProjectID); !ok {
-				c.JSON(404, map[string]string{"error": "project not found"})
+			// projectId 为空表示平台共享规则：所有项目可用，只有平台管理员能维护。
+			if v.ProjectID != "" {
+				if _, ok := h.repo.Project(v.ProjectID); !ok {
+					c.JSON(404, map[string]string{"error": "project not found"})
+					return
+				}
+			} else if !h.requirePlatformAdmin(c) {
 				return
+			}
+			// 运行时的跨项目可见性依赖 Shared，平台规则一律按共享保存。
+			if v.ProjectID == "" {
+				v.Shared = true
 			}
 			if existing, ok := h.repo.Rule(v.ID); ok && existing.ProjectID != "" && existing.ProjectID != v.ProjectID {
 				c.JSON(409, map[string]string{"error": "rule id is already used by another project"})
@@ -717,7 +749,8 @@ func (h *catalogHandlers) skills(c *gin.Context) {
 	if c.Request.Method == http.MethodDelete {
 		h.deleteCatalogAsset(c, "技能", "skill not found", func(id string) (bool, bool) {
 			item, ok := h.repo.Skill(id)
-			return item.Shared, ok
+			// 平台技能（projectId 为空）由平台管理员维护，不适用"取消共享后才能删"的限制。
+			return item.Shared && strings.TrimSpace(item.ProjectID) != "", ok
 		}, func(id string) []string { return h.agentNamesReferencing("skill", id) }, "角色", h.repo.DeleteSkill)
 		return
 	}
@@ -725,13 +758,22 @@ func (h *catalogHandlers) skills(c *gin.Context) {
 		var v domain.SkillDefinition
 		if decode(c, &v) {
 			v.ID, v.ProjectID = strings.TrimSpace(v.ID), strings.TrimSpace(v.ProjectID)
-			if v.ID == "" || v.Name == "" || v.ProjectID == "" {
-				c.JSON(400, map[string]string{"error": "id, name and projectId are required"})
+			if v.ID == "" || v.Name == "" {
+				c.JSON(400, map[string]string{"error": "id and name are required"})
 				return
 			}
-			if _, ok := h.repo.Project(v.ProjectID); !ok {
-				c.JSON(404, map[string]string{"error": "project not found"})
+			// projectId 为空表示平台共享技能：所有项目可用，只有平台管理员能维护。
+			if v.ProjectID != "" {
+				if _, ok := h.repo.Project(v.ProjectID); !ok {
+					c.JSON(404, map[string]string{"error": "project not found"})
+					return
+				}
+			} else if !h.requirePlatformAdmin(c) {
 				return
+			}
+			// 运行时靠 Shared 判定跨项目可用，平台技能一律按共享保存。
+			if v.ProjectID == "" {
+				v.Shared = true
 			}
 			if existing, ok := h.repo.Skill(v.ID); ok && existing.ProjectID != "" && existing.ProjectID != v.ProjectID {
 				c.JSON(409, map[string]string{"error": "skill id is already used by another project"})

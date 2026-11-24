@@ -13,3 +13,13 @@ services:
         GOPROXY: ${ZHIYAN_GOPROXY:-https://proxy.golang.org,direct}
     environment:
       AGENTFLOW_ISOLATED_IMAGE: zhiyan-platform:local
+      # Outbound traffic through a local proxy (for example DEV.SIDECAR).
+      # Empty values keep the container on a direct connection.
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1}
+    volumes:
+      # A local proxy that decrypts TLS (DEV.SIDECAR default mode) signs GitHub
+      # with its own CA. scripts/install.sh merges the image's system pool with
+      # ZHIYAN_PROXY_CA into this file; keep it in sync when the image changes.
+      - ${ZHIYAN_CA_BUNDLE:-.data/certs/ca-bundle.crt}:/etc/ssl/certs/ca-certificates.crt:ro

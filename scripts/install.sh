@@ -188,6 +188,20 @@ else
   mysql_pull=$!
   docker_access compose --profile platform build platform
   wait "$mysql_pull" || true
+  # A local TLS-intercepting proxy (DEV.SIDECAR default mode) signs GitHub with
+  # its own root CA. Merge the image's system pool with ZHIYAN_PROXY_CA so
+  # compose.dev.yaml can mount the result over the container trust store.
+  ca_bundle="${ZHIYAN_CA_BUNDLE:-.data/certs/ca-bundle.crt}"
+  mkdir -p "$(dirname "$ca_bundle")"
+  if ! docker_access run --rm --entrypoint cat zhiyan-platform:local /etc/ssl/certs/ca-certificates.crt >"$ca_bundle"; then
+    fail 'Could not read the system CA bundle from zhiyan-platform:local.'
+  fi
+  if [[ -n "${ZHIYAN_PROXY_CA:-}" ]]; then
+    [[ -f "$ZHIYAN_PROXY_CA" ]] || fail "ZHIYAN_PROXY_CA is not a file: $ZHIYAN_PROXY_CA"
+    printf '\n' >>"$ca_bundle"
+    cat "$ZHIYAN_PROXY_CA" >>"$ca_bundle"
+  fi
+  grep -q 'BEGIN CERTIFICATE' "$ca_bundle" || fail "The CA bundle is empty: $ca_bundle"
   step 'Starting 智研工坊'
   docker_access compose --profile platform up -d --no-build --wait --wait-timeout 180
 fi

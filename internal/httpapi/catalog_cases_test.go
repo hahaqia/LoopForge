@@ -206,7 +206,10 @@ func TestCatalogDirectSharingAndCloneHelpers(t *testing.T) {
 	}
 
 	servers := []domain.MCPServerDefinition{
-		{ID: "cvb-empty", Name: "Legacy", Command: "true"},
+		// 空 scope + 空 projectId 是平台共享 MCP，所有项目可见。
+		{ID: "cvb-empty", Name: "Platform", Command: "true"},
+		// 空 scope 但带 projectId 的历史脏数据仍然不参与克隆。
+		{ID: "cvb-legacy-project", Name: "Legacy project", Command: "true", ProjectID: "cvb-direct-a"},
 		{ID: "cvb-project-same", Name: "Same", Command: "true", Scope: "project", ProjectID: "cvb-direct-b"},
 		{ID: "cvb-project-market", Name: "Market source", Command: "true", Scope: "project", ProjectID: "cvb-direct-a", MarketID: "market-x"},
 		{ID: "cvb-project-installed", Name: "Installed", Command: "true", Scope: "project", ProjectID: "cvb-direct-b", MarketID: "market-x"},
@@ -223,25 +226,25 @@ func TestCatalogDirectSharingAndCloneHelpers(t *testing.T) {
 		t.Fatalf("personal clone without login error = %v", err)
 	}
 	got, err := h.cloneAgentMCPServers([]string{
-		"missing", "cvb-empty", "cvb-project-same", "cvb-project-market",
+		"missing", "cvb-empty", "cvb-legacy-project", "cvb-project-same", "cvb-project-market",
 		"cvb-project-copy", "cvb-personal-own", "cvb-personal-other",
 	}, "cvb-direct-b", f.user.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 5 {
+	if len(got) != 6 {
 		t.Fatalf("cloned MCP ids = %#v", got)
 	}
-	if got[0] != "cvb-project-same" || got[1] != "cvb-project-installed" || got[3] != "cvb-personal-own" {
+	if got[0] != "cvb-empty" || got[1] != "cvb-project-same" || got[2] != "cvb-project-installed" || got[4] != "cvb-personal-own" {
 		t.Fatalf("unexpected reused MCP ids: %#v", got)
 	}
-	for _, id := range []string{got[2], got[4]} {
+	for _, id := range []string{got[3], got[5]} {
 		if _, ok := f.s.MCPServer(id); !ok {
 			t.Fatalf("cloned MCP %q was not stored", id)
 		}
 	}
 	again, err := h.cloneAgentMCPServers([]string{"cvb-project-copy"}, "cvb-direct-b", f.user.ID)
-	if err != nil || len(again) != 1 || again[0] != got[2] {
+	if err != nil || len(again) != 1 || again[0] != got[3] {
 		t.Fatalf("idempotent clone = %#v, %v", again, err)
 	}
 }

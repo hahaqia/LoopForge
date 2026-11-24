@@ -2033,11 +2033,13 @@ func TestAgentPageListAndTabbedModal(t *testing.T) {
 		t.Fatal(err)
 	}
 	css := string(cssBytes)
-	start := strings.Index(css, "#agentsView .agent-tabs")
+	// agent 页样式同时服务独立视图和项目配置里的托管面板，选择器统一是 :is(#agentsView,.pa-agent-surface)。
+	const agentScope = ":is(#agentsView,.pa-agent-surface)"
+	start := strings.Index(css, agentScope+" .agent-tabs")
 	if start < 0 {
 		t.Fatal("product-v4.css is missing the agent tab strip styles")
 	}
-	for _, want := range []string{"#agentsView .agent-row", "#agentModal .agent-tab-ind", ":focus-visible"} {
+	for _, want := range []string{agentScope + " .agent-row", "#agentModal .agent-tab-ind", ":focus-visible"} {
 		if !strings.Contains(css, want) {
 			t.Fatalf("product-v4.css is missing agent page style %q", want)
 		}
@@ -2045,7 +2047,7 @@ func TestAgentPageListAndTabbedModal(t *testing.T) {
 	if strings.Contains(css, ".agent-row-avatar") {
 		t.Fatal("product-v4.css still styles the removed agent row avatar")
 	}
-	if !strings.Contains(css, "#agentsView .agent-row-model.none{color:var(--hu-faint)}") {
+	if !strings.Contains(css, agentScope+" .agent-row-model.none{color:var(--hu-faint)}") {
 		t.Fatal("unselected agent model should use --hu-faint like other empty states")
 	}
 }

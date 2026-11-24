@@ -213,13 +213,11 @@ func (h *assistantHandlers) writeConversationAssets(root string, req assistantRe
 		}
 		add(skill, contents)
 	}
-	var shared []domain.SkillDefinition
 	for _, skill := range h.repo.Skills() {
-		switch {
-		case project != "" && skill.ProjectID == project:
+		// 技能按项目隔离：只装载本项目技能。平台技能必须先复制到项目才会加载，
+		// 否则平台技能越加越多，每次对话的技能提示都会被稀释。
+		if project != "" && skill.ProjectID == project {
 			load(skill)
-		case skill.Shared:
-			shared = append(shared, skill)
 		}
 	}
 	for _, role := range req.roles {
@@ -229,22 +227,6 @@ func (h *assistantHandlers) writeConversationAssets(root string, req assistantRe
 	}
 	for _, skill := range req.skills {
 		load(skill)
-	}
-	// A shared skill nobody bound or mentioned gets only its SKILL.md: its
-	// other files would be copied into every conversation on the platform
-	// each turn. Mentioning it or binding it to a role installs them.
-	sort.Slice(shared, func(i, j int) bool { return shared[i].ID < shared[j].ID })
-	for _, skill := range shared {
-		if seen[skill.ID] {
-			continue
-		}
-		var contents map[string][]byte
-		if data, ok := h.repo.SkillFileContent(skill.ID, "SKILL.md"); ok {
-			contents = map[string][]byte{"SKILL.md": data}
-		}
-		skill.Files = nil
-		skill.FileRefs = nil
-		add(skill, contents)
 	}
 	engine, _ := assistantModelEngine(req.Model)
 	home := filepath.Join(root, "home", assistantEngineConfigDir(engine))

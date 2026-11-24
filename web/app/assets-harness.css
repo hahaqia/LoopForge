@@ -122,6 +122,13 @@
 #assetsView .asset-card:hover { border-color: var(--hui-border-strong); box-shadow: var(--hui-popover-shadow); transform: translateY(-1px); }
 #assetsView .asset-card:focus-visible { outline: 2px solid color-mix(in srgb, var(--hui-accent) 55%, transparent); outline-offset: 1px; }
 #assetsView .asset-card-top { display: flex; align-items: flex-start; gap: 11px; min-width: 0; }
+/* 列表卡片的「⋯」：平台资产维护入口，菜单面板复用详情页的 .hui-menu 样式。 */
+#assetsView .asset-card-more { flex: none; margin-left: auto; }
+#assetsView .asset-card-more > button { width: 26px; height: 26px; color: var(--hui-tertiary); opacity: .55; }
+#assetsView .asset-card:hover .asset-card-more > button,
+#assetsView .asset-card-more > button[aria-expanded="true"],
+#assetsView .asset-card-more > button:focus-visible { opacity: 1; color: var(--hui-text); }
+#assetsView .asset-card-more > button:hover { background: var(--hui-soft); }
 #assetsView .asset-tile {
   flex: none;
   box-sizing: border-box;

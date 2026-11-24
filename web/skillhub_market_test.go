@@ -23,9 +23,12 @@ func TestSkillhubMarketMarkup(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := string(html)
-	assets, market := strings.Index(page, `<script src="/app/assets.js"></script>`), strings.Index(page, `<script src="/app/skillhub.js"></script>`)
-	if assets < 0 || market < assets {
-		t.Fatalf("/app/skillhub.js must load after /app/assets.js (got %d, %d)", assets, market)
+	// assets.js 带 ?v= 版本串发布，匹配时只锁路径顺序，不管缓存参数。
+	assetTag := regexp.MustCompile(`<script src="/app/assets\.js(?:\?[^"]*)?"></script>`)
+	marketTag := regexp.MustCompile(`<script src="/app/skillhub\.js(?:\?[^"]*)?"></script>`)
+	assetsLoc, marketLoc := assetTag.FindStringIndex(page), marketTag.FindStringIndex(page)
+	if assetsLoc == nil || marketLoc == nil || marketLoc[0] < assetsLoc[0] {
+		t.Fatalf("/app/skillhub.js must load after /app/assets.js (got %v, %v)", assetsLoc, marketLoc)
 	}
 	src, err := os.ReadFile("app/skillhub.js")
 	if err != nil {

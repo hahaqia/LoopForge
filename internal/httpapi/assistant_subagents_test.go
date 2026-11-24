@@ -65,8 +65,9 @@ printf '%s\n' '{"type":"result","result":"好"}'
 	if _, err := os.Stat(filepath.Join(other, ".codebuddy", "skills", "notes", "SKILL.md")); !os.IsNotExist(err) {
 		t.Fatal("a conversation without a project received a project skill", err)
 	}
-	if _, err := os.Stat(filepath.Join(other, ".codebuddy", "skills", "shared-notes", "SKILL.md")); err != nil {
-		t.Fatal("a conversation without a project did not receive the shared skill", err)
+	// 技能按项目隔离：平台共享技能不再自动装进无项目对话。
+	if _, err := os.Stat(filepath.Join(other, ".codebuddy", "skills", "shared-notes", "SKILL.md")); !os.IsNotExist(err) {
+		t.Fatal("a conversation without a project received a platform skill", err)
 	}
 	if assistantConversationRoot(u.ID, "same") == assistantConversationRoot(u.ID+1, "same") {
 		t.Fatal("a reused session ID reaches another user's root")
@@ -174,27 +175,33 @@ func TestSkillMentionsAreScopedHintedAndWrittenToHome(t *testing.T) {
 	for _, item := range found {
 		ids[item.ID] = true
 	}
-	if !ids["lint"] || !ids["Shared_Doc"] || ids["deploy"] {
+	// 技能按项目隔离：检索只列本项目技能，平台/其他项目共享技能不再出现。
+	if !ids["lint"] || ids["Shared_Doc"] || ids["deploy"] {
 		t.Fatalf("project skill search=%s", rec.Body.String())
 	}
 	c, _ = workbenchContext(u, "POST", "/", bytes.NewBuffer(nil))
-	req := assistantRequest{ProjectID: "workbench", Messages: []assistantMessage{{Role: "user", Content: "写一下", References: []domain.AssistantReference{{Type: "skill", ID: "Shared_Doc"}}}}}
+	req := assistantRequest{ProjectID: "workbench", Messages: []assistantMessage{{Role: "user", Content: "写一下", References: []domain.AssistantReference{{Type: "skill", ID: "lint"}}}}}
 	if err := h.prepareWorkbenchContext(c, &req, u); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(req.contextText, "skill=shareddoc") || req.Messages[0].References[0].Name != "写文档" {
+	if !strings.Contains(req.contextText, "skill=lint") || req.Messages[0].References[0].Name != "代码检查" {
 		t.Fatalf("skill hint missing: %s", req.contextText)
 	}
 	root := t.TempDir()
-	// Sharing installs the skill on a project turn that never mentions it.
+	// 本项目技能在未提及时也会安装；其他项目的共享技能不会。
 	plain := assistantRequest{ProjectID: "workbench", Messages: []assistantMessage{{Role: "user", Content: "写一下"}}}
 	if err := h.writeConversationAssets(root, plain); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"lint", "shareddoc"} {
-		if _, err := os.Stat(filepath.Join(root, "home", ".codebuddy", "skills", name, "SKILL.md")); err != nil {
-			t.Fatalf("skill %s not written: %v", name, err)
-		}
+	if _, err := os.Stat(filepath.Join(root, "home", ".codebuddy", "skills", "lint", "SKILL.md")); err != nil {
+		t.Fatalf("project skill lint not written: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "home", ".codebuddy", "skills", "shareddoc", "SKILL.md")); !os.IsNotExist(err) {
+		t.Fatalf("another project's shared skill was installed: %v", err)
+	}
+	req.Messages[0].References = []domain.AssistantReference{{Type: "skill", ID: "Shared_Doc"}}
+	if err := h.prepareWorkbenchContext(c, &req, u); err != errForeignReference {
+		t.Fatalf("another project's shared skill accepted: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "home", ".codebuddy", "skills", "deploy", "SKILL.md")); !os.IsNotExist(err) {
 		t.Fatalf("another project's private skill was installed: %v", err)
@@ -210,23 +217,20 @@ func TestSkillMentionsAreScopedHintedAndWrittenToHome(t *testing.T) {
 	}
 }
 
-// Every shared skill on the platform reaches the CLI home, whichever project
-// owns it, while private skills of other projects stay out; a conversation
-// without a project gets the same shared set. A shared skill nobody mentioned
-// brings only its SKILL.md; mentioning it installs its other files too.
-func TestEverySharedSkillIsInstalledWithItsSkillMD(t *testing.T) {
+// 技能按项目隔离：只有本项目技能会装进对话。平台共享技能与其他项目的
+// 共享技能都不会自动安装，项目需要先把平台技能复制到本项目。
+func TestProjectSkillsInstallAndPlatformSkillsStayOut(t *testing.T) {
 	h, u := workbenchFixture(t)
 	for _, project := range []string{"docs", "ops"} {
 		if err := h.repo.PutProject(domain.Project{ID: project, Name: project, OwnerID: u.ID}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	runbook := domain.SkillDefinition{ID: "ops-runbook", Name: "ops-runbook", ProjectID: "ops", Shared: true, Content: "runbook", Files: map[string]string{"scripts/check.sh": "echo ok"}}
 	for _, skill := range []domain.SkillDefinition{
 		{ID: "own", Name: "own", ProjectID: "workbench", Content: "own"},
 		{ID: "docs-writer", Name: "docs-writer", ProjectID: "docs", Shared: true, Content: "write"},
 		{ID: "docs-draft", Name: "docs-draft", ProjectID: "docs", Content: "draft"},
-		runbook,
+		{ID: "ops-runbook", Name: "ops-runbook", ProjectID: "ops", Shared: true, Content: "runbook"},
 		{ID: "ops-secret", Name: "ops-secret", ProjectID: "ops", Content: "secret"},
 	} {
 		if err := h.repo.PutSkill(skill); err != nil {
@@ -234,63 +238,51 @@ func TestEverySharedSkillIsInstalledWithItsSkillMD(t *testing.T) {
 		}
 	}
 	asset := []byte{0, 1, 2, 255}
-	skillMD := []byte("---\nname: ops-runbook\ndescription: run the ops checks\n---\nRun scripts/check.sh.\n")
-	if err := h.repo.PutSkillFiles("ops-runbook", []repo.SkillFileInput{
+	skillMD := []byte("---\nname: own\ndescription: own skill\n---\nUse the attached asset.\n")
+	if err := h.repo.PutSkillFiles("own", []repo.SkillFileInput{
 		{Path: "SKILL.md", Content: skillMD, Mode: 0o644},
 		{Path: "assets/check.bin", Content: asset, Mode: 0o644},
 	}); err != nil {
 		t.Fatal(err)
 	}
-	stored, ok := h.repo.Skill("ops-runbook")
-	if !ok {
-		t.Fatal("ops-runbook not stored")
-	}
-	// The test store also seeds the platform's shared skills; they must be
-	// installed too, so only the skills created here are pinned.
-	for project, want := range map[string]map[string]bool{
-		"workbench": {"own": true, "docs-writer": true, "ops-runbook": true, "repository-navigation": true, "docs-draft": false, "ops-secret": false},
-		"":          {"own": false, "docs-writer": true, "ops-runbook": true, "repository-navigation": true, "docs-draft": false, "ops-secret": false},
+	// 测试 store 里 seed 的平台共享技能、其他项目的共享技能都不该出现在对话目录。
+	for project, want := range map[string][]string{
+		"workbench": {"own"},
+		"":          nil,
 	} {
-		for _, mentioned := range []bool{false, true} {
-			req := assistantRequest{ProjectID: project}
-			if mentioned {
-				req.skills = []domain.SkillDefinition{stored}
+		root := t.TempDir()
+		if err := h.writeConversationAssets(root, assistantRequest{ProjectID: project}); err != nil {
+			t.Fatal(err)
+		}
+		dir := filepath.Join(root, "home", ".codebuddy", "skills")
+		entries, err := os.ReadDir(dir)
+		if len(want) == 0 {
+			if err == nil && len(entries) > 0 {
+				t.Fatalf("project %q installed %d skills, want none", project, len(entries))
 			}
-			root := t.TempDir()
-			if err := h.writeConversationAssets(root, req); err != nil {
-				t.Fatal(err)
-			}
-			dir := filepath.Join(root, "home", ".codebuddy", "skills")
-			entries, err := os.ReadDir(dir)
-			if err != nil {
-				t.Fatal(err)
-			}
-			got := map[string]bool{}
-			for _, entry := range entries {
-				got[entry.Name()] = true
-			}
-			for name, installed := range want {
-				if got[name] != installed {
-					t.Fatalf("project %q skill %s installed=%v, want %v (all: %v)", project, name, got[name], installed, got)
-				}
-			}
-			if data, err := os.ReadFile(filepath.Join(dir, "ops-runbook", "SKILL.md")); err != nil || !bytes.Contains(data, []byte("Run scripts/check.sh.")) {
-				t.Fatalf("project %q mentioned=%v shared SKILL.md = %q %v", project, mentioned, data, err)
-			}
-			for path, content := range map[string][]byte{"assets/check.bin": asset, "scripts/check.sh": []byte("echo ok")} {
-				data, err := os.ReadFile(filepath.Join(dir, "ops-runbook", filepath.FromSlash(path)))
-				if mentioned && (err != nil || !bytes.Equal(data, content)) {
-					t.Fatalf("project %q mentioned shared skill file %s = %v %v", project, path, data, err)
-				}
-				if !mentioned && !os.IsNotExist(err) {
-					t.Fatalf("project %q unmentioned shared skill file %s was installed: %v", project, path, err)
-				}
-			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]bool{}
+		for _, entry := range entries {
+			got[entry.Name()] = true
+		}
+		if len(got) != len(want) {
+			t.Fatalf("project %q installed %v, want %v", project, got, want)
+		}
+		if !got["own"] {
+			t.Fatalf("project %q missing own skill (got %v)", project, got)
+		}
+		if data, err := os.ReadFile(filepath.Join(dir, "own", "assets", "check.bin")); err != nil || !bytes.Equal(data, asset) {
+			t.Fatalf("project %q own skill asset = %v %v", project, data, err)
 		}
 	}
 }
 
-func TestEverySharedSkillIsInstalledHoweverManyAreShared(t *testing.T) {
+// 平台/其他项目的共享技能再多，也不该漏进项目对话；本项目技能照旧只装自己的。
+func TestManyPlatformSkillsDoNotLeakIntoProjectConversations(t *testing.T) {
 	h, u := workbenchFixture(t)
 	if err := h.repo.PutProject(domain.Project{ID: "docs", Name: "docs", OwnerID: u.ID}); err != nil {
 		t.Fatal(err)
@@ -301,22 +293,11 @@ func TestEverySharedSkillIsInstalledHoweverManyAreShared(t *testing.T) {
 	if err := h.repo.PutSkill(domain.SkillDefinition{ID: "docs-private", Name: "docs-private", ProjectID: "docs", Content: "private"}); err != nil {
 		t.Fatal(err)
 	}
-	// More shared skills than the 50 an earlier revision installed, so a
-	// skill late in id order (the one a scheduled task needs) is still there.
 	for i := 0; i < 120; i++ {
 		id := fmt.Sprintf("zz-shared-%03d", i)
 		if err := h.repo.PutSkill(domain.SkillDefinition{ID: id, Name: id, ProjectID: "docs", Shared: true, Content: id}); err != nil {
 			t.Fatal(err)
 		}
-	}
-	var shared []string
-	for _, skill := range h.repo.Skills() {
-		if skill.Shared && skill.ProjectID != "workbench" {
-			shared = append(shared, skill.ID)
-		}
-	}
-	if len(shared) < 120 {
-		t.Fatalf("fixture has %d shared skills, want at least 120", len(shared))
 	}
 	for _, project := range []string{"workbench", ""} {
 		root := t.TempDir()
@@ -325,21 +306,22 @@ func TestEverySharedSkillIsInstalledHoweverManyAreShared(t *testing.T) {
 		}
 		entries, err := os.ReadDir(filepath.Join(root, "home", ".codebuddy", "skills"))
 		if err != nil {
+			if project == "" && os.IsNotExist(err) {
+				continue
+			}
 			t.Fatal(err)
 		}
-		got := map[string]bool{}
 		for _, entry := range entries {
-			got[entry.Name()] = true
+			if strings.HasPrefix(entry.Name(), "zz-shared-") || entry.Name() == "docs-private" {
+				t.Fatalf("project %q installed foreign skill %s", project, entry.Name())
+			}
+			if project == "" {
+				t.Fatalf("project %q installed skill %s, want none", project, entry.Name())
+			}
 		}
-		if got["own"] != (project == "workbench") {
-			t.Fatalf("project %q own skill installed=%v", project, got["own"])
-		}
-		if got["docs-private"] {
-			t.Fatalf("project %q installed another project's private skill", project)
-		}
-		for _, id := range shared {
-			if !got[id] {
-				t.Fatalf("project %q shared skill %s not installed (installed %d of %d)", project, id, len(got), len(shared))
+		if project == "workbench" {
+			if len(entries) != 1 || entries[0].Name() != "own" {
+				t.Fatalf("project %q installed %v, want only own", project, entries)
 			}
 		}
 	}

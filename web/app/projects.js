@@ -172,22 +172,7 @@ function projectRepoListHTML(repos,defaultId){
   return `<div class="pa-rgrid">${repos.map(r=>repoCardHTML(r,r.id===defaultId)).join('')}<button type="button" class="pa-rc-add" data-repo-add><i>${paIcon('plus',14)}</i><b>添加仓库</b></button></div>`;
 }
 function bindProjectAssetPanels(form){
-  form.querySelectorAll('[data-project-agent-copy]').forEach(b=>b.onclick=()=>{
-    state.agentScope='shared';
-    switchView('agents');
-    if(typeof renderAgents==='function')renderAgents();
-    toast('在共享角色里点行尾菜单「复制到本项目」，复制后回项目里调整');
-  });
-  form.querySelectorAll('[data-project-agent]').forEach(row=>row.onclick=()=>{
-    const a=(state.data.agents||[]).find(x=>x.id===row.dataset.projectAgent);
-    if(a&&typeof openAgentWizard==='function')openAgentWizard(a);
-  });
-  form.querySelectorAll('[data-project-asset-manage]').forEach(b=>b.onclick=()=>{
-    const type=b.dataset.projectAssetManage;
-    if(typeof assetScopeKey==='function')state[assetScopeKey(type)]='project';
-    switchView(type);
-    if(typeof renderAssets==='function')renderAssets();
-  });
+  form.querySelectorAll('[data-project-agent-surface]').forEach(bindProjectAgentSurface);
 }
 function projectAgentUsage(id){
   const seen=new Set();
@@ -200,32 +185,224 @@ function projectAgentUsage(id){
   }
   return count;
 }
+function projectAgentList(){
+  const projectId=state.projectAdminDetailId;
+  return (state.data.agents||[]).filter(a=>String(a.projectId||'')===String(projectId||''));
+}
+function projectAgentUsageMap(list){
+  const usage=new Map();
+  (list||[]).forEach(a=>{const n=projectAgentUsage(a.id);if(n)usage.set(a.id,n)});
+  return usage;
+}
+function projectAgentFiltered(all){
+  const q=String(state.projectAgentQuery||'').trim().toLowerCase();
+  return q?all.filter(a=>`${a.name} ${a.id} ${a.description||''}`.toLowerCase().includes(q)):all;
+}
+function renderProjectAgentTable(host){
+  if(!host)return;
+  const projectId=state.projectAdminDetailId,all=projectAgentList(),usage=projectAgentUsageMap(all),list=projectAgentFiltered(all);
+  const box=host.querySelector('[data-project-agent-list]'),count=host.querySelector('[data-project-agent-count]');
+  if(count)count.textContent=String(all.length);
+  if(!box)return;
+  box.innerHTML=agentTableHTML(list,{usage,projectId,empty:String(state.projectAgentQuery||'').trim()?'没有匹配的角色。':(all.length?'没有匹配的角色。':'本项目还没有自己的角色。')});
+  bindAgentRows(box,list,{projectId,usage,share:false});
+}
+function refreshProjectAgentSurface(){
+  if(activeViewName()!=='projects')return;
+  renderProjectAgentTable($('#projectAdminForm [data-project-agent-surface]'));
+}
 function projectAgentsPanelHTML(saved){
   const projectId=saved?.id||'';
-  const roles=(state.data.agents||[]).filter(a=>String(a.projectId||'')===projectId);
-  const desc='只影响本项目；平台共享角色在「设置 → AGENT 能力 → 角色定义」维护。';
-  if(!roles.length){
-    return paSection('Agent 角色',desc,projectAdminEmptyHTML('repo','本项目还没有自己的 Agent 角色',
-      '未配置时，本项目的需求会使用平台通用 SOP 自带的角色运行。要单独调优，请从平台角色复制一份，并在本项目的流程里重新绑定。',
-      '<button type="button" class="button primary" data-project-agent-copy>＋ 从平台角色复制</button>'));
+  const all=projectAgentList(),usage=projectAgentUsageMap(all),list=projectAgentFiltered(all),q=String(state.projectAgentQuery||'');
+  const empty=q?'没有匹配的角色。':(all.length?'没有匹配的角色。':'本项目还没有自己的角色。');
+  return `<div class="pa-agent-surface" data-project-agent-surface>
+    <div class="agent-toolbar">
+      <div class="pa-agent-tabs"><span>本项目角色</span><span class="agent-tab-count" data-project-agent-count>${all.length}</span></div>
+      <label class="catalog-search agent-search"><span aria-hidden="true">⌕</span><input type="search" data-project-agent-search value="${escapeHTML(q)}" placeholder="搜索名称、职责或资产" aria-label="搜索本项目角色"></label>
+      <div class="pa-agent-actions"><button type="button" class="button ghost small" data-project-agent-copy>从平台角色复制</button><button type="button" class="button primary small" data-project-agent-new>＋ 新建角色</button></div>
+    </div>
+    <p class="pa-agent-hint">只影响本项目；未配置时使用平台通用 SOP 自带的角色，平台共享角色在「设置 → Agent 能力 → 角色定义」维护。</p>
+    <div class="agent-list-table" data-project-agent-list>${agentTableHTML(list,{usage,projectId,empty})}</div>
+  </div>`;
+}
+function bindProjectAgentSurface(host){
+  if(!host||host.dataset.paAgentBound)return;
+  host.dataset.paAgentBound='true';
+  const projectId=state.projectAdminDetailId;
+  const search=host.querySelector('[data-project-agent-search]');
+  if(search){
+    search.oninput=()=>{state.projectAgentQuery=search.value;renderProjectAgentTable(host)};
+    search.onkeydown=e=>{if(e.key==='Enter')e.preventDefault()};
   }
-  const rows=roles.map(a=>{
-    const used=projectAgentUsage(a.id);
-    return `<div class="pa-asset-row" data-project-agent="${escapeHTML(a.id)}"><b>${escapeHTML(a.name||a.id)}</b><span>${(a.artifactOutputs||[]).length} 产物</span><span>${(a.verification||[]).length} 门禁</span><em>${used?`被 ${used} 个节点引用`:'未被使用'}</em></div>`;
-  }).join('');
-  return paSection('Agent 角色',`本项目 ${roles.length} 个；${desc}`,`<div class="pa-asset-list">${rows}</div>`,
-    '<button type="button" class="button ghost small" data-project-agent-copy>＋ 从平台角色复制</button>');
+  const swap=host.querySelector('[data-project-agent-new]');
+  if(swap)swap.onclick=()=>{
+    state.agentCreateProjectId=String(projectId||'');
+    if(typeof openAgentWizard==='function')openAgentWizard();
+  };
+  const copy=host.querySelector('[data-project-agent-copy]');
+  if(copy)copy.onclick=()=>openProjectAgentCopyDialog(String(projectId||''));
+  renderProjectAgentTable(host);
+}
+const PROJECT_AGENT_COPY_HTML=`<div id="projectAgentCopyModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="projectAgentCopyTitle">
+  <div class="modal-card pa-copy-card pa-agent-surface">
+    <button type="button" class="modal-close" data-copy-close aria-label="关闭">×</button>
+    <h2 id="projectAgentCopyTitle">从平台角色复制</h2>
+    <p class="pa-copy-sub">勾选要复制的角色。复制后在本项目生成「名称 - 副本」，可继续调整规则、技能与产物。</p>
+    <label class="catalog-search agent-search pa-copy-search"><span aria-hidden="true">⌕</span><input type="search" data-copy-search placeholder="搜索角色名称或职责" aria-label="搜索平台角色"></label>
+    <div class="pa-copy-list" data-copy-list role="group" aria-label="平台角色列表"></div>
+    <div class="modal-actions"><span class="pa-copy-sum" data-copy-sum>未选择</span><button type="button" class="button ghost" data-copy-close>取消</button><button type="button" class="button primary" data-copy-confirm disabled>复制所选</button></div>
+  </div></div>`;
+function projectAgentCopySources(){return (state.data.agents||[]).filter(a=>catalogShared(a.projectId,a.shared))}
+function syncProjectAgentCopySum(){
+  const m=$('#projectAgentCopyModal');if(!m)return;
+  const n=(state.projectAgentCopyPick||new Set()).size,sum=m.querySelector('[data-copy-sum]'),btn=m.querySelector('[data-copy-confirm]');
+  if(sum)sum.textContent=n?`已选 ${n} 个`:'未选择';
+  if(btn){btn.disabled=!n;btn.textContent='复制所选'}
+}
+function renderProjectAgentCopyList(){
+  const m=$('#projectAgentCopyModal');if(!m)return;
+  const host=m.querySelector('[data-copy-list]');if(!host)return;
+  const projectId=state.projectAgentCopyProject||'',local=(state.data.agents||[]).filter(a=>String(a.projectId||'')===projectId),taken=new Set(local.map(a=>String(a.name||'')));
+  const q=String(state.projectAgentCopyQuery||'').trim().toLowerCase(),picks=state.projectAgentCopyPick||new Set();
+  const items=projectAgentCopySources().filter(a=>!q||`${a.name} ${a.description||''}`.toLowerCase().includes(q));
+  host.innerHTML=items.length?items.map(a=>{
+    const copied=taken.has(`${a.name} - 副本`),checked=!copied&&picks.has(a.id);
+    const origin=a.projectId?`来自 ${escapeHTML((state.data.projects||[]).find(p=>p.id===a.projectId)?.name||a.projectId)}`:'平台共享';
+    return `<label class="pa-copy-row${copied?' is-used':''}"><input type="checkbox" value="${escapeHTML(a.id)}" ${checked?'checked':''} ${copied?'disabled':''}><span class="pa-copy-tx"><b>${escapeHTML(a.name||a.id)}</b><small>${escapeHTML(a.description||'未填写职责')}</small></span><span class="pa-copy-meta">${agentConfigSummary(a)}</span><em>${copied?'已在本项目':origin}</em></label>`;
+  }).join(''):`<div class="pa-rows-empty">${projectAgentCopySources().length?'没有匹配的角色':'平台还没有共享角色'}</div>`;
+  host.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.onchange=()=>{
+    const set=state.projectAgentCopyPick||(state.projectAgentCopyPick=new Set());
+    if(cb.checked)set.add(cb.value);else set.delete(cb.value);
+    syncProjectAgentCopySum();
+  });
+  syncProjectAgentCopySum();
+}
+function openProjectAgentCopyDialog(projectId){
+  let m=$('#projectAgentCopyModal');
+  if(!m){
+    document.body.insertAdjacentHTML('beforeend',PROJECT_AGENT_COPY_HTML);
+    m=$('#projectAgentCopyModal');
+    m.querySelectorAll('[data-copy-close]').forEach(b=>b.onclick=closeProjectAgentCopyDialog);
+    m.onclick=e=>{if(e.target===m)closeProjectAgentCopyDialog()};
+    m.addEventListener('keydown',e=>{if(e.key==='Escape')closeProjectAgentCopyDialog()});
+    const search=m.querySelector('[data-copy-search]');
+    if(search)search.oninput=()=>{state.projectAgentCopyQuery=search.value;renderProjectAgentCopyList()};
+    const confirm=m.querySelector('[data-copy-confirm]');
+    if(confirm)confirm.onclick=confirmProjectAgentCopy;
+  }
+  state.projectAgentCopyProject=String(projectId||'');
+  state.projectAgentCopyQuery='';state.projectAgentCopyPick=new Set();
+  const search=m.querySelector('[data-copy-search]');if(search)search.value='';
+  renderProjectAgentCopyList();
+  m.classList.add('open');
+  requestAnimationFrame?.(()=>search?.focus());
+}
+function closeProjectAgentCopyDialog(){
+  const m=$('#projectAgentCopyModal');if(m)m.classList.remove('open');
+  state.projectAgentCopyPick=new Set();state.projectAgentCopyQuery='';
+}
+async function confirmProjectAgentCopy(){
+  const m=$('#projectAgentCopyModal');if(!m)return;
+  const projectId=state.projectAgentCopyProject||'',picks=[...(state.projectAgentCopyPick||[])];
+  if(!picks.length)return;
+  const btn=m.querySelector('[data-copy-confirm]');
+  if(btn){btn.disabled=true;btn.textContent='复制中…'}
+  const failed=[];
+  for(const id of picks){
+    const src=(state.data.agents||[]).find(a=>a.id===id);
+    if(!src)continue;
+    try{await copyAgentTo(src.id,projectId,`${src.name} - 副本`)}catch(e){failed.push(e.message||src.name)}
+  }
+  try{await refreshAgentDependencies()}catch(e){}
+  closeProjectAgentCopyDialog();
+  refreshProjectAgentSurface();
+  if(typeof renderProjectAdminHead==='function')renderProjectAdminHead();
+  if(typeof syncProjectAdminTabs==='function')syncProjectAdminTabs();
+  if(failed.length)toast(`复制失败：${failed[0]}`,'err');
+  else toast(`已复制 ${picks.length} 个角色到本项目，可继续调整`);
 }
 function projectAssetsPanelHTML(saved){
-  const projectId=saved?.id||'';
-  const groups=[['rules','规则'],['skills','技能'],['templates','产物模板']];
-  const body=groups.map(([type,label])=>{
-    const items=(state.data[type]||[]).filter(x=>String(x.projectId||'')===projectId);
-    const rows=items.length?items.map(x=>`<div class="pa-asset-row"><b>${escapeHTML(x.name||x.id)}</b></div>`).join('')
-      :'<div class="pa-rows-empty">未配置，运行时使用平台共享资产</div>';
-    return `<div class="pa-asset-group"><div class="pa-group-head"><b>${label}（${items.length}）</b><button type="button" class="button ghost small" data-project-asset-manage="${type}">管理</button></div>${rows}</div>`;
-  }).join('');
-  return paSection('Agent 能力资产','规则、技能、产物模板等项目私有资产；平台共享资产在「设置 → AGENT 能力 → 能力资产」维护。',`<div class="pa-asset-grid">${body}</div>`);
+  return `<div class="pa-asset-host" data-project-asset-host></div>`;
+}
+// 项目页「Agent 能力资产」与平台「能力资产」是同一套视图：进入页签时把 #assetsView /
+// #mcpView 一起挂进项目面板（沿用它们的样式与渲染逻辑），切换只切显示、离开时归还原位，
+// 这样两套能力不会各自漂移，切回来也不会丢掉未保存的表单。
+const PA_SURFACES={assets:'#assetsView',mcp:'#mcpView'};
+function paSurfaceNode(kind){return $(PA_SURFACES[kind]||PA_SURFACES.assets)}
+function paSurfaceRendered(key){return !!(state.paSurfaceRendered&&state.paSurfaceRendered[key])}
+function markPaSurfaceRendered(key){state.paSurfaceRendered={...(state.paSurfaceRendered||{}),[key]:true}}
+function mountProjectAssetSurface(kind=state.paSurface||'assets'){
+  const host=$('#projectAdminForm [data-project-asset-host]');if(!host)return;
+  const target=PA_SURFACES[kind]?kind:'assets',assetsView=paSurfaceNode('assets'),mcpView=paSurfaceNode('mcp');
+  if(!assetsView)return;
+  if(!state.assetHosted){
+    state.assetHosted=true;
+    state.assetHostedProject=String(state.projectAdminDetailId||'');
+    state.paSurfaceHomes={};
+    [['assets',assetsView],['mcp',mcpView]].forEach(([key,view])=>{
+      if(!view)return;
+      state.paSurfaceHomes[key]={parent:view.parentElement,next:view.nextElementSibling};
+      view.classList.add('is-pa-hosted');
+    });
+    state.assetScopeRestore={ruleScope:state.ruleScope,skillScope:state.skillScope,templateScope:state.templateScope,dockerfileScope:state.dockerfileScope,environmentScope:state.environmentScope,sandboxScope:state.sandboxScope,mcpScope:state.mcpScope};
+    ['ruleScope','skillScope','templateScope','dockerfileScope','environmentScope','sandboxScope'].forEach(k=>{state[k]='project'});
+    state.mcpScope='project';
+    state.mcpHostedProject=state.assetHostedProject;
+    state.paSurfaceRendered={};
+    state.selectedAsset=null;state.assetQuery='';state.assetTab=null;
+    if(typeof state.assetType!=='string'||!['rules','skills','templates','mcp'].includes(state.assetType))state.assetType='rules';
+    // 资产表单被嵌进项目表单里，阻止 submit 冒泡去触发项目保存。
+    const assetForm=assetsView.querySelector('#assetForm');
+    if(assetForm&&!assetForm.dataset.paSubmitGuard){assetForm.dataset.paSubmitGuard='1';assetForm.addEventListener('submit',e=>e.stopPropagation())}
+  }
+  state.paSurface=target;
+  if(assetsView.parentElement!==host)host.appendChild(assetsView);
+  if(mcpView&&mcpView.parentElement!==host)host.appendChild(mcpView);
+  assetsView.hidden=target!=='assets';
+  if(mcpView)mcpView.hidden=target!=='mcp';
+  if(typeof syncAssetTypeTabs==='function')syncAssetTypeTabs(target==='mcp'?'mcp':state.assetType);
+  if(target==='mcp'){
+    if(!paSurfaceRendered('mcp')&&typeof renderMCPManagement==='function'){renderMCPManagement();markPaSurfaceRendered('mcp')}
+    return;
+  }
+  if(!paSurfaceRendered('assets')&&typeof renderAssets==='function'){renderAssets();markPaSurfaceRendered('assets')}
+}
+function unmountProjectAssetSurface(){
+  if(!state.assetHosted)return;
+  const homes=state.paSurfaceHomes||{};
+  state.assetHosted=false;
+  state.assetHostedProject='';
+  state.mcpHostedProject='';
+  // 先还 assetsView 再还 mcpView：mcpView 记录的 next 通常就是 assetsView。
+  [['assets',paSurfaceNode('assets')],['mcp',paSurfaceNode('mcp')]].forEach(([key,view])=>{
+    if(!view)return;
+    view.classList.remove('is-pa-hosted');
+    view.hidden=false;
+    const home=homes[key];
+    if(home?.parent?.isConnected){
+      const next=home.next&&home.next.parentElement===home.parent?home.next:null;
+      home.parent.insertBefore(view,next);
+    }else if(view.parentElement){view.parentElement.removeChild(view)}
+  });
+  state.paSurfaceHomes=null;
+  state.paSurfaceRendered=null;
+  if(state.assetScopeRestore){Object.assign(state,state.assetScopeRestore);state.assetScopeRestore=null}
+  state.selectedAsset=null;state.assetTab=null;
+}
+// 挂载期间类型页签只切能力视图，不再切换顶层视图（平台页仍然是 switchView）。
+function setHostedProjectAssetType(type){
+  if(!state.assetHosted)return false;
+  if(type==='mcp'){mountProjectAssetSurface('mcp');return true}
+  if(!['rules','skills','templates'].includes(type))return true;
+  const changed=state.assetType!==type;
+  if(changed){state.assetType=type;state.assetQuery='';state.selectedAsset=null;state.assetTab=null}
+  mountProjectAssetSurface('assets');
+  if(changed){
+    if(typeof syncAssetTypeTabs==='function')syncAssetTypeTabs(type);
+    if(typeof renderAssets==='function')renderAssets();
+    markPaSurfaceRendered('assets');
+  }
+  return true;
 }
 function projectAdminFormHTML(d,ctx){
   const {creating,custom,repos,saved}=ctx;
@@ -294,6 +471,7 @@ function setProjectAdminTab(tab,opt={}){
   if(state.projectAdminDetailId==='new'&&tab!=='basic'){if(!opt.silent)toast('保存项目后可用','warn');return false}
   state.projectAdminTab=tab;
   $$('#projectAdminForm [data-pa-panel]').forEach(p=>p.hidden=p.dataset.paPanel!==tab);
+  if(tab==='assets')mountProjectAssetSurface();else{state.paSurface='assets';unmountProjectAssetSurface()}
   syncProjectAdminTabs();
   if(!opt.silent&&activeViewName()==='projects'){const next=projectAdminHash(state.projectAdminDetailId,tab);if(location.hash!==next)history.replaceState(history.state,'',next)}
   return true;
@@ -353,6 +531,7 @@ function projectAdminFail(form,name,message){
 }
 function onProjectAdminInput(e){
   const t=e.target,form=$('#projectAdminForm');if(!form||!t?.name&&!t?.dataset)return;
+  if(t.closest?.('[data-project-asset-host]'))return;
   if(t.matches?.('[data-pa-color-custom]')){setProjectAdminColor(t.value);return}
   t.classList?.remove('bad');t.closest?.('[data-user-combobox]')?.querySelector('[data-user-combobox-trigger]')?.classList.remove('bad');
   captureProjectAdminForm();
@@ -410,6 +589,7 @@ function renderProjectDetail(opt={}){
   const typing=form.dataset.projectFor===id&&form.dataset.mode===mode&&form.contains(document.activeElement)&&document.activeElement!==form;
   if(opt.force||!typing){
     const repos=creating?[]:(state.data.repositories||[]).filter(r=>r.projectId===id);
+    unmountProjectAssetSurface();
     form.innerHTML=projectAdminFormHTML(state.projectDraft,{creating,custom:!!state.projectIdentCustom,repos,saved});
     form.dataset.projectFor=id;form.dataset.mode=mode;
     bindProjectAdminForm(form);bindUserSearches(form);bindProjectAssetPanels(form);
@@ -417,6 +597,7 @@ function renderProjectDetail(opt={}){
   syncProjectIdentity();renderProjectAdminHead();
   if(!PROJECT_ADMIN_TABS.some(t=>t.id===state.projectAdminTab)||creating&&state.projectAdminTab!=='basic')state.projectAdminTab='basic';
   form.querySelectorAll('[data-pa-panel]').forEach(p=>p.hidden=p.dataset.paPanel!==state.projectAdminTab);
+  if(state.projectAdminTab==='assets')mountProjectAssetSurface();else{state.paSurface='assets';unmountProjectAssetSurface()}
   syncProjectAdminTabs();syncProjectAdminSaveBar();
   requestAnimationFrame?.(moveProjectAdminTabIndicator);
 }
@@ -427,7 +608,8 @@ function renderProjectAdmin(opt={}){
   if(detail)renderProjectDetail(opt);else renderProjectList();
 }
 function resetProjectAdminDetail(){
-  state.projectAdminDetailId=null;state.projectAdminTab='basic';state.projectDraft=null;state.projectDraftFor='';state.projectDraftBase=null;state.projectIdentCustom=false;state.projectAdminErrors={};
+  state.projectAdminDetailId=null;state.projectAdminTab='basic';state.projectDraft=null;state.projectDraftFor='';state.projectDraftBase=null;state.projectIdentCustom=false;state.projectAdminErrors={};state.projectAgentQuery='';state.paSurface='assets';
+  unmountProjectAssetSurface();
   if(typeof closeRepoDrawer==='function')closeRepoDrawer();
 }
 function syncProjectAdminRouteState(){
