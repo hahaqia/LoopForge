@@ -89,8 +89,8 @@ func TestSOPCatalogWiring(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(app), "if(name==='sops'){if(!staying&&state.data){sopCatalogMotion.reset();renderSOPCatalog()}refreshWorkflowMetrics()}") {
-		t.Fatal("entering #sopsView must reset the card reveal before the metrics refresh")
+	if !strings.Contains(string(app), "if(name==='sops'){if(!state.sopHosted)state.sopScope='generic';if(!staying&&state.data){sopCatalogMotion.reset();renderSOPCatalog()}refreshWorkflowMetrics()}") {
+		t.Fatal("entering #sopsView must pin the platform scope and reset the card reveal")
 	}
 	if !strings.Contains(string(app), "if(name!=='sops'&&typeof hideSOPCardMenu==='function')hideSOPCardMenu();") {
 		t.Fatal("leaving #sopsView must close the SOP card ⋯ menu")

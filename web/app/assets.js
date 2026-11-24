@@ -83,7 +83,7 @@ function assetGridEmptyHTML(){
   const kind=assetKindLabel(),copy=assetPageCopy();
   if(String(state.assetQuery||'').trim())return `<div class="asset-empty"><b>没有匹配「${escapeHTML(state.assetQuery.trim())}」的${escapeHTML(kind)}</b><p>换个关键词试试。</p></div>`;
   if(assetPlatformSurface())return `<div class="asset-empty"><b>还没有平台共享${escapeHTML(kind)}</b><p>${escapeHTML(assetEmptyHint())}</p>${isPlatformAdmin()?`<button type="button" class="button primary" data-empty-new>${huiIcon('plus')}新建平台${escapeHTML(copy.tab)}</button>`:''}</div>`;
-  if(state[assetScopeKey(state.assetType)]==='shared'){const hint=['rules','skills'].includes(state.assetType)?'请在资产所属项目中共享，或共享一个引用它的角色。':'请在资产所属项目中共享；共享 SOP 时也会自动共享其环境依赖。';return `<div class="asset-empty"><b>其他项目还没有共享${escapeHTML(kind)}</b><p>${hint}</p></div>`}
+  if(state[assetScopeKey(state.assetType)]==='shared'){const hint=['rules','skills'].includes(state.assetType)?'请在资产所属项目中共享，或共享一个引用它的角色。':'请在资产所属项目中共享；共享沙箱时会一并使用它的镜像与安装脚本。';return `<div class="asset-empty"><b>其他项目还没有共享${escapeHTML(kind)}</b><p>${hint}</p></div>`}
   return `<div class="asset-empty"><b>当前项目还没有${/^[A-Za-z]/.test(kind)?' ':''}${escapeHTML(kind)}</b><p>${assetEmptyHint()}</p><button type="button" class="button primary" data-empty-new>${huiIcon('plus')}${escapeHTML(copy.create)}</button></div>`;
 }
 function renderAssetGrid(){

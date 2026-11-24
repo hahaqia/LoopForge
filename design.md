@@ -183,7 +183,7 @@
 
 需求列表页的选中态（筛选已生效、项目数据块、勾选行、当前页码、Selector 选中项）使用强调色淡底，是「悬停用中性灰、选中用稳定灰底」规范的例外：这里的选中表示筛选或批量选择已生效，需要和普通悬停明显区分。其他页面仍按中性灰规范。
 
-- AI 定时任务页通过「本项目任务 / 共享任务市场」SlidingTabs 切换，市场沿用 MCP 市场卡片与搜索，展示来源、版本、推荐调度及本项目订阅数量；允许继续添加不同参数或调度的订阅。独立任务可发布不可变共享版本。项目订阅显示来源与固定版本，在原任务弹窗填写业务参数，保留独立调度、模型与 Bot 通知。有新版的订阅入口使用淡紫强调色；版本选择、提示词与参数对比直接展开在同一个任务编辑器内，参数随目标版本更新，点击「保存并升级」生效。市场详情保持独立只读窗口。编辑保存成功自动关闭弹窗并刷新列表，失败保留输入；迟到的保存响应不得关闭新打开的编辑器。弹窗沿用 Harness 令牌与关闭交互，窄屏改为单列。
+- AI 定时任务页通过「本项目任务 / 共享任务市场」SlidingTabs 切换，市场沿用 MCP 市场卡片与搜索，展示来源、版本、推荐调度及本项目订阅数量；允许继续添加不同参数或调度的订阅。独立任务可发布不可变共享版本，版本只 pin 直接引用的角色、技能与平台 SOP；项目 SOP 不再跨项目共享，引用了项目 SOP 的任务需先在「项目配置」里改用平台 SOP，发布时直接拒绝而不是静默共享。项目订阅显示来源与固定版本，在原任务弹窗填写业务参数，保留独立调度、模型与 Bot 通知。有新版的订阅入口使用淡紫强调色；版本选择、提示词与参数对比直接展开在同一个任务编辑器内，参数随目标版本更新，点击「保存并升级」生效。市场详情保持独立只读窗口。编辑保存成功自动关闭弹窗并刷新列表，失败保留输入；迟到的保存响应不得关闭新打开的编辑器。弹窗沿用 Harness 令牌与关闭交互，窄屏改为单列。
 - AI 定时任务页的最后一个标签是「执行记录」（`#aiScheduleExecPanel`，`web/app/schedule-executions.js`），按当前项目列出提示词任务和 SOP 触发的每次执行，数据来自 `GET /api/schedule-job-executions/dashboard`：筛选、计数、分页和概览都在服务端完成，前端每次只取当前一页，数据量再大结果也不会因截断而失真。标签上的数字是该项目保留的记录总数，最近 7 天有失败时改为红色，没有记录时隐藏。面板由三块组成，块间距 16px：
   - **执行概览卡**：标题「执行概览（最近 7 天）」，按任务筛选时标题带上任务名。4 张指标卡依次为执行次数（紫 `layers`）、成功率（绿 `check`）、平均耗时（蓝 `priority-bolt`）、Token 总消耗（紫 `layers`）。图标放在 36px 圆角方块里，底色是对应色 12%。成功率下方显示「成功 N 次 · 失败 N 次」，仅失败大于 0 时标红，不再单独占卡。执行次数和平均耗时下方写「较上周 ±N%」并带 `arrow-up` / `arrow-down`，变好绿色、变差红色，耗时下降算变好；上周没有数据时写「上周无数据」。Token 卡下方显示已上报执行数，仅统计最近 7 天本次 AI 调用的消耗（含重试、不含下游 SOP），未上报不当作零消耗。「最近 7 天」指包含当前小时在内的最近 7×24 小时，「上周」指再往前 7×24 小时，按执行开始的小时归入。已结束的执行来自服务端按小时累计的统计（保留 30 天），不受每个任务只保留 200 条记录的影响；进行中的执行从记录里数。概览不画趋势图，概览只随任务筛选变化。
   - **筛选栏**：依次为搜索框（匹配任务名、任务 ID、Trace ID、错误、AI 回复、派发需求）、时间（全部时间 / 今天 / 最近 7 天 / 最近 30 天）、任务、状态，每项左侧有 Harness 图标（`search` / `calendar` / `layers` / `filter`），最右是紫字「重置」（`refresh`，没有筛选时禁用）。改任何筛选都回到第 1 页并重新向服务端请求；搜索框在停止输入 250ms 后才请求。
@@ -412,17 +412,18 @@ AI 助手页（`#assistantView`，路由 `#/assistant`）在设置导航「管�
 | 卡片 | `--hui-surface` 底、细边框、圆角 14px、`--hui-ind-shadow`，最小高 286px；网格 `minmax(330px, 1fr)`，≤1050px 为 280px，≤720px 单列。不再用健康色描边或通用模板蓝色渐变 |
 | 头部 | 左侧健康 Status Badge + 12px 弱化说明（成功率或提示），右侧发布状态徽标；通用模板左侧为「通用」，右侧为版本 |
 | 主体 | 28px 灰色 `workflow` 图标块（通用为淡紫）+ 16px/600 单行标题；描述 13px 三行截断；KPI 区 `--hui-soft` 底，4 列等宽数字，失败数非零时为红色。通用模板的运行依赖用 success / warn 徽标 |
-| 底部 | 细分隔线下为元信息（负责人 · 版本 · 最近运行；共享卡前置「来自 项目」标签，通用卡前置「平台」）、唯一主操作（28px 淡紫底紫字）和「⋯」 |
+| 底部 | 细分隔线下为元信息（负责人 · 版本 · 最近运行；通用卡前置「平台」标签）、唯一主操作（28px 淡紫底紫字）和「⋯」 |
 
 每张卡只有一个主操作，其余进「⋯」菜单：
 
 | 卡片 | 主操作 | 菜单 |
 | --- | --- | --- |
-| 项目 SOP | 「打开」（`data-open-sop`，进入设计器） | 共享给其他项目 / 取消共享（`toggleShare`）、红字「删除」（`deleteWorkflow`） |
-| 共享 SOP | 「复制到本项目」（`cloneWorkflow`） | 无，不渲染「⋯」 |
+| 项目 SOP | 「打开」（`data-open-sop`，进入设计器） | 红字「删除」（`deleteWorkflow`）；平台管理员另有「提升为平台模板」（`promoteWorkflowToPlatform`） |
 | 通用模板 | 「复制到本项目」（`openGenericTemplateModal`）；已有副本时为「查看项目副本」 | 「直接运行」（`openRunModal`）；平台管理员另有「编辑模板」（`openGenericTemplateEditor`） |
 
-整卡（`tabindex=0`、`role=button`）点击或 Enter / 空格：项目与共享 SOP 进入设计器，通用模板打开复制预检弹窗。「⋯」菜单是挂在 `<body>` 的单例浮层（`issue-action-popover sop-action-popover`），复用需求列表的浮层规格；打开时关闭需求页菜单，聚焦首项，方向键 / Home / End 移动，Escape 或 Tab 关闭并把焦点还给「⋯」，外部点击、滚动和窗口缩放关闭；触发器同步 `aria-expanded`。
+项目 SOP 不再跨项目共享（复用统一走「平台 SOP → 复制到项目」），因此目录里不再有「共享 SOP」卡片；平台 SOP 的维护入口集中在「平台管理 › 平台 SOP」页签。
+
+整卡（`tabindex=0`、`role=button`）点击或 Enter / 空格：项目 SOP 进入设计器，通用模板打开复制预检弹窗。「⋯」菜单是挂在 `<body>` 的单例浮层（`issue-action-popover sop-action-popover`），复用需求列表的浮层规格；打开时关闭需求页菜单，聚焦首项，方向键 / Home / End 移动，Escape 或 Tab 关闭并把焦点还给「⋯」，外部点击、滚动和窗口缩放关闭；触发器同步 `aria-expanded`。
 
 健康徽标按 `metricHealth().label` 映射（`sopHealthTone()`）：
 
@@ -473,7 +474,7 @@ AI 助手页（`#assistantView`，路由 `#/assistant`）在设置导航「管�
 | `web/app/hui-date.js`、`hui-upload.js`、`hui-tooltip.js` | 日期浮层、上传拖拽区、`title` 接管的 Tooltip |
 | `web/app.js`（`afOpenDialog`、`afConfirm`、`afPrompt`、`afAlert`） | 确认对话框的排队、焦点管理和模板 |
 | `chatbot/src/HarnessSelect.jsx`、`harness-select-model.js`、`harness-controls.css` | 工作台的 React 下拉组件、可测试的选项 / 键盘 / 定位逻辑及样式 |
-| `web/app/sops.js`、`web/app/sop-catalog.css` | 流程模板卡片模板（`projectSOPCard`、`sharedSOPCard`、`genericSOPCard`）、徽标映射、「⋯」菜单浮层、`sopCatalogMotion` 入场 / FLIP / 退出动效 |
+| `web/app/sops.js`、`web/app/sop-catalog.css` | 流程模板卡片模板（`projectSOPCard`、`genericSOPCard`）、徽标映射、「⋯」菜单浮层、`sopCatalogMotion` 入场 / FLIP / 退出动效 |
 
 ## 验证与交付
 

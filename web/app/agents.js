@@ -93,7 +93,7 @@ function openAgentRowMenu(btn,a,opt={}){
     const act=item.dataset.agentAct;
     if(act==='edit')openAgentWizard(agent);
     else if(act==='clone')cloneAgent(agent.id,opt.projectId);
-    else if(act==='share')toggleShare('agent',agent.id);
+    else if(act==='share')toggleShare(agent.id);
     else if(act==='delete')deleteAgent(agent.id);
   });
   if(!state.agentMenuBound){

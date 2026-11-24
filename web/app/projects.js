@@ -39,7 +39,7 @@ function bindUserSearches(root=document){
   });
 }
 // Project admin has two levels: #/projects lists cards, #/projects/<id>[/<tab>] edits one project.
-const PROJECT_ADMIN_TABS=[{id:'basic',label:'基本信息'},{id:'repos',label:'代码仓库'},{id:'members',label:'项目成员'},{id:'agents',label:'Agent 角色'},{id:'assets',label:'Agent 能力资产'},{id:'tapd',label:'高级设置'}];
+const PROJECT_ADMIN_TABS=[{id:'basic',label:'基本信息'},{id:'repos',label:'代码仓库'},{id:'members',label:'项目成员'},{id:'agents',label:'Agent 角色'},{id:'sops',label:'SOP 流程'},{id:'assets',label:'Agent 能力资产'},{id:'tapd',label:'高级设置'}];
 // TAPD is a legacy tracker: its settings appear only once the platform has a TAPD integration or the project already uses one.
 function tapdIntegrationAvailable(project){
   if(project&&(String(project.tapdWorkspaceId||'').trim()||String(project.tapdIterationId||'').trim()))return true;
@@ -148,7 +148,7 @@ function renderProjectList(){
 }
 
 function paRow(label,desc,control,opt={}){return `<div class="pa-row${opt.stack?' stack':''}"${opt.attrs||''}><div class="pa-row-copy"><div class="pa-row-lbl">${label}${opt.required?'<em>*</em>':''}</div>${desc?`<div class="pa-row-desc"${opt.descAttr||''}>${desc}</div>`:''}</div><div class="pa-row-ctl">${control}</div></div>`}
-function paSection(title,desc,body,action=''){return `<div class="pa-sec"><div class="pa-sec-h"><div><h3>${title}</h3>${desc?`<p>${desc}</p>`:''}</div>${action}</div>${body}</div>`}
+function paSection(title,desc,body,action=''){return `<div class="pa-sec"><div class="pa-sec-h"><div>${title?`<h3>${title}</h3>`:''}${desc?`<p>${desc}</p>`:''}</div>${action?`<div class="pa-sec-actions">${action}</div>`:''}</div>${body}</div>`}
 function projectIdentDesc(creating,custom){return creating?(custom?'标识用于接口与链接，创建后不可修改；Key 是需求编号前缀与头像文字，最多 6 位。':'根据项目名称自动生成，一般无需修改。'):'标识用于接口与链接，创建后不可修改。'}
 function projectIdentHTML(d,creating,custom){
   return `<div class="pa-ident" data-pa-ident-view${custom?' hidden':''}><code data-pa-ident-id class="${d.id?'':'ph'}" title="${escapeHTML(d.id||'')}">${escapeHTML(d.id||'输入名称后生成')}</code><span class="pa-ident-sep">·</span><code data-pa-ident-key class="${d.key?'':'ph'}">${escapeHTML(String(d.key||'—').toUpperCase())}</code><button type="button" class="pa-link" data-pa-ident-edit>${creating?'自定义':'修改 Key'}</button></div>
@@ -173,6 +173,8 @@ function projectRepoListHTML(repos,defaultId){
 }
 function bindProjectAssetPanels(form){
   form.querySelectorAll('[data-project-agent-surface]').forEach(bindProjectAgentSurface);
+  form.querySelectorAll('[data-pa-adopt-sop]').forEach(btn=>{btn.onclick=()=>openSOPCopyDialog()});
+  form.querySelectorAll('[data-pa-new-sop]').forEach(btn=>{btn.onclick=()=>openSOPWizard()});
 }
 function projectAgentUsage(id){
   const seen=new Set();
@@ -324,45 +326,123 @@ async function confirmProjectAgentCopy(){
 function projectAssetsPanelHTML(saved){
   return `<div class="pa-asset-host" data-project-asset-host></div>`;
 }
+function projectSopsPanelHTML(){
+  // 当前 tab 已经叫「SOP 流程」，面板内不再重复标题。
+  return paSection('','从平台复制后归本项目所有，可自由修改和运行。','<div class="pa-asset-host" data-project-asset-host></div>','<button type="button" class="button ghost small" data-pa-adopt-sop>从平台 SOP 复制</button><button type="button" class="button primary small" data-pa-new-sop>＋ 新建 SOP</button>');
+}
+// 从平台 SOP 复制：与「从平台技能复制」同一套弹窗交互（搜索 + 单选 + 确认），
+// 复制后归本项目所有，平台模板本身不变。
+function platformSOPSources(){return (state.data?.workflows||[]).filter(catalogGeneric)}
+function openSOPCopyDialog(){
+  const modal=$('#sopCopyModal');if(!modal)return;
+  state.sopCopyPick='';state.sopCopyQuery='';
+  const search=$('#sopCopySearch');if(search)search.value='';
+  renderSOPCopyList();modal.classList.add('open');
+}
+function closeSOPCopyDialog(){$('#sopCopyModal')?.classList.remove('open')}
+function renderSOPCopyList(){
+  const host=$('#sopCopyList');if(!host)return;
+  const q=String(state.sopCopyQuery||'').trim().toLowerCase();
+  const items=platformSOPSources().filter(w=>!q||`${w.name||''} ${w.id||''} ${w.description||''}`.toLowerCase().includes(q));
+  host.innerHTML=items.length?items.map(w=>`<label class="pa-copy-row"><input type="radio" name="sopCopyPick" value="${escapeHTML(w.id)}" ${state.sopCopyPick===w.id?'checked':''}><span class="pa-copy-tx"><b>${escapeHTML(w.name||w.id)}</b><small>${escapeHTML(w.description||'平台流程模板')}</small></span><em>平台 SOP</em></label>`).join(''):`<div class="pa-rows-empty">${platformSOPSources().length?'没有匹配的平台 SOP':'平台还没有 SOP 模板'}</div>`;
+  host.querySelectorAll('input[name="sopCopyPick"]').forEach(el=>el.onchange=()=>{
+    state.sopCopyPick=el.value;syncSOPCopySum();
+  });
+  syncSOPCopySum();
+}
+function syncSOPCopySum(){
+  const source=platformSOPSources().find(w=>w.id===String(state.sopCopyPick||''));
+  const sum=$('#sopCopySum');if(sum)sum.textContent=source?`已选 ${source.name||source.id}`:'未选择';
+  const btn=$('#sopCopyConfirm');if(btn)btn.disabled=!source;
+}
+async function submitSOPCopy(){
+  const sourceId=String(state.sopCopyPick||'');if(!sourceId)return;
+  const src=platformSOPSources().find(w=>w.id===sourceId);if(!src)return toast('平台 SOP 不存在或已下架');
+  const projectId=String(state.projectAdminDetailId||assetOwnerProject()||'');
+  if(!projectId)return toast('请先选择项目');
+  const btn=$('#sopCopyConfirm');if(btn)btn.disabled=true;
+  try{
+    const copied=await api(`/api/workflows/${encodeURIComponent(sourceId)}/clone`,{method:'POST',body:JSON.stringify({id:uid('sop'),name:(src.name||src.id).replace(/^通用/,''),owner:src.owner||'',projectId})});
+    const items=state.data.workflows||(state.data.workflows=[]);
+    const i=items.findIndex(x=>x.id===copied.id);
+    if(i>=0)items[i]=copied;else items.unshift(copied);
+    state.sopScope='project';
+    closeSOPCopyDialog();
+    if(state.sopHosted){
+      state.highlightSOPId=copied.id;
+      if(typeof renderSOPCatalog==='function')renderSOPCatalog();
+      setTimeout(()=>{if(state.highlightSOPId===copied.id){state.highlightSOPId='';if(typeof renderSOPCatalog==='function')renderSOPCatalog()}},2600);
+    }else{
+      renderAll();
+    }
+    const missing=genericRequirementRows(copied).filter(r=>!r.ok);
+    toast(missing.length?`已复制到本项目；${missing.length} 项运行依赖未配置（${missing.map(r=>r.label).join('、')}）`:'已复制到本项目，可自由修改和运行',missing.length?'':'ok');
+  }catch(err){
+    toast(err.message||'复制平台 SOP 失败');
+  }finally{
+    if(btn)btn.disabled=!state.sopCopyPick;
+  }
+}
+function bindSOPCopyDialog(){
+  const modal=$('#sopCopyModal');if(!modal||modal.dataset.bound)return;
+  modal.dataset.bound='1';
+  modal.querySelectorAll('[data-sop-copy-close]').forEach(el=>el.onclick=closeSOPCopyDialog);
+  modal.onclick=e=>{if(e.target===modal)closeSOPCopyDialog()};
+  modal.addEventListener('keydown',e=>{if(e.key==='Escape')closeSOPCopyDialog()});
+  const search=$('#sopCopySearch');
+  if(search)search.oninput=()=>{state.sopCopyQuery=search.value;renderSOPCopyList()};
+  const confirm=$('#sopCopyConfirm');if(confirm)confirm.onclick=submitSOPCopy;
+}
 // 项目页「Agent 能力资产」与平台「能力资产」是同一套视图：进入页签时把 #assetsView /
 // #mcpView 一起挂进项目面板（沿用它们的样式与渲染逻辑），切换只切显示、离开时归还原位，
 // 这样两套能力不会各自漂移，切回来也不会丢掉未保存的表单。
-const PA_SURFACES={assets:'#assetsView',mcp:'#mcpView'};
+const PA_SURFACES={assets:'#assetsView',mcp:'#mcpView',sops:'#sopsView'};
 function paSurfaceNode(kind){return $(PA_SURFACES[kind]||PA_SURFACES.assets)}
 function paSurfaceRendered(key){return !!(state.paSurfaceRendered&&state.paSurfaceRendered[key])}
 function markPaSurfaceRendered(key){state.paSurfaceRendered={...(state.paSurfaceRendered||{}),[key]:true}}
+function paSurfaceViews(){return {assets:paSurfaceNode('assets'),mcp:paSurfaceNode('mcp'),sops:paSurfaceNode('sops')}}
 function mountProjectAssetSurface(kind=state.paSurface||'assets'){
-  const host=$('#projectAdminForm [data-project-asset-host]');if(!host)return;
-  const target=PA_SURFACES[kind]?kind:'assets',assetsView=paSurfaceNode('assets'),mcpView=paSurfaceNode('mcp');
-  if(!assetsView)return;
+  const target=PA_SURFACES[kind]?kind:'assets';
+  const hostPanel=target==='sops'?'sops':'assets';
+  const host=$(`#paPanel-${hostPanel} [data-project-asset-host]`);if(!host)return;
+  const views=paSurfaceViews();
+  if(!views.assets)return;
   if(!state.assetHosted){
     state.assetHosted=true;
     state.assetHostedProject=String(state.projectAdminDetailId||'');
     state.paSurfaceHomes={};
-    [['assets',assetsView],['mcp',mcpView]].forEach(([key,view])=>{
+    Object.entries(views).forEach(([key,view])=>{
       if(!view)return;
       state.paSurfaceHomes[key]={parent:view.parentElement,next:view.nextElementSibling};
       view.classList.add('is-pa-hosted');
     });
-    state.assetScopeRestore={ruleScope:state.ruleScope,skillScope:state.skillScope,templateScope:state.templateScope,dockerfileScope:state.dockerfileScope,environmentScope:state.environmentScope,sandboxScope:state.sandboxScope,mcpScope:state.mcpScope};
+    state.assetScopeRestore={ruleScope:state.ruleScope,skillScope:state.skillScope,templateScope:state.templateScope,dockerfileScope:state.dockerfileScope,environmentScope:state.environmentScope,sandboxScope:state.sandboxScope,mcpScope:state.mcpScope,sopScope:state.sopScope};
     ['ruleScope','skillScope','templateScope','dockerfileScope','environmentScope','sandboxScope'].forEach(k=>{state[k]='project'});
     state.mcpScope='project';
+    state.sopScope='project';state.sopHosted=true;
     state.mcpHostedProject=state.assetHostedProject;
     state.paSurfaceRendered={};
     state.selectedAsset=null;state.assetQuery='';state.assetTab=null;
     if(typeof state.assetType!=='string'||!['rules','skills','templates','mcp'].includes(state.assetType))state.assetType='rules';
     // 资产表单被嵌进项目表单里，阻止 submit 冒泡去触发项目保存。
-    const assetForm=assetsView.querySelector('#assetForm');
+    const assetForm=views.assets.querySelector('#assetForm');
     if(assetForm&&!assetForm.dataset.paSubmitGuard){assetForm.dataset.paSubmitGuard='1';assetForm.addEventListener('submit',e=>e.stopPropagation())}
   }
   state.paSurface=target;
-  if(assetsView.parentElement!==host)host.appendChild(assetsView);
-  if(mcpView&&mcpView.parentElement!==host)host.appendChild(mcpView);
-  assetsView.hidden=target!=='assets';
-  if(mcpView)mcpView.hidden=target!=='mcp';
+  Object.entries(views).forEach(([key,view])=>{
+    if(!view)return;
+    if(key===target){if(view.parentElement!==host)host.appendChild(view);view.hidden=false;return}
+    view.hidden=true;
+    const home=state.paSurfaceHomes?.[key];
+    if(home?.parent?.isConnected&&home.parent!==view.parentElement)home.parent.insertBefore(view,home.next&&home.next.parentElement===home.parent?home.next:null);
+  });
   if(typeof syncAssetTypeTabs==='function')syncAssetTypeTabs(target==='mcp'?'mcp':state.assetType);
   if(target==='mcp'){
     if(!paSurfaceRendered('mcp')&&typeof renderMCPManagement==='function'){renderMCPManagement();markPaSurfaceRendered('mcp')}
+    return;
+  }
+  if(target==='sops'){
+    if(!paSurfaceRendered('sops')&&typeof renderSOPCatalog==='function'){renderSOPCatalog();markPaSurfaceRendered('sops')}
     return;
   }
   if(!paSurfaceRendered('assets')&&typeof renderAssets==='function'){renderAssets();markPaSurfaceRendered('assets')}
@@ -373,8 +453,9 @@ function unmountProjectAssetSurface(){
   state.assetHosted=false;
   state.assetHostedProject='';
   state.mcpHostedProject='';
+  state.sopHosted=false;
   // 先还 assetsView 再还 mcpView：mcpView 记录的 next 通常就是 assetsView。
-  [['assets',paSurfaceNode('assets')],['mcp',paSurfaceNode('mcp')]].forEach(([key,view])=>{
+  [['sops',paSurfaceNode('sops')],['assets',paSurfaceNode('assets')],['mcp',paSurfaceNode('mcp')]].forEach(([key,view])=>{
     if(!view)return;
     view.classList.remove('is-pa-hosted');
     view.hidden=false;
@@ -428,7 +509,7 @@ function projectAdminFormHTML(d,ctx){
       ${paRow('Workspace ID','TAPD 项目 URL 中 /tapd_fe/ 后的数字。',`<input class="pa-input mono" name="tapdWorkspaceId" value="${escapeHTML(d.tapdWorkspaceId||'')}" placeholder="例如 20375341" spellcheck="false">`)}
       ${paRow('Iteration ID','可选，只导入该迭代内的需求。',`<input class="pa-input mono" name="tapdIterationId" value="${escapeHTML(d.tapdIterationId||'')}" placeholder="留空导入全部" spellcheck="false">`)}
     </div>`):'')+paSection('危险操作','',`<div class="pa-rows">${projectDeleteRow(saved)}${configured?paRow(`清除已保存的 TAPD 配置${configured?' <span class="pa-chip">当前已配置</span>':''}`,'保存项目设置时同时清空 Workspace 与 Iteration，已导入的需求不受影响。',`<label class="pa-switch-wrap"><input type="checkbox" name="tapdClear" role="switch" ${d.tapdClear?'checked':''} aria-label="清除已保存的 TAPD 配置"><span class="pa-switch danger"></span></label>`,{attrs:' data-pa-row-inline'}):''}</div>`);
-  const panels={basic,agents:projectAgentsPanelHTML(saved),assets:projectAssetsPanelHTML(saved),repos:paSection('代码仓库','Agent 执行 SOP 时会克隆这些仓库。仓库保存后立即生效，无需点「保存项目设置」。',`<div data-pa-repo-box>${projectRepoListHTML(repos,saved?.defaultRepositoryId||'')}</div>`,repos.length?'<button type="button" class="button ghost small" data-repo-add>＋ 添加仓库</button>':''),members:memberPanel,tapd:tapdPanel};
+  const panels={basic,agents:projectAgentsPanelHTML(saved),sops:projectSopsPanelHTML(saved),assets:projectAssetsPanelHTML(saved),repos:paSection('代码仓库','Agent 执行 SOP 时会克隆这些仓库。仓库保存后立即生效，无需点「保存项目设置」。',`<div data-pa-repo-box>${projectRepoListHTML(repos,saved?.defaultRepositoryId||'')}</div>`,repos.length?'<button type="button" class="button ghost small" data-repo-add>＋ 添加仓库</button>':''),members:memberPanel,tapd:tapdPanel};
   const tab=state.projectAdminTab||'basic';
   return PROJECT_ADMIN_TABS.map(t=>`<section class="pa-panel" data-pa-panel="${t.id}" id="paPanel-${t.id}" role="tabpanel" aria-labelledby="paTab-${t.id}"${t.id===tab?'':' hidden'}>${creating&&t.id!=='basic'?'':panels[t.id]}</section>`).join('')
     +`<div class="pa-savebar-dock"><div class="pa-savebar" data-pa-savebar inert><span class="pa-savebar-tx"><i></i><span data-pa-savebar-text>有未保存的修改</span></span><button type="button" class="button ghost" data-pa-discard>放弃修改</button><button type="submit" class="button primary" data-pa-submit>保存项目设置</button></div></div>`;
@@ -471,7 +552,7 @@ function setProjectAdminTab(tab,opt={}){
   if(state.projectAdminDetailId==='new'&&tab!=='basic'){if(!opt.silent)toast('保存项目后可用','warn');return false}
   state.projectAdminTab=tab;
   $$('#projectAdminForm [data-pa-panel]').forEach(p=>p.hidden=p.dataset.paPanel!==tab);
-  if(tab==='assets')mountProjectAssetSurface();else{state.paSurface='assets';unmountProjectAssetSurface()}
+  if(tab==='assets'||tab==='sops')mountProjectAssetSurface(tab);else{state.paSurface='assets';unmountProjectAssetSurface()}
   syncProjectAdminTabs();
   if(!opt.silent&&activeViewName()==='projects'){const next=projectAdminHash(state.projectAdminDetailId,tab);if(location.hash!==next)history.replaceState(history.state,'',next)}
   return true;
@@ -597,7 +678,7 @@ function renderProjectDetail(opt={}){
   syncProjectIdentity();renderProjectAdminHead();
   if(!PROJECT_ADMIN_TABS.some(t=>t.id===state.projectAdminTab)||creating&&state.projectAdminTab!=='basic')state.projectAdminTab='basic';
   form.querySelectorAll('[data-pa-panel]').forEach(p=>p.hidden=p.dataset.paPanel!==state.projectAdminTab);
-  if(state.projectAdminTab==='assets')mountProjectAssetSurface();else{state.paSurface='assets';unmountProjectAssetSurface()}
+  if(state.projectAdminTab==='assets'||state.projectAdminTab==='sops')mountProjectAssetSurface(state.projectAdminTab);else{state.paSurface='assets';unmountProjectAssetSurface()}
   syncProjectAdminTabs();syncProjectAdminSaveBar();
   requestAnimationFrame?.(moveProjectAdminTabIndicator);
 }

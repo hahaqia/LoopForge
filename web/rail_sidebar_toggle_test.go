@@ -20,10 +20,14 @@ func TestIconRailHasNoExpandToggle(t *testing.T) {
 	if bottom < 0 || settings < bottom {
 		t.Fatal("settings entry must stay in the icon rail")
 	}
-	for _, moved := range []string{"流程模板", "运行记录", "定时任务"} {
+	// 运行记录已提升为一级工作入口；流程模板、定时任务仍留在设置导航。
+	for _, moved := range []string{"流程模板", "定时任务"} {
 		if strings.Contains(html, `<span class="rail-label">`+moved+`</span>`) {
 			t.Fatalf("%s moved into the settings sidebar and must not stay on the rail", moved)
 		}
+	}
+	if !strings.Contains(html, `<span class="rail-label">运行记录</span>`) {
+		t.Fatal("运行记录 is a first-class work entry and must sit on the icon rail")
 	}
 
 	app, err := os.ReadFile("app.js")

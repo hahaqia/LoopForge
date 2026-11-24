@@ -1140,9 +1140,19 @@ func (h *catalogHandlers) workflows(c *gin.Context) {
 			if !h.requireProjectWriter(c, v.ProjectID, previousProjectID) {
 				return
 			}
-			if previous, exists := h.repo.Workflow(v.ID); exists && previous.Shared && !v.Shared && h.sharedScheduleReferences("sop", v.ID) {
+			previousWorkflow, hadPrevious := h.repo.Workflow(v.ID)
+			if hadPrevious && previousWorkflow.Shared && !v.Shared && h.sharedScheduleReferences("sop", v.ID) {
 				c.JSON(http.StatusConflict, map[string]string{"error": "该 SOP 仍被共享任务引用，不能取消共享"})
 				return
+			}
+			// 项目 SOP 不再支持跨项目共享：只保留平台 SOP 作为复用通道。
+			// 历史共享行仍可保存（保存即取消共享），新的共享请求直接拒绝。
+			if !v.Generic {
+				if v.Shared && !previousWorkflow.Shared {
+					c.JSON(http.StatusBadRequest, map[string]string{"error": "项目 SOP 不再支持跨项目共享，请改用平台 SOP"})
+					return
+				}
+				v.Shared = false
 			}
 
 			if id := v.Preview.SelectedExecutorID(); v.Preview.Static() && id != "" {
@@ -1158,6 +1168,22 @@ func (h *catalogHandlers) workflows(c *gin.Context) {
 			if err := domain.ValidateWorkflowMetricStages(v); err != nil {
 				c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 				return
+			}
+			// 平台 SOP 只存在 generic_templates：新建走这里，已存在的走下面的更新分支。
+			if v.Generic && !h.isPlatformAdmin(c.Request) {
+				c.JSON(http.StatusForbidden, map[string]string{"error": "只有平台管理员可以维护平台 SOP"})
+				return
+			}
+			if v.Generic {
+				if _, exists := h.repo.GenericTemplateByWorkflow(v.ID); !exists {
+					stored, status, err := h.createGenericWorkflow(v)
+					if err != nil {
+						c.JSON(status, map[string]string{"error": err.Error()})
+						return
+					}
+					c.JSON(http.StatusCreated, stored)
+					return
+				}
 			}
 			if _, generic := h.repo.GenericTemplateByWorkflow(v.ID); generic {
 				if !h.isPlatformAdmin(c.Request) {
@@ -1254,7 +1280,7 @@ func (h *catalogHandlers) workflow(c *gin.Context) {
 	if c.Request.Method != http.MethodGet && workflowHasNotifications(v) && !h.notifications.access(c, v.ProjectID, true) {
 		return
 	}
-	if c.Request.Method != http.MethodGet && c.FullPath() != "/api/workflows/:id/clone" && !h.requireProjectWriter(c, v.ProjectID) {
+	if c.Request.Method != http.MethodGet && c.FullPath() != "/api/workflows/:id/clone" && c.FullPath() != "/api/workflows/:id/promote" && !h.requireProjectWriter(c, v.ProjectID) {
 		return
 	}
 	switch c.FullPath() {
@@ -1290,6 +1316,26 @@ func (h *catalogHandlers) workflow(c *gin.Context) {
 			return
 		}
 		c.Status(http.StatusNoContent)
+	case "/api/workflows/:id/promote":
+		if !h.isPlatformAdmin(c.Request) {
+			c.JSON(http.StatusForbidden, map[string]string{"error": "只有平台管理员可以提升为平台 SOP"})
+			return
+		}
+		var req struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Owner string `json:"owner"`
+		}
+		if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
+			c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			return
+		}
+		stored, status, err := h.promoteWorkflow(v, req.ID, req.Name, req.Owner)
+		if err != nil {
+			c.JSON(status, map[string]string{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, stored)
 	case "/api/workflows/:id/revisions":
 		c.JSON(200, h.repo.Revisions("workflow", id))
 	case "/api/workflows/:id/revisions/:rev":

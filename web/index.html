@@ -79,10 +79,10 @@
         <span class="rail-label">AI 工作台</span>
       </button>
 
-      <!-- 2. 统计 -->
-      <button class="rail-btn nav" data-view="observability" data-tooltip="统计" aria-label="统计">
-        <svg class="agent-icon harness-icon" data-icon="chart" data-icon-motion="idle" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 17V9"/><path d="M12 17V7"/><path d="M16 17v-5"/></svg>
-        <span class="rail-label">统计</span>
+      <!-- 2. 项目配置：项目级边界（需求、仓库、成员、SOP），不属于平台设置 -->
+      <button class="rail-btn nav" data-view="projects" data-tooltip="项目配置" aria-label="项目配置">
+        <svg class="agent-icon harness-icon" data-icon="users" data-icon-motion="idle" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><g class="team-front"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1"/></g><g class="team-back"><path d="M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1"/></g></svg>
+        <span class="rail-label">项目配置</span>
       </button>
 
       <!-- 3. 需求列表 -->
@@ -91,11 +91,23 @@
         <span class="rail-label">需求列表</span>
       </button>
 
-      <!-- 4. 待我确认 (带审批徽标) -->
+      <!-- 4. 运行记录：需求派发后的执行结果，与需求列表是同一条链路 -->
+      <button class="rail-btn nav" data-view="runs" data-tooltip="运行记录" aria-label="运行记录">
+        <svg class="agent-icon harness-icon" data-icon="runs" data-icon-motion="idle" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path class="motion-target" d="M10 9l5 3-5 3z"/></svg>
+        <span class="rail-label">运行记录</span>
+      </button>
+
+      <!-- 5. 待我确认 (带审批徽标) -->
       <button class="rail-btn nav" data-view="approvals" data-tooltip="待我确认" aria-label="待我确认">
         <svg class="agent-icon harness-icon" data-icon="gate" data-icon-motion="idle" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path class="gate-shield" d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path class="gate-check agent-check-draw" pathLength="1" d="m9 12 2 2 4-4"/></svg>
         <span class="rail-label">待我确认</span>
         <span id="approvalNavBadge" class="nav-badge" hidden></span>
+      </button>
+
+      <!-- 6. 统计：分析类入口，放在日常任务之后 -->
+      <button class="rail-btn nav" data-view="observability" data-tooltip="统计" aria-label="统计">
+        <svg class="agent-icon harness-icon" data-icon="chart" data-icon-motion="idle" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 17V9"/><path d="M12 17V7"/><path d="M16 17v-5"/></svg>
+        <span class="rail-label">统计</span>
       </button>
     </nav>
 
@@ -136,11 +148,9 @@
       <button class="nav" data-view="settings"><span class="nav-icon"><svg class="agent-icon harness-icon" data-icon="user" data-icon-motion="idle" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle class="head" cx="12" cy="8" r="4"/><path class="body" d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="nav-label">个人配置</span></button>
       <button class="nav" data-view="assistant" aria-label="AI 助手" title="AI 助手"><span class="nav-icon"><svg class="agent-icon harness-icon" data-icon="sparkles" data-icon-motion="idle" width="15" height="15" aria-hidden="true" focusable="false"></svg></span><span class="nav-label">AI 助手</span></button>
       <p>项目</p>
-      <button class="nav" data-view="projects"><span class="nav-icon"><svg class="agent-icon harness-icon" data-icon="users" data-icon-motion="idle" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><g class="team-front"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1"/></g><g class="team-back"><path d="M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1"/></g></svg></span><span class="nav-label">项目配置</span></button>
       <button class="nav" data-view="bots" aria-label="通道管理" title="通道管理"><span class="nav-icon"><svg class="agent-icon harness-icon" data-icon="robot" data-icon-motion="idle" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="8" width="16" height="11" rx="2"/><path class="antenna" d="M12 3v5"/><path class="eyes" d="M8 13h.01M16 13h.01"/><path class="mouth" d="M9 17h6"/></svg></span><span class="nav-label">通道管理</span></button>
       <p>流程与任务</p>
       <button class="nav" data-view="sops" data-nav-match="flow"><span class="nav-icon"><svg class="agent-icon harness-icon" data-icon="workflow" data-icon-motion="idle" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle class="node-a" cx="6" cy="6" r="2.2" fill="currentColor" fill-opacity="0"/><circle class="node-b" cx="6" cy="18" r="2.2" fill="currentColor" fill-opacity="0"/><circle class="node-c" cx="18" cy="12" r="2.2" fill="currentColor" fill-opacity="0"/><path pathLength="1" d="M8.2 6C12 6 14 8.2 16.45 10.45M8.2 18C12 18 14 15.8 16.45 13.55"/><path class="signal" pathLength="1" d="M8.2 6C12 6 14 8.2 16.45 10.45M8.2 18C12 18 14 15.8 16.45 13.55" opacity="0" stroke-width="2.5"/></svg></span><span class="nav-label">流程模板</span></button>
-      <button class="nav" data-view="runs"><span class="nav-icon"><svg class="agent-icon harness-icon" data-icon="runs" data-icon-motion="idle" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path class="motion-target" d="M10 9l5 3-5 3z"/></svg></span><span class="nav-label">运行记录</span></button>
       <button class="nav" data-view="aiSchedules"><span class="nav-icon"><svg class="agent-icon harness-icon" data-icon="clock" data-icon-motion="idle" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="nav-label">定时任务</span></button>
       <p>Agent 能力</p>
       <button class="nav" data-view="agents"><span class="nav-icon"><svg class="agent-icon harness-icon" data-icon="user" data-icon-motion="idle" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle class="head" cx="12" cy="8" r="4"/><path class="body" d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="nav-label">角色定义</span></button>
@@ -388,12 +398,7 @@
     <section id="sopsView" class="view page-view">
       <div class="page-heading">
         <div>
-          <div class="scope-switch" data-scope-for="sop" role="tablist" aria-label="SOP 范围">
-            <button type="button" data-scope="project" class="on">本项目<span data-scope-count="sop-project">0</span></button>
-            <button type="button" data-scope="shared">团队共享<span data-scope-count="sop-shared">0</span></button>
-            <button type="button" data-scope="generic">内置<span data-scope-count="sop-generic">0</span></button>
-          </div>
-          <p class="eyebrow">生产流程</p><h1>SOP 流程</h1><p class="sop-explainer"><b>SOP</b> 是可复用的 AI 协作流程，由 Agent、脚本和人工审批节点组成：输入一条需求，按步骤产出文档、代码或 PR。</p><p>「本项目」的 SOP 只在当前项目里用；共享后，其他项目可以在「团队共享」里选用；「内置」SOP 由平台提供，复制到本项目后即可运行和修改。</p>
+          <p class="eyebrow">平台流程库</p><h1>平台 SOP</h1><p class="sop-explainer"><b>SOP</b> 是可复用的 AI 协作流程，由 Agent、脚本和人工审批节点组成：输入一条需求，按步骤产出文档、代码或 PR。</p><p>平台 SOP 由平台统一维护、与项目无关；各项目在「项目配置 › SOP 流程」里复制到本项目后，再修改和运行。</p>
         </div>
         <div class="heading-actions"><button id="refreshSOPs" class="button ghost" type="button">↻ 刷新</button><button id="newSOP" class="button primary" type="button">＋ 新建 SOP</button></div>
       </div>
@@ -699,6 +704,17 @@
       </div>
     </div>
 
+    <div id="sopCopyModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="sopCopyTitle">
+      <div class="modal-card pa-copy-card pa-agent-surface">
+        <button type="button" class="modal-close" data-sop-copy-close aria-label="关闭">×</button>
+        <h2 id="sopCopyTitle">从平台 SOP 复制</h2>
+        <p class="pa-copy-sub">复制后在本项目生成一份独立 SOP，归本项目所有，可自由修改和运行，不影响平台原 SOP。</p>
+        <label class="catalog-search agent-search pa-copy-search"><span aria-hidden="true">⌕</span><input id="sopCopySearch" type="search" placeholder="搜索平台 SOP 名称或标识" aria-label="搜索平台 SOP"></label>
+        <div id="sopCopyList" class="pa-copy-list" role="group" aria-label="平台 SOP 列表"></div>
+        <div class="modal-actions"><span class="pa-copy-sum" id="sopCopySum">未选择</span><button type="button" class="button ghost" data-sop-copy-close>取消</button><button type="button" class="button primary" id="sopCopyConfirm" disabled>复制所选</button></div>
+      </div>
+    </div>
+
     <!-- 项目环境资产 -->
     <section id="assetsView" class="view page-view">
       <div id="assetListPane" class="asset-list-pane">
@@ -960,8 +976,6 @@
   <div id="importTAPDModal" class="modal"><form id="importTAPDForm" class="modal-card"><button type="button" class="modal-close import-tapd-close">×</button><p class="eyebrow">外部需求</p><h2>导入 TAPD 工作项</h2><p class="modal-hint">支持 TAPD 需求、缺陷或任务链接，也可以粘贴「标题 + 链接」。导入时将读取 TAPD 最新标题和描述并写入当前项目。</p><label for="importTAPDURL">TAPD 链接或分享文本</label><textarea id="importTAPDURL" class="input" required rows="3" placeholder="【工作项标题】&#10;https://www.tapd.cn/tapd_fe/…/story/detail/…"></textarea><label>SOP 流程</label><select id="importTAPDWorkflow" class="select"></select><label>代码仓库（可多选）</label><div id="importTAPDRepository" class="repo-picker"></div><p class="modal-hint">从下拉框添加仓库，点击标签可移除。导入前必须至少选择一个仓库。</p><label for="importTAPDBaseBranch">继续开发分支（可选）</label><input id="importTAPDBaseBranch" class="input" placeholder="留空从配置主分支新建工作分支" aria-describedby="importTAPDBaseBranchHint" autocomplete="off"><div id="importTAPDRepositoryBranches" class="repository-branches" hidden></div><p id="importTAPDBaseBranchHint" class="modal-hint">留空从配置主分支新建工作分支；填写时直接继续该已有分支，不新建。</p><div class="modal-actions"><button type="button" class="button ghost import-tapd-close">取消</button><button id="confirmImportTAPD" type="submit" class="button primary">导入</button></div></form></div>
 
   <div id="runModal" class="modal"><div class="modal-card"><button class="modal-close">×</button><p class="eyebrow">手动运行</p><h2>发起流程运行</h2><p>选择 SOP 并提供任务输入，内容会注入使用 <code>{{input}}</code> 的 Agent 节点。</p><label class="modal-label" for="runWorkflowChoice">SOP 流程</label><select id="runWorkflowChoice" class="select"></select><label class="modal-label" for="runInput">任务输入</label><textarea id="runInput" placeholder="例如：实现用户登录接口，并补充单元测试"></textarea><div class="modal-actions"><button class="button ghost modal-close">取消</button><button id="confirmRun" class="button primary">开始运行</button></div></div></div>
-
-  <div id="genericTemplateModal" class="modal"><div class="modal-card generic-template-card"><button class="modal-close generic-template-close">×</button><p class="eyebrow">内置 SOP</p><h2 id="genericTemplateTitle">使用通用模板</h2><p id="genericTemplateIntro" class="modal-hint"></p><div id="genericTemplateStructure" class="generic-structure"></div><div class="generic-requirement-head"><b>运行依赖</b><span>复制不检查依赖；未配置时对应节点会在运行中降级或失败。凭证按任务责任人注入。</span></div><div id="genericTemplateRequirements" class="generic-requirements"></div><div class="modal-actions"><button type="button" class="button ghost generic-template-close">取消</button><button id="runGenericTemplateDirect" type="button" class="button ghost">直接运行</button><button id="confirmGenericTemplate" type="button" class="button primary">复制到本项目</button></div></div></div>
 
   <div id="issueModal" class="modal"><form id="issueForm" class="modal-card issue-modal-card"><button type="button" class="modal-close issue-close">×</button><p class="eyebrow">需求</p><h2 id="issueModalTitle">新建 Issue</h2><input type="hidden" name="id"><div class="form-grid"><div><label>项目</label><select name="projectId" class="select"></select></div><div><label>优先级</label><select name="priority" class="select"><option value="urgent">Urgent</option><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></div><div><label>责任人</label><div id="issueAssigneePicker"></div></div></div><label>标题</label><input name="title" required><label>说明（Markdown）</label><textarea name="description" rows="7"></textarea><div id="issueSyncTargetBox" class="sync-target-box"><span>创建方式</span><label><input type="radio" name="syncTarget" value="local"> 平台需求</label><p>平台需求不需要同步外部系统，也可以进入效能统计。</p></div><div id="issueBoundNote" class="sync-target-box" hidden><span>外部单据</span><p id="issueBoundNoteText">保存只改本平台记录，不会回写外部系统。</p></div><div id="issueManualTapdBinding" hidden><label>关联 TAPD ID（可选，仅统计）</label><input name="tapdId" inputmode="numeric" pattern="[0-9]*" placeholder="不填写也会按平台需求统计"><small>不会自动同步或回写 TAPD；以后可以补填或清空。</small></div><div class="form-grid"><div><label>代码仓库（可多选）</label><div id="issueRepoChecks" class="repo-checks"></div><small>默认全选；可调整本次需求涉及的仓库。留空时各仓库从配置主分支新建工作分支。</small></div><div><label for="issueBaseBranch">继续开发分支（可选）</label><input id="issueBaseBranch" name="baseBranch" placeholder="留空从配置主分支新建工作分支" aria-describedby="issueBaseBranchHint" autocomplete="off"><div id="issueRepositoryBranches" class="repository-branches" hidden></div><small id="issueBaseBranchHint"></small></div></div><div class="form-grid"><div><label>状态</label><select name="status" class="select"><option value="backlog">待规划</option><option value="todo">待处理</option><option value="in_progress">进行中</option><option value="in_review">评审中</option><option value="done">已完成</option><option value="blocked">已阻塞</option><option value="cancelled">已取消</option></select></div><div><label>工作流</label><select name="workflowId" class="select"></select></div></div><label class="toggle-row"><input name="automationIgnored" type="checkbox"> 不参与定时 SOP（适合已经人工处理的单据）</label><div id="issueTaskState" class="issue-task-state"></div><div class="modal-actions"><button type="button" class="button ghost issue-close">取消</button><button id="reopenDeliveredIssue" type="button" class="button ghost" hidden>重新打开</button><button id="dispatchIssue" type="button" class="button ghost">启动 SOP</button><button type="submit" class="button primary">保存</button></div></form></div>
 

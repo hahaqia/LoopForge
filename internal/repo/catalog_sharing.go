@@ -115,23 +115,3 @@ func (r *CatalogRepo) ValidateWorkflowSharing(v domain.WorkflowDefinition) error
 	}
 	return nil
 }
-
-// ShareWorkflow applies SOP sharing checks before the ordinary save path,
-// including its existing notification and revision validation.
-func (r *CatalogRepo) ShareWorkflow(id string) error {
-	v, ok := r.Workflow(id)
-	if !ok {
-		return fmt.Errorf("workflow %q not found", id)
-	}
-	if v.Shared || v.Generic {
-		return nil
-	}
-	v.Shared = true
-	if err := r.ValidateWorkflowAgentScopes(v); err != nil {
-		return err
-	}
-	if err := r.ValidateWorkflowSharing(v); err != nil {
-		return err
-	}
-	return r.PutWorkflow(v)
-}

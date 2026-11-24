@@ -813,9 +813,9 @@ assert.equal(genericRequirementRows(workflow)[2].ok, false);
 state.mcpMarket = [];
 state.data.mcpServers = [{scope: 'project', projectId: 'alpha', name: 'Gongfeng MCP', url: 'https://mcp-gateway.example.com/gongfeng'}];
 assert.equal(genericRequirementRows(workflow)[2].ok, true);
-assert.ok(code.includes('通用模板为只读'));
-assert.ok(code.includes('data-adopt-generic'));
-assert.ok(code.includes('sop-generic'));
+assert.ok(code.includes('复制到项目后可用'), 'platform cards point to the project copy flow');
+assert.ok(code.includes('data-pa-adopt-sop'), 'project panel owns the copy entry');
+assert.ok(code.includes('sop-generic'), 'platform scope label is still rendered');
 `
 	out, err := exec.Command(node, "-e", script).CombinedOutput()
 	if err != nil {
@@ -1036,8 +1036,8 @@ func TestRequirementDirectCreateUI(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := string(html)
-	if !strings.Contains(page, `nav-label">项目配置`) {
-		t.Fatal("sidebar must label the projects page 项目配置")
+	if !strings.Contains(page, `rail-label">项目配置`) {
+		t.Fatal("rail must label the projects page 项目配置")
 	}
 	if !strings.Contains(page, `<script src="/app/composer.js"></script>`) {
 		t.Fatal("index.html must load the requirement composer script")
@@ -1168,16 +1168,24 @@ func TestTAPDImportUI(t *testing.T) {
 	if dashImport < 0 || dashNew < 0 || dashImport > dashNew {
 		t.Fatal("工作总览 must place 导入 TAPD to the left of 新建需求")
 	}
-	projectGroup := strings.Index(page, `<p>项目</p>`)
-	flowGroup := strings.Index(page, `<p>流程与任务</p>`)
-	agentGroup := strings.Index(page, `<p>Agent 能力</p>`)
-	runsNav := strings.Index(page, `data-view="runs"`)
-	projectsNav := strings.Index(page, `data-view="projects"`)
-	if flowGroup < 0 || agentGroup < 0 || !(flowGroup < runsNav && runsNav < agentGroup) {
-		t.Fatal("运行记录 must sit under 流程与任务")
+	// 项目配置与运行记录已上移到左侧一级栏，设置导航只保留平台/全局能力。
+	railStart := strings.Index(page, `id="platformRail"`)
+	railEnd := strings.Index(page, `class="platform-sidebar"`)
+	if railStart < 0 || railEnd < railStart {
+		t.Fatal("index.html must expose #platformRail before .platform-sidebar")
 	}
-	if projectGroup < 0 || !(projectGroup < projectsNav && projectsNav < flowGroup) {
-		t.Fatal("项目配置 must sit under 项目, before 流程与任务")
+	rail := page[railStart:railEnd]
+	railOrder := []string{"collaboration", "projects", "issues", "runs", "approvals", "observability"}
+	prevPos := -1
+	for _, view := range railOrder {
+		pos := strings.Index(rail, `data-view="`+view+`"`)
+		if pos < 0 || pos < prevPos {
+			t.Fatalf("#platformRail must order %v", railOrder)
+		}
+		prevPos = pos
+	}
+	if strings.Contains(page[railEnd:], `data-view="projects"`) || strings.Contains(page[railEnd:], `data-view="runs"`) {
+		t.Fatal("settings navigation must not duplicate projects/runs")
 	}
 	js, err := readAppBundle()
 	if err != nil {
@@ -2545,15 +2553,16 @@ func TestCodexStyleLeftMiniRailLayout(t *testing.T) {
 		t.Fatal("#platformRail must sit before .platform-sidebar in DOM")
 	}
 
-	// 2. 左侧小栏只留 4 个日常入口和设置；流程模板、运行记录、定时任务收进设置导航。
-	for _, view := range []string{"collaboration", "observability", "issues", "approvals", "settings"} {
+	// 2. 左侧小栏承载日常入口：工作台、项目配置、需求列表、运行记录、待我确认、统计与设置；
+	//    平台/全局能力（流程模板、定时任务、资产、运行环境等）收在设置导航。
+	for _, view := range []string{"collaboration", "projects", "issues", "runs", "approvals", "observability", "settings"} {
 		needle := `data-view="` + view + `"`
 		sub := page[railIdx:sidebarIdx]
 		if !strings.Contains(sub, needle) {
 			t.Fatalf("#platformRail must contain %s nav button", needle)
 		}
 	}
-	for _, view := range []string{"sops", "runs", "aiSchedules"} {
+	for _, view := range []string{"sops", "aiSchedules", "agents", "mcp", "runners"} {
 		needle := `data-view="` + view + `"`
 		if strings.Contains(page[railIdx:sidebarIdx], needle) {
 			t.Fatalf("#platformRail must not contain %s; it lives in the settings navigation", needle)
@@ -2562,25 +2571,34 @@ func TestCodexStyleLeftMiniRailLayout(t *testing.T) {
 			t.Fatalf("settings navigation must contain %s", needle)
 		}
 	}
-	// 图标栏第 2 位仍是统计；需求列表紧跟其后，两者都是日常工作入口。
+	// 顺序：工作台 > 项目配置 > 需求列表 > 运行记录 > 待我确认 > 统计。
 	railNav := page[railIdx:sidebarIdx]
+	order := []string{"collaboration", "projects", "issues", "runs", "approvals", "observability"}
+	lastPos := -1
+	for _, view := range order {
+		pos := strings.Index(railNav, `data-view="`+view+`"`)
+		if pos < 0 || pos < lastPos {
+			t.Fatalf("#platformRail order must be %v", order)
+		}
+		lastPos = pos
+	}
+	if !strings.Contains(railNav, `data-view="projects" data-tooltip="项目配置" aria-label="项目配置"`) {
+		t.Fatal("#platformRail must contain the projects entry labelled 项目配置")
+	}
 	if !strings.Contains(railNav, `data-view="issues" data-tooltip="需求列表" aria-label="需求列表"`) {
 		t.Fatal("#platformRail must contain the issues entry labelled 需求列表")
+	}
+	if !strings.Contains(railNav, `data-view="runs" data-tooltip="运行记录" aria-label="运行记录"`) {
+		t.Fatal("#platformRail must contain the runs entry labelled 运行记录")
 	}
 	if !strings.Contains(railNav, `data-view="observability" data-tooltip="统计" aria-label="统计"`) {
 		t.Fatal("#platformRail observability button must be labelled 统计")
 	}
-	if strings.Index(railNav, `data-view="observability"`) > strings.Index(railNav, `data-view="issues"`) {
-		t.Fatal("统计 must stay before 需求列表 in #platformRail")
-	}
-	if strings.Index(railNav, `data-view="issues"`) > strings.Index(railNav, `data-view="approvals"`) {
-		t.Fatal("需求列表 must sit before 待我确认 in #platformRail")
-	}
-	if strings.Index(railNav, `data-view="observability"`) > strings.Index(railNav, `data-view="approvals"`) {
-		t.Fatal("统计 must sit before 待我确认 in #platformRail")
-	}
 	if strings.Contains(page[sidebarIdx:], `data-view="observability"`) {
 		t.Fatal("settings navigation must not duplicate the 统计 entry")
+	}
+	if strings.Contains(page[sidebarIdx:], `data-view="projects"`) || strings.Contains(page[sidebarIdx:], `data-view="runs"`) {
+		t.Fatal("settings navigation must not duplicate the projects/runs entries")
 	}
 	if !strings.Contains(page[sidebarIdx:], `data-view="runners"`) {
 		t.Fatal("settings navigation must contain the runners entry")
@@ -2649,15 +2667,17 @@ func TestCodexStyleLeftMiniRailLayout(t *testing.T) {
 		t.Fatal(err)
 	}
 	appJs := string(appJsBytes)
-	if !strings.Contains(appJs, "const noSidebarViews = ['issues', 'approvals', 'observability'];") {
-		t.Fatal("app.js must hide the sidebar on the rail-only pages: 需求列表, 待我确认, 统计")
+	if !strings.Contains(appJs, "const noSidebarViews = ['issues', 'approvals', 'observability', 'projects', 'runs'];") {
+		t.Fatal("app.js must hide the sidebar on the rail-only pages: 需求列表, 待我确认, 统计, 项目配置, 运行记录")
 	}
 	managed := appJs[strings.Index(appJs, "const settingsManagementViews="):]
 	managed = managed[:strings.Index(managed, "\n")]
-	if strings.Contains(managed, "'observability'") {
-		t.Fatal("统计 must not enter settings management mode")
+	for _, view := range []string{"'observability'", "'projects'", "'runs'"} {
+		if strings.Contains(managed, view) {
+			t.Fatalf("%s is a rail entry and must not enter settings management mode", view)
+		}
 	}
-	for _, view := range []string{"'sops'", "'runs'", "'aiSchedules'", "'bots'"} {
+	for _, view := range []string{"'sops'", "'aiSchedules'", "'bots'"} {
 		if !strings.Contains(managed, view) {
 			t.Fatalf("%s moved into the settings sidebar and must enter settings management mode", view)
 		}

@@ -860,6 +860,8 @@ a.conv-branch::after{content:" ↗";opacity:.7}
 .pa-sec-h{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:12px}
 .pa-sec-h h3{margin:0;color:var(--text);font-size:15px;font-weight:600;line-height:24px}
 .pa-sec-h p{margin:2px 0 0;color:var(--muted);font-size:13px}
+/* 按钮包一层容器，避免 .pa-sec-h 的 16px gap 落在两个按钮之间 */
+.pa-sec-actions{flex:none;display:flex;align-items:center;gap:8px}
 .pa-rows{border-block:1px solid var(--line)}
 .pa-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:16px 0}
 .pa-row+.pa-row{border-top:1px solid var(--line)}
@@ -1257,6 +1259,37 @@ textarea.pa-input{height:auto;min-height:76px;padding:9px 11px;resize:vertical;l
   flex-direction:column;
   gap:10px;
   flex:1;
+}
+.platform-sop-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:4px;
+}
+.platform-sop-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:14px 16px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+}
+.platform-sop-meta{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+.platform-sop-meta b{
+  font-size:14px;
+  font-weight:650;
+  color:var(--ink);
+}
+.platform-sop-meta small{
+  font-size:12px;
+  color:var(--muted);
 }
 .platform-admin-row{
   display:flex;
@@ -2876,11 +2909,11 @@ textarea.pw-input{height:auto;min-height:64px;padding:9px 12px;line-height:1.55;
 .pa-copy-meta{flex:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--hu-muted);font-size:12px}
 .pa-copy-row em{flex:none;color:var(--hu-faint);font-style:normal;font-size:11px}
 .pa-copy-sum{margin-right:auto;color:var(--hu-muted);font-size:12px}
-/* 项目配置 · Agent 能力资产：复用平台双栏节点时的容器适配 */
-#projectAdminForm:has(> [data-pa-panel="assets"]:not([hidden])){max-width:1180px}
+/* 项目配置 · 资产类面板（能力资产 / Agent 角色 / SOP 流程）复用平台双栏节点，放开 .pa-body 的 880px 限制 */
+#projectAdminForm:has(> :is([data-pa-panel="assets"],[data-pa-panel="agents"],[data-pa-panel="sops"]):not([hidden])){max-width:1180px}
 .pa-asset-host{display:flex;flex-direction:column;min-width:0}
-.pa-asset-host>:is(#assetsView,#mcpView):not([hidden]){display:flex;flex-direction:column;width:100%;max-width:none;margin:0;padding:0;min-height:0;animation:none}
-.pa-asset-host>:is(#assetsView,#mcpView)[hidden]{display:none!important}
+.pa-asset-host>:is(#assetsView,#mcpView,#sopsView):not([hidden]){display:flex;flex-direction:column;width:100%;max-width:none;margin:0;padding:0;min-height:0;animation:none}
+.pa-asset-host>:is(#assetsView,#mcpView,#sopsView)[hidden]{display:none!important}
 /* 标题行只留操作按钮并压到最小高度；不要改成绝对定位——一旦它铺满整行，
    会盖住下方的类型 tab，把 tab 的点击全部吃掉（表现为只有默认选中的「规则」看起来能点）。 */
 #assetsView.is-pa-hosted .asset-heading{display:block;text-align:right;margin:0 0 8px;padding:0;border:0;background:none}
@@ -2895,3 +2928,10 @@ textarea.pw-input{height:auto;min-height:64px;padding:9px 12px;line-height:1.55;
 #mcpView.is-pa-hosted .mcp-page-heading .heading-actions{margin-left:auto}
 #mcpView.is-pa-hosted #mcpScopeSelect{display:none}
 #mcpView.is-pa-hosted .mcp-toolbar{justify-content:flex-end}
+/* 项目配置 · SOP 流程：复用平台 SOP 视图，范围固定为本项目 */
+#sopsView.is-pa-hosted .page-heading{display:none}
+#sopsView.is-pa-hosted .sop-page{margin-top:0}
+#sopsView.is-pa-hosted #refreshSOPs{display:none}
+.sop-card.is-readonly{cursor:default}
+.sop-card.is-highlight{box-shadow:0 0 0 2px var(--accent,#4f7cff);animation:sopCardHighlight 1.8s ease-out 1}
+@keyframes sopCardHighlight{0%{box-shadow:0 0 0 2px var(--accent,#4f7cff),0 0 0 7px rgba(79,124,255,.2)}100%{box-shadow:0 0 0 2px var(--accent,#4f7cff),0 0 0 0 rgba(79,124,255,0)}}

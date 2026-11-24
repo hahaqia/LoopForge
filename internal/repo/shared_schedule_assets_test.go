@@ -192,10 +192,10 @@ func TestSharedScheduleDoesNotPinSOPDependencies(t *testing.T) {
 	}
 	check(st.PutDockerfile(domain.DockerfileDefinition{ID: "image", Name: "Image", ProjectID: "source", Content: "FROM scratch"}))
 	check(st.PutEnvironment(domain.EnvironmentDefinition{ID: "setup", Name: "Setup", ProjectID: "source"}))
-	check(st.PutSandbox(domain.SandboxProfile{ID: "sandbox", Name: "Sandbox", ProjectID: "source", Driver: "docker", DockerfileID: "image", EnvironmentID: "setup"}))
+	check(st.PutSandbox(domain.SandboxProfile{ID: "sandbox", Name: "Sandbox", ProjectID: "source", Driver: "docker", DockerfileID: "image", EnvironmentID: "setup", Shared: true}))
 	check(st.PutSandbox(domain.SandboxProfile{ID: "native", Name: "Native", ProjectID: "source", Driver: "native", EnvironmentID: "setup"}))
 	check(st.PutWorkflow(domain.WorkflowDefinition{ID: "child", Name: "Child", ProjectID: "source", SandboxProfileID: "native", Nodes: []domain.WorkflowNode{{ID: "approve", Type: "approval", Name: "Approve"}}}))
-	check(st.PutWorkflow(domain.WorkflowDefinition{ID: "parent", Name: "Parent", ProjectID: "source", Shared: true, SandboxProfileID: "sandbox", Nodes: []domain.WorkflowNode{{ID: "child", Type: "sop", SOPWorkflowID: "child", Name: "Child"}}}))
+	check(st.PutGenericTemplate(GenericTemplate{Workflow: domain.WorkflowDefinition{ID: "parent", Name: "Parent", Status: "published", SandboxProfileID: "sandbox", Nodes: []domain.WorkflowNode{{ID: "child", Type: "sop", SOPWorkflowID: "child", Name: "Child"}}}}))
 	job := domain.ScheduleJob{ID: "sop-task", Name: "SOP task", ProjectID: "source", SkipDispatch: true, AssistantPrompt: "start", References: []domain.AssistantReference{{Type: "sop", ID: "parent"}}}
 	check(st.PutScheduleJob(job))
 	v, err := st.PublishSharedSchedule(job.ID, job.ProjectID, domain.SharedScheduleVersion{Name: "SOP task", Prompt: "start"}, 0)
@@ -243,10 +243,10 @@ func TestSharedScheduleSOPPreservesTemplateFallbacksAndBuiltInPreview(t *testing
 		t.Fatalf("publication stored nested template dependencies: %+v", v.Assets)
 	}
 	// The preview builder is an engine-generated role, not a catalog asset.
-	wf := domain.WorkflowDefinition{ID: "preview-sop", Name: "Preview", ProjectID: "source", Shared: true, SandboxProfileID: "local", Preview: &domain.PreviewContract{Enabled: true}, Nodes: []domain.WorkflowNode{{ID: "approve", Type: "approval", Name: "Approve"}}}
+	wf := domain.WorkflowDefinition{ID: "preview-sop", Name: "Preview", Status: "published", SandboxProfileID: "local", Preview: &domain.PreviewContract{Enabled: true}, Nodes: []domain.WorkflowNode{{ID: "approve", Type: "approval", Name: "Approve"}}}
 	wf, err = domain.AttachPreviewBuild(wf)
 	check(err)
-	check(st.PutWorkflow(wf))
+	check(st.PutGenericTemplate(GenericTemplate{Workflow: wf}))
 	job.ID, job.References = "preview-task", []domain.AssistantReference{{Type: "sop", ID: wf.ID}}
 	check(st.PutScheduleJob(job))
 	preview, err := st.PublishSharedSchedule(job.ID, job.ProjectID, domain.SharedScheduleVersion{Name: "Preview", Prompt: "start"}, 0)
@@ -323,17 +323,15 @@ func TestSharedScheduleReusesExternalSharedAgentWithoutCascading(t *testing.T) {
 	}
 }
 
-func TestSharedSchedulePrivateSOPUsesExistingSharingChecks(t *testing.T) {
+func TestSharedScheduleRejectsProjectSOPReference(t *testing.T) {
 	for _, tc := range []struct {
-		name, wantError string
-		privateSandbox  bool
-		notifications   bool
-		missingAgent    bool
+		name         string
+		sharedSOP    bool
+		withSkillRef bool
 	}{
-		{name: "shared sandbox"},
-		{name: "private sandbox", privateSandbox: true, wantError: "共享 SOP 只能使用已共享的沙箱"},
-		{name: "project notifications", notifications: true, wantError: "通知绑定只能保存在本项目流程中"},
-		{name: "missing bound agent", missingAgent: true, wantError: "不存在"},
+		{name: "unshared SOP"},
+		{name: "already shared SOP", sharedSOP: true},
+		{name: "referenced beside a skill", sharedSOP: true, withSkillRef: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			st, err := OpenTest()
@@ -347,51 +345,58 @@ func TestSharedSchedulePrivateSOPUsesExistingSharingChecks(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			check(st.PutSkill(domain.SkillDefinition{ID: "first-skill", Name: "Skill", ProjectID: "source"}))
-			profile := domain.SandboxProfile{ID: "sop-sandbox", Name: "Sandbox", ProjectID: "source", Driver: "native", Shared: !tc.privateSandbox}
-			check(st.PutSandbox(profile))
-			wf := domain.WorkflowDefinition{ID: "private-sop", Name: "SOP", ProjectID: "source", SandboxProfileID: profile.ID, Status: "draft", Version: 4, Nodes: []domain.WorkflowNode{{ID: "approve", Name: "Approve", Type: "approval"}}}
-			if tc.missingAgent {
-				wf.Nodes = []domain.WorkflowNode{{ID: "agent", Name: "Missing", Type: "agent", AgentID: "missing"}}
-			}
+			check(st.PutSandbox(domain.SandboxProfile{ID: "sop-sandbox", Name: "Sandbox", ProjectID: "source", Driver: "native", Shared: true}))
+			check(st.PutSkill(domain.SkillDefinition{ID: "sop-skill", Name: "Skill", ProjectID: "source"}))
+			wf := domain.WorkflowDefinition{ID: "project-sop", Name: "SOP", ProjectID: "source", Shared: tc.sharedSOP, SandboxProfileID: "sop-sandbox", Status: "draft", Version: 4, Nodes: []domain.WorkflowNode{{ID: "approve", Name: "Approve", Type: "approval"}}}
 			check(st.PutWorkflow(wf))
-			if tc.notifications {
-				// Seed an existing project binding without depending on external
-				// Bot installation; sharing must reject it before querying a Bot.
-				wf, _ = st.Workflow(wf.ID)
-				wf.Notifications = []domain.NotificationBinding{{BotID: "project-bot", Scope: "run", Events: []string{"succeeded"}}}
-				check(st.DB.Table("workflows").Where("id = ?", wf.ID).Update("payload", mustJSON(wf)).Error)
-			}
 			before, _ := st.Workflow(wf.ID)
-			beforeSkill, _ := st.Skill("first-skill")
-			job := domain.ScheduleJob{ID: "sop-job", Name: "Task", ProjectID: "source", SkipDispatch: true, References: []domain.AssistantReference{{Type: "skill", ID: "first-skill"}, {Type: "sop", ID: wf.ID}}}
+			beforeSkill, _ := st.Skill("sop-skill")
+			refs := []domain.AssistantReference{{Type: "sop", ID: wf.ID}}
+			if tc.withSkillRef {
+				refs = append([]domain.AssistantReference{{Type: "skill", ID: "sop-skill"}}, refs...)
+			}
+			job := domain.ScheduleJob{ID: "sop-job", Name: "Task", ProjectID: "source", SkipDispatch: true, References: refs}
 			check(st.PutScheduleJob(job))
-			v, err := st.PublishSharedSchedule(job.ID, job.ProjectID, domain.SharedScheduleVersion{Name: "Shared", Prompt: "inspect"}, 0)
+			_, err = st.PublishSharedSchedule(job.ID, job.ProjectID, domain.SharedScheduleVersion{Name: "Shared", Prompt: "inspect"}, 0)
+			if !errors.Is(err, ErrSharedScheduleReferences) || !strings.Contains(err.Error(), "平台 SOP") {
+				t.Fatalf("project SOP reference error = %v", err)
+			}
 			after, _ := st.Workflow(wf.ID)
-			afterSkill, _ := st.Skill("first-skill")
-			if tc.wantError != "" {
-				if !errors.Is(err, ErrSharedScheduleReferences) || !strings.Contains(err.Error(), tc.wantError) {
-					t.Fatalf("sharing error = %v, want %q", err, tc.wantError)
-				}
-				if !reflect.DeepEqual(before, after) || !reflect.DeepEqual(beforeSkill, afterSkill) || len(st.Revisions("workflow", wf.ID)) != 0 {
-					t.Fatal("failed publication left asset mutations or revisions")
-				}
-				versions, err := st.SharedScheduleTasks()
-				check(err)
-				if len(versions) != 0 {
-					t.Fatal("failed publication left a shared version")
-				}
-				return
+			afterSkill, _ := st.Skill("sop-skill")
+			if !reflect.DeepEqual(before, after) || !reflect.DeepEqual(beforeSkill, afterSkill) || len(st.Revisions("workflow", wf.ID)) != 0 {
+				t.Fatal("failed publication left SOP mutations or revisions")
 			}
+			versions, err := st.SharedScheduleTasks()
 			check(err)
-			if !after.Shared || !afterSkill.Shared || after.Status != before.Status || after.Version != before.Version || after.Revision != before.Revision+1 || after.PublishedRevision != before.PublishedRevision {
-				t.Fatalf("SOP sharing changed publication semantics: before=%+v after=%+v", before, after)
-			}
-			currentProfile, _ := st.Sandbox(profile.ID)
-			if currentProfile.Shared != profile.Shared || len(v.Assets) != 2 || v.HasAsset("sandbox", profile.ID) {
-				t.Fatalf("SOP sharing traversed the sandbox boundary: %+v", v.Assets)
+			if len(versions) != 0 {
+				t.Fatal("failed publication left a shared version")
 			}
 		})
+	}
+}
+
+func TestSharedScheduleAcceptsPlatformSOPReference(t *testing.T) {
+	st, err := OpenTest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(st.Close)
+	if err := st.PutGenericTemplate(GenericTemplate{Workflow: domain.WorkflowDefinition{ID: "platform-sop", Name: "Platform SOP", SandboxProfileID: "platform-sandbox", Status: "published", Version: 2, Nodes: []domain.WorkflowNode{{ID: "approve", Name: "Approve", Type: "approval"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	job := domain.ScheduleJob{ID: "platform-sop-job", Name: "Task", ProjectID: "source", SkipDispatch: true, References: []domain.AssistantReference{{Type: "sop", ID: "platform-sop"}}}
+	if err := st.PutScheduleJob(job); err != nil {
+		t.Fatal(err)
+	}
+	v, err := st.PublishSharedSchedule(job.ID, job.ProjectID, domain.SharedScheduleVersion{Name: "Shared", Prompt: "inspect"}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Assets) != 1 || v.Assets[0].Type != "sop" || v.Assets[0].ID != "platform-sop" || v.Assets[0].ProjectID != "" {
+		t.Fatalf("platform SOP asset = %+v", v.Assets)
+	}
+	if got, ok := st.Workflow("platform-sop"); !ok || !got.Generic || got.Shared {
+		t.Fatalf("publishing a shared task must not flip platform SOP sharing: %+v", got)
 	}
 }
 

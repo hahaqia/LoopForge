@@ -1,44 +1,36 @@
 function renderCatalogScopes(){
   const workflows=state.data?.workflows||[],agents=state.data?.agents||[];
   const sopProject=workflows.filter(w=>!catalogGeneric(w)&&catalogOwned(w.projectId)).length;
-  const sopShared=workflows.filter(w=>!catalogGeneric(w)&&catalogShared(w.projectId,w.shared)).length;
   const sopGeneric=workflows.filter(w=>catalogGeneric(w)).length;
   const agentProject=agents.filter(a=>catalogOwned(a.projectId)).length;
   const agentShared=agents.filter(a=>catalogShared(a.projectId,a.shared)).length;
   const set=(id,n)=>{const el=document.querySelector(`[data-scope-count="${id}"]`);if(el)el.textContent=n};
-  set('sop-project',sopProject);set('sop-shared',sopShared);set('sop-generic',sopGeneric);set('agent-project',agentProject);set('agent-shared',agentShared);
+  set('sop-project',sopProject);set('sop-generic',sopGeneric);set('agent-project',agentProject);set('agent-shared',agentShared);
   document.querySelectorAll('[data-scope-for]').forEach(bar=>{
     const current=bar.dataset.scopeFor==='agent'?state.agentScope:state.sopScope;
     bar.querySelectorAll('[data-scope]').forEach(btn=>btn.classList.toggle('on',btn.dataset.scope===current));
   });
 }
-async function catalogItemFull(kind,id){
-  return api(kind==='workflow'?`/api/workflows/${encodeURIComponent(id)}`:`/api/agents/${encodeURIComponent(id)}`);
-}
-function replaceCatalogItem(kind,saved){
-  const list=kind==='workflow'?state.data.workflows:state.data.agents;
-  const i=list.findIndex(x=>x.id===saved.id);
-  if(i>=0)list[i]=saved;else list.unshift(saved);
-  if(kind==='workflow'&&state.workflow?.id===saved.id)state.workflow=clone(saved);
-  if(kind==='agent'&&state.selectedAgent===saved.id)state.selectedAgent=saved.id;
-}
-async function toggleShare(kind,id){
-  const list=kind==='workflow'?state.data.workflows:state.data.agents;
-  const item=list.find(x=>x.id===id);
+// 角色仍可跨项目共享；SOP 不再共享（复用统一走「平台 SOP → 复制到项目」）。
+async function toggleShare(agentId){
+  const item=(state.data.agents||[]).find(x=>x.id===agentId);
   if(!item||!catalogOwned(item.projectId))return toast('只能共享本项目的内容');
   try{
-    const full=await catalogItemFull(kind,id);
+    // 先回读完整定义：列表里的角色可能缺少技能/规则等字段。
+    const full=await api(`/api/agents/${encodeURIComponent(agentId)}`);
     if(!catalogOwned(full.projectId))return toast('只能共享本项目的内容');
     // Sharing a role also shares the project's skills bound to it, and a
     // shared skill is installed into every conversation, so name them first.
     // The list is reloaded: a skill may have been added since the page loaded.
-    if(kind==='agent'&&!full.shared&&(full.skills||[]).length)state.data.skills=await api('/api/skills',{silent:true});
-    const newlyShared=kind==='agent'&&!full.shared?(state.data.skills||[]).filter(s=>(full.skills||[]).includes(s.id)&&s.projectId===full.projectId&&!s.shared):[];
+    if(!full.shared&&(full.skills||[]).length)state.data.skills=await api('/api/skills',{silent:true});
+    const newlyShared=!full.shared?(state.data.skills||[]).filter(s=>(full.skills||[]).includes(s.id)&&s.projectId===full.projectId&&!s.shared):[];
     if(newlyShared.length&&!(await afConfirm({title:'共享角色',message:`共享这个角色会同时共享它绑定的技能：${newlyShared.map(s=>s.name||s.id).join('、')}。${SHARED_SKILL_NOTICE}`,confirmText:'共享'})))return;
-    const saved=await api(kind==='workflow'?'/api/workflows':'/api/agents',{method:'PUT',body:JSON.stringify({...full,shared:!full.shared})});
-    replaceCatalogItem(kind,saved);
-    if(kind==='agent'&&saved.shared){(state.data.rules||[]).forEach(item=>{if((saved.rules||[]).includes(item.id)&&item.projectId===saved.projectId)item.shared=true});(state.data.skills||[]).forEach(item=>{if((saved.skills||[]).includes(item.id)&&item.projectId===saved.projectId)item.shared=true})}
-    kind==='workflow'?renderSOPCatalog():renderAgents();
+    const saved=await api('/api/agents',{method:'PUT',body:JSON.stringify({...full,shared:!full.shared})});
+    const list=state.data.agents||[],i=list.findIndex(x=>x.id===saved.id);
+    if(i>=0)list[i]=saved;else list.unshift(saved);
+    if(state.selectedAgent===saved.id)state.selectedAgent=saved.id;
+    if(saved.shared){(state.data.rules||[]).forEach(item=>{if((saved.rules||[]).includes(item.id)&&item.projectId===saved.projectId)item.shared=true});(state.data.skills||[]).forEach(item=>{if((saved.skills||[]).includes(item.id)&&item.projectId===saved.projectId)item.shared=true})}
+    renderAgents();
     toast(saved.shared?'已共享，其他项目可在共享页看到':'已取消共享');
   }catch(e){toast(e.message)}
 }
@@ -80,7 +72,6 @@ function genericRequirementRows(w){
     return {key:req.key,label:req.label||meta.label||req.key,hint:req.hint||meta.hint||'',nodeId:req.nodeId||'',ok,fix:meta.fix||'',fixLabel:meta.fixLabel||'去处理'};
   });
 }
-function workflowNodeName(w,id){return (w?.nodes||[]).find(n=>n.id===id)?.name||id}
 function genericRequirementChips(w){
   const rows=genericRequirementRows(w);
   if(!rows.length)return '';
@@ -154,40 +145,31 @@ function sopRunCardBody(w,m,liveCount){
 function projectSOPCard(w,m={},liveCount=0){
   const recent=formatTimestamp(m.lastRunAt);
   const meta=`${w.owner||'未分配负责人'} · v${w.version||1} · ${recent?`最近 ${recent}`:'尚未运行'}`;
-  return `<article class="sop-card" data-sop="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="打开流程设计器：${escapeHTML(w.name)}">${sopRunCardBody(w,m,liveCount)}<div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(meta)}">${escapeHTML(meta)}</span>${sopCardPrimary('data-open-sop',w.id,'打开')}${sopCardMoreButton(w)}</div></article>`;
+  return `<article class="sop-card${state.highlightSOPId===w.id?' is-highlight':''}" data-sop="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="打开流程设计器：${escapeHTML(w.name)}">${sopRunCardBody(w,m,liveCount)}<div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(meta)}">${escapeHTML(meta)}</span>${sopCardPrimary('data-open-sop',w.id,'打开')}${sopCardMoreButton(w)}</div></article>`;
 }
-function sharedSOPCard(w,m={},liveCount=0){
-  const from=!w.projectId?'平台':`来自 ${(state.data.projects||[]).find(p=>p.id===w.projectId)?.name||w.projectId}`;
-  const meta=`${w.owner?`${w.owner} · `:''}v${w.version||1}`;
-  return `<article class="sop-card" data-sop="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="打开流程设计器：${escapeHTML(w.name)}">${sopRunCardBody(w,m,liveCount)}<div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(`${from} · ${meta}`)}"><span class="sop-card-tag">${escapeHTML(from)}</span>${escapeHTML(meta)}</span>${sopCardPrimary('data-clone-workflow',w.id,'复制到本项目','copy')}</div></article>`;
-}
-function genericProjectCopy(w){return (state.data?.workflows||[]).find(x=>!catalogGeneric(x)&&x.projectId===state.projectFilter&&(x.tags||[]).includes(`generic-source:${w.id}`))}
 function genericSOPCard(w){
   const nodes=w.nodes||[],agentCount=nodes.filter(n=>n.type==='agent').length,gates=nodes.filter(n=>n.type==='approval').length;
-  const copy=genericProjectCopy(w);
-  const primary=copy
-    ?sopCardPrimary('data-open-sop',copy.id,'查看项目副本','eye')
-    :sopCardPrimary('data-adopt-generic',w.id,'复制到本项目','copy','复制后归本项目所有、可自由修改，不再跟随平台更新');
-  const tags=(w.tags||[]).filter(t=>!t.startsWith('generic-source:')).join(' · ')||'通用模板';
-  return `<article class="sop-card generic" data-generic-id="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="使用通用模板：${escapeHTML(w.name)}">${sopCardHead(sopStatusBadge(w),'平台维护 · 与项目无关',sopBadge(`v${w.version||1}`,'neutral',''))}${sopCardTitle(w)}<p>${escapeHTML(w.description||'平台提供的通用流程模板')}</p>${sopRunRequirementChips(w)}${genericRequirementChips(w)}<div class="sop-kpis"><span><b>${nodes.length}</b>节点</span><span><b>${agentCount}</b>角色节点</span><span><b>${gates}</b>人工门禁</span><span><b>v${w.version||1}</b>版本</span></div><div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(`${w.owner||'平台'} · ${tags}`)}"><span class="sop-card-tag">${escapeHTML(w.owner||'平台')}</span>${escapeHTML(tags)}</span>${primary}${sopCardMoreButton(w)}</div></article>`;
+  const tags=(w.tags||[]).filter(t=>!t.startsWith('generic-source:')).join(' · ')||'平台模板';
+  return `<article class="sop-card generic is-readonly" data-generic-id="${escapeHTML(w.id)}" aria-label="平台 SOP：${escapeHTML(w.name)}">${sopCardHead(sopStatusBadge(w),'平台维护 · 与项目无关',sopBadge(`v${w.version||1}`,'neutral',''))}${sopCardTitle(w)}<p>${escapeHTML(w.description||'平台提供的通用流程模板')}</p>${sopRunRequirementChips(w)}${genericRequirementChips(w)}<div class="sop-kpis"><span><b>${nodes.length}</b>节点</span><span><b>${agentCount}</b>角色节点</span><span><b>${gates}</b>人工门禁</span><span><b>v${w.version||1}</b>版本</span></div><div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(`${w.owner||'平台'} · ${tags}`)}"><span class="sop-card-tag">${escapeHTML(w.owner||'平台')}</span>${escapeHTML(tags)}</span><span class="sop-card-tag">复制到项目后可用</span></div></article>`;
 }
 function sopCatalogCard(w,metrics,live){
   if(catalogGeneric(w))return genericSOPCard(w);
   const m=metrics.get(w.id)||{},liveCount=live.filter(r=>r.workflowId===w.id).length;
-  return catalogOwned(w.projectId)?projectSOPCard(w,m,liveCount):sharedSOPCard(w,m,liveCount);
+  return projectSOPCard(w,m,liveCount);
 }
 // --- 流程模板卡片 · ⋯ 菜单 -----------------------------------------------------
 const SOP_MENU_ACTIONS={
-  share:{hook:'data-share-workflow',run:id=>toggleShare('workflow',id)},
   delete:{hook:'data-delete-workflow',run:id=>deleteWorkflow(id)},
-  run:{hook:'data-run-generic',run:id=>openRunModal(id)},
-  edit:{hook:'data-edit-generic',run:id=>openGenericTemplateEditor(id)}
+  promote:{hook:'data-promote-workflow',run:id=>promoteWorkflowToPlatform(id)}
 };
 function sopCardMenuItems(w){
   if(!w)return [];
-  if(catalogGeneric(w))return [{action:'run',label:'直接运行',icon:'play'},...(isPlatformAdmin()?[{action:'edit',label:'编辑模板',icon:'edit'}]:[])];
+  // 平台 SOP 目录保持只读，维护入口集中在「平台管理 › 平台 SOP」。
+  if(catalogGeneric(w))return [];
   if(!catalogOwned(w.projectId))return [];
-  return [{action:'share',label:w.shared?'取消共享':'共享给其他项目',icon:w.shared?'close':'arrow-up'},'-',{action:'delete',label:'删除',icon:'trash',danger:true}];
+  const items=isPlatformAdmin()?[{action:'promote',label:'提升为平台模板',icon:'arrow-up'},'-']:[];
+  items.push({action:'delete',label:'删除',icon:'trash',danger:true});
+  return items;
 }
 function sopCardMenuHTML(w){
   return sopCardMenuItems(w).map(item=>item==='-'?'<span class="sop-popover-sep" role="separator"></span>':`<button type="button" role="menuitem" tabindex="-1" class="issue-popover-item${item.danger?' danger':''}" data-sop-action="${item.action}" ${SOP_MENU_ACTIONS[item.action].hook}="${escapeHTML(w.id)}">${huiIcon(item.icon,'popover-icon')}${escapeHTML(item.label)}</button>`).join('');
@@ -371,11 +353,13 @@ function liveSOPCards(root){return [...root.querySelectorAll('.sop-card:not(.is-
 function openSOPDesigner(id,missing='SOP 不存在或已删除'){
   const wf=(state.data.workflows||[]).find(x=>x.id===id);
   if(!wf)return toast(missing);
+  // 设计器在平台侧，离开项目面板前把内嵌的 SOP 视图归还，避免它留在项目容器里。
+  if(state.sopHosted&&typeof unmountProjectAssetSurface==='function'){state.paSurface='assets';unmountProjectAssetSurface()}
   state.workflow=clone(wf);state.selectedNode=null;renderWorkflowMeta();renderCanvas();renderProperties();switchView('flow');
 }
 function activateSOPCard(card){
-  if(card.dataset.genericId)openGenericTemplateModal(card.dataset.genericId);
-  else if(card.dataset.sop)openSOPDesigner(card.dataset.sop);
+  if(card.dataset.genericId)return;
+  if(card.dataset.sop)openSOPDesigner(card.dataset.sop);
 }
 function bindSOPCatalogEvents(root){
   if(root.dataset.sopEvents)return;
@@ -389,8 +373,6 @@ function bindSOPCatalogEvents(root){
       if(btn.dataset.sopMenu)return showSOPCardMenu(btn);
       hideSOPCardMenu();
       if(btn.dataset.openSop)openSOPDesigner(btn.dataset.openSop,'项目副本不存在或已删除');
-      else if(btn.dataset.cloneWorkflow)cloneWorkflow(btn.dataset.cloneWorkflow);
-      else if(btn.dataset.adoptGeneric)openGenericTemplateModal(btn.dataset.adoptGeneric);
       return;
     }
     hideSOPCardMenu();
@@ -403,20 +385,6 @@ function bindSOPCatalogEvents(root){
     activateSOPCard(e.target);
   });
 }
-function renderGenericRequirementRows(w,executors,loading=false){
-  const host=$('#genericTemplateRequirements');if(!host)return;
-  const executorRows=executors?.map(ex=>({
-    key:'run-executor',label:ex.name?`执行器 · ${ex.name}`:'执行器',ok:ex.configured,
-    hint:ex.configured?'角色节点使用任务责任人的执行器配置。':ex.name?`配置运行此 SOP 所需的 ${ex.name}。`:'在个人配置中添加当前执行环境可用的执行器，即可运行角色节点。',
-    fix:ex.configured?'':'settings',fixLabel:'配置执行器'
-  }))??[{
-    label:'执行器',status:loading?'检查中':'暂时无法检查',
-    hint:loading?'正在检查任务责任人的执行器配置。':'请关闭后重新打开，重试执行器检查。'
-  }];
-  const rows=[...executorRows,...sopResourceRequirements(w),...genericRequirementRows(w)];
-  host.innerHTML=rows.map(r=>`<div class="req-row ${r.status?'':r.ok?'ok':'missing'}"><span class="req-mark">${r.status?'…':r.ok?'✓':'!'}</span><div><b>${escapeHTML(r.label)}</b><p>${escapeHTML(r.hint)}${r.nodeId?` · 节点「${escapeHTML(workflowNodeName(w,r.nodeId))}」`:''}</p></div><span class="req-state">${r.status||(r.ok?'已配置':'未配置')}</span>${r.fix?`<button type="button" class="button ghost small" data-fix-requirement="${escapeHTML(r.key)}">${escapeHTML(r.fixLabel)}</button>`:''}</div>`).join('')||'<div class="req-row ok"><span class="req-mark">✓</span><div><b>无额外依赖</b><p>复制到本项目后即可直接运行。</p></div></div>';
-  host.querySelectorAll('[data-fix-requirement]').forEach(btn=>btn.onclick=()=>openGenericRequirementTarget(btn.dataset.fixRequirement));
-}
 async function openGenericTemplateEditor(id){
   const w=(state.data?.workflows||[]).find(x=>x.id===id&&catalogGeneric(x));
   if(!w)return toast('通用模板不存在或已下架');
@@ -426,74 +394,49 @@ async function openGenericTemplateEditor(id){
   renderWorkflowMeta();renderCanvas();renderProperties();switchView('flow');
   await refreshGenericWorkflowRoles();
 }
-let genericRequirementRequest=0;
-async function openGenericTemplateModal(id){
-  const w=(state.data?.workflows||[]).find(x=>x.id===id&&catalogGeneric(x));
-  if(!w)return toast('通用模板不存在或已下架');
-  state.genericTemplateId=id;
-  $('#genericTemplateTitle').textContent=`使用「${w.name}」`;
-  $('#genericTemplateIntro').textContent=w.description||'平台提供的通用流程模板，复制后归本项目所有。';
-  const nodes=w.nodes||[],agentCount=nodes.filter(n=>n.type==='agent').length,gates=nodes.filter(n=>n.type==='approval').length;
-  $('#genericTemplateStructure').innerHTML=`<span>${nodes.length} 个节点</span><span>${agentCount} 个角色节点</span><span>${gates} 个人工门禁</span>${nodes.some(n=>n.id==='mr')?'<span class="highlight">含「发起 PR」节点</span>':''}<span>复制=归本项目、可自由修改、不再跟随平台更新</span><span>直接运行=始终使用平台最新版</span>`;
-  const request=++genericRequirementRequest,modal=$('#genericTemplateModal');
-  const needsExecutor=agentCount>0||w.preview?.enabled;
-  renderGenericRequirementRows(w,needsExecutor?null:[],true);
-  modal.classList.add('open');
-  if(!needsExecutor)return;
+function platformSandboxChoices(){return (state.data?.sandboxes||[]).filter(s=>s.id&&(!s.projectId||s.shared))}
+// 平台页新建平台 SOP：只有平台管理员可见，创建后直接进入设计器。
+async function newPlatformSOP(){
+  if(!isPlatformAdmin())return toast('只有平台管理员可以维护平台 SOP');
+  const sandbox=platformSandboxChoices()[0];
+  if(!sandbox)return toast('平台还没有共享沙箱，请先在「高级设置 › 沙箱」里创建一个共享沙箱');
+  const name=await afPrompt({title:'新建平台 SOP',message:'平台 SOP 会出现在「流程模板」里，各项目复制后使用。',defaultValue:''});
+  if(!name)return;
+  const workflow={id:uid('generic-sop'),name,generic:true,projectId:'',shared:false,owner:'平台',tags:[],description:'',status:'draft',version:1,revision:0,sandboxProfileId:sandbox.id,nodes:[],edges:[]};
   try{
-    const executors=await api(`/api/workflows/${encodeURIComponent(id)}/executor-requirements${projectQuery()}`,{silent:true});
-    if(request===genericRequirementRequest&&modal.classList.contains('open'))renderGenericRequirementRows(w,executors);
-  }catch{
-    if(request===genericRequirementRequest&&modal.classList.contains('open'))renderGenericRequirementRows(w,null);
-  }
+    const saved=await api('/api/workflows',{method:'PUT',body:JSON.stringify(workflow)});
+    state.data.workflows.push(saved);
+    state.workflow=clone(saved);state.selectedNode=null;state.sopScope='generic';markWorkflowClean();
+    renderAll();switchView('flow');toast('平台 SOP 已创建，请继续设计节点','ok');
+  }catch(e){toast(e.message||'创建平台 SOP 失败')}
 }
-function openGenericRequirementTarget(key){
-  if(key==='run-executor'){
-    $('#genericTemplateModal').classList.remove('open');
-    return gotoCredential('executors');
-  }
-  const meta=GENERIC_REQUIREMENT_CHECKS[key];if(!meta)return;
-  $('#genericTemplateModal').classList.remove('open');
-  if(meta.fix==='mcp'){
-    const query=key==='tapd-mcp'?'tapd':'gongfeng';
-    state.mcpScope='project';state.mcpQuery=query;
-    const input=$('#mcpMarketSearch');if(input)input.value=query;
-    switchView('mcp');
-    toast(query==='tapd'?'在「能力资产 › MCP」添加 TAPD MCP，添加后回到通用模板查看状态':'在「能力资产 › MCP」添加 Gongfeng MCP，添加后回到通用模板查看状态');
-    return;
-  }
-  switchView('settings');
-  toast('在「个人凭证」中配置后，重新打开通用模板即可看到最新状态');
-}
-async function adoptGenericTemplate(){
-  const src=(state.data?.workflows||[]).find(w=>w.id===state.genericTemplateId&&catalogGeneric(w));
-  if(!src)return toast('通用模板不存在或已下架');
-  if(!state.projectFilter)return toast('请先在顶部选择一个项目');
-  const button=$('#confirmGenericTemplate');button.disabled=true;button.textContent='复制中…';
+// 项目 SOP 提升为平台模板：复制进平台目录，项目原件保留。
+async function promoteWorkflowToPlatform(id){
+  const src=(state.data?.workflows||[]).find(w=>w.id===id);
+  if(!src)return toast('SOP 不存在或已删除');
+  if(!isPlatformAdmin())return toast('只有平台管理员可以提升为平台模板');
+  const name=await afPrompt({title:'提升为平台模板',message:'会复制为新的平台 SOP，项目内原 SOP 保持不变。',defaultValue:src.name});
+  if(!name)return;
   try{
-    const copied=await api(`/api/workflows/${encodeURIComponent(src.id)}/clone`,{method:'POST',body:JSON.stringify({id:uid('sop'),name:src.name.replace(/^通用/,''),owner:src.owner||'',projectId:state.projectFilter})});
-    state.data.workflows.unshift(copied);
-    state.workflow=clone(copied);state.selectedNode=null;state.sopScope='project';markWorkflowClean();
-    $('#genericTemplateModal').classList.remove('open');
-    renderAll();switchView('flow');
-    const missing=genericRequirementRows(copied).filter(r=>!r.ok);
-    toast(missing.length?`已复制到本项目；${missing.length} 项运行依赖未配置（${missing.map(r=>r.label).join('、')}）`:'已复制到本项目，可直接修改和运行',missing.length?'':'ok');
-  }catch(e){toast(e.message||'复制通用模板失败')}
-  finally{button.disabled=false;button.textContent='复制到本项目'}
+    const created=await api(`/api/workflows/${encodeURIComponent(id)}/promote`,{method:'POST',body:JSON.stringify({id:uid('generic-sop'),name,owner:'平台'})});
+    state.data.workflows.push(created);
+    renderSOPCatalog();toast('已提升为平台模板，可在「流程模板」里查看','ok');
+  }catch(e){toast(e.message||'提升为平台模板失败')}
 }
 function renderSOPCatalog(){
   renderCatalogScopes();
+  const newBtn=$('#newSOP');if(newBtn)newBtn.hidden=state.sopScope!=='project';
   let workflows=scopedWorkflows();
   const metrics=new Map((state.data.workflowMetrics||[]).map(m=>[m.workflowId,m]));
   const live=liveRuns();
   const all=[...metrics.values()],totalRuns=all.reduce((n,m)=>n+m.totalRuns,0),succeeded=all.reduce((n,m)=>n+m.succeededRuns,0),failed=all.reduce((n,m)=>n+m.failedRuns,0),active=live.length,tokens=all.reduce((n,m)=>n+m.totalTokens,0);
-  const scopeLabel=state.sopScope==='generic'?'通用':state.sopScope==='shared'?'共享':'项目';
+  const scopeLabel=state.sopScope==='generic'?'平台':'项目';
   $('#sopOverview').innerHTML=`<div class="overview-metric primary"><span>本项目运行</span><b>${totalRuns}</b><small>${workflows.length} 条${scopeLabel} SOP</small></div><div class="overview-metric success"><span>已闭环</span><b>${succeeded}</b><small>${totalRuns?percent(succeeded*100/totalRuns):'暂无运行'}</small></div><div class="overview-metric live"><span>进行中 / 待审批</span><b>${active}</b><small>实时更新 · 不含中断残留</small></div><div class="overview-metric danger${failed>0?' is-bad':''}"><span>失败运行</span><b>${failed}</b><small>${totalRuns?percent(failed*100/totalRuns):'0%'}</small></div><div class="overview-metric"><span>Token 消耗</span><b>${formatTokens(tokens)}</b><small>当前项目累计</small></div>`;
   const filter=$('#sopHealthFilter')?.value||'all',sort=$('#sopSort')?.value||'recent';
   if(filter!=='all')workflows=workflows.filter(w=>metricHealth(metrics.get(w.id), live.filter(r=>r.workflowId===w.id).length).key===filter);
   workflows.sort((a,b)=>{const x=metrics.get(a.id)||{},y=metrics.get(b.id)||{};if(sort==='runs')return (y.totalRuns||0)-(x.totalRuns||0);if(sort==='closure')return (y.closureRate||0)-(x.closureRate||0);if(sort==='failures')return (y.failedRuns||0)-(x.failedRuns||0);return new Date(y.lastRunAt||0)-new Date(x.lastRunAt||0)});
   $('#sopStats').innerHTML=`<span class="issue-stat">${workflows.length} SOPs</span><span class="issue-stat">${workflows.filter(w=>w.status==='published').length} 已发布</span><span class="issue-stat">${new Set(workflows.map(w=>w.owner).filter(Boolean)).size} 负责人</span>`;
-  const empty=state.sopScope==='generic'?'通用模板暂时不可用。它们由平台维护、与项目无关，所有项目都能复制使用。':state.sopScope==='shared'?'还没有共享给当前项目的 SOP。把本项目模板设为共享后，其他项目会在这里看到。':'当前项目还没有 SOP。可以新建，或从共享模板 / 通用模板复制一份。';
+  const empty=state.sopScope==='generic'?'平台还没有 SOP 模板。管理员可在「平台管理 › 平台 SOP」新建。':'当前项目还没有 SOP。可以新建，或在项目配置里从平台 SOP 复制一份。';
   const emptyText=filter!=='all'&&scopedWorkflows().length?'当前筛选下没有 SOP。可以切换健康状态查看全部。':empty;
   const sopCatalog=$('#sopCatalog');
   bindSOPCatalogEvents(sopCatalog);

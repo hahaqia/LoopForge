@@ -1261,7 +1261,6 @@ async function createSOPFromWizard(e){
       ?lfT('所选运行沙箱已不可用，请点击「刷新沙箱」后重新选择。','The selected sandbox is no longer available. Refresh sandboxes and select another one.')
       :err.message);
   }}
-async function cloneWorkflow(id){const src=id?(state.data.workflows||[]).find(w=>w.id===id):state.workflow;if(!src?.id)return toast('先选择一条 SOP');const name=await afPrompt({title:'复制 SOP',message:'请输入复制后的 SOP 名称：',defaultValue:`${src.name} - 副本`});if(!name)return;const owner=await afPrompt({title:'SOP 负责人',message:'请输入负责人（可留空）：',defaultValue:src.owner||''})??'';try{const copied=await api(`/api/workflows/${encodeURIComponent(src.id)}/clone`,{method:'POST',body:JSON.stringify({id:uid('sop'),name,owner,projectId:state.projectFilter||''})});state.data.workflows.unshift(copied);state.workflow=clone(copied);state.selectedNode=null;state.sopScope='project';markWorkflowClean();renderAll();toast('已复制到本项目')}catch(e){toast(e.message)}}
 
 async function deleteWorkflow(id){
   const w=(state.data.workflows||[]).find(x=>x.id===id);

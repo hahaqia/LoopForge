@@ -164,12 +164,12 @@ assert.match(empty,/粘贴 Git HTTPS 链接或 Git SSH 地址[^]*确认分支[^]
 assert.match(empty,/添加第一个仓库/);
 
 // Detail panels.
-same(vm.runInContext("PROJECT_ADMIN_TABS.map(t=>t.id)",ctx),["basic","repos","members","agents","assets","tapd"]);
+same(vm.runInContext("PROJECT_ADMIN_TABS.map(t=>t.id)",ctx),["basic","repos","members","agents","sops","assets","tapd"]);
 const draft=ctx.projectDraftFrom(projects[0]);
 same(draft.members.map(m=>m.userId),[2,3,4,5]);
 same([...ctx.projectPeopleIds(draft)],[1,2,3,4,5]);
 const edit=ctx.projectAdminFormHTML(draft,{creating:false,custom:false,repos:repositories.slice(0,2),saved:projects[0]});
-assert.equal((edit.match(/data-pa-panel="/g)||[]).length,6);
+assert.equal((edit.match(/data-pa-panel="/g)||[]).length,7);
 assert.match(edit,/name="id" value="agentflow" required readonly/);
 assert.match(edit,/修改 Key/);
 assert.match(edit,/标识用于接口与链接，创建后不可修改/);
@@ -242,10 +242,15 @@ assert.equal(ctx.projectDraftDirty({...draft,tapdClear:true},base),true);
   };
   const assetsNode = paNode("assetsView");
   const mcpNode = paNode("mcpView");
-  paHome.children.push(assetsNode, mcpNode);
+  const sopsNode = paNode("sopsView");
+  paHome.children.push(assetsNode, mcpNode, sopsNode);
   dom["#assetsView"] = assetsNode;
   dom["#mcpView"] = mcpNode;
-  dom["#projectAdminForm [data-project-asset-host]"] = paHost;
+  dom["#sopsView"] = sopsNode;
+  dom["#paPanel-assets [data-project-asset-host]"] = paHost;
+  const sopHost = el({children: []});
+  sopHost.appendChild = node => {detach(node); sopHost.children.push(node); node.parentElement = sopHost};
+  dom["#paPanel-sops [data-project-asset-host]"] = sopHost;
   let assetRenders = 0, mcpRenders = 0; const tabSyncs = [];
   ctx.renderAssets = () => {assetRenders++};
   ctx.renderMCPManagement = () => {mcpRenders++};
@@ -254,7 +259,7 @@ assert.equal(ctx.projectDraftDirty({...draft,tapdClear:true},base),true);
   assert.match(ctx.projectAssetsPanelHTML({id: "agentflow"}), /data-project-asset-host/);
 
   ctx.state.projectAdminDetailId = "agentflow";
-  ctx.state.ruleScope = "shared"; ctx.state.mcpScope = "personal";
+  ctx.state.ruleScope = "shared"; ctx.state.mcpScope = "personal"; ctx.state.sopScope = "shared";
   ctx.mountProjectAssetSurface();
   assert.equal(assetsNode.parentElement, paHost, "assets view is hosted in the project panel");
   assert.equal(assetsNode.hidden, false);
@@ -281,15 +286,28 @@ assert.equal(ctx.projectDraftDirty({...draft,tapdClear:true},base),true);
   assert.equal(assetRenders, 2, "a type switch re-renders the asset pane");
   assert.equal(mcpRenders, 1, "the MCP pane is not rebuilt on the way back");
 
+  let sopRenders = 0;
+  ctx.renderSOPCatalog = () => {sopRenders++};
+  ctx.mountProjectAssetSurface("sops");
+  assert.equal(sopsNode.parentElement, sopHost, "the SOP view is hosted in its own project panel");
+  assert.equal(sopsNode.hidden, false);
+  assert.equal(ctx.state.sopScope, "project", "hosted SOPs are project scoped");
+  assert.equal(ctx.state.sopHosted, true);
+  assert.equal(sopRenders, 1);
+
   ctx.unmountProjectAssetSurface();
   assert.equal(ctx.state.assetHosted, false);
   assert.equal(ctx.state.mcpHostedProject, "");
   assert.equal(ctx.state.ruleScope, "shared", "scope switches are restored on leave");
   assert.equal(ctx.state.mcpScope, "personal");
-  same(paHome.children.map(n => n.id), ["assetsView", "mcpView"], "original order is kept");
+  same(paHome.children.map(n => n.id), ["assetsView", "mcpView", "sopsView"], "original order is kept");
   assert.equal(paHost.children.length, 0);
+  assert.equal(sopHost.children.length, 0);
   assert.equal(assetsNode.hidden, false, "restored nodes must not stay hidden");
-  delete dom["#assetsView"]; delete dom["#mcpView"]; delete dom["#projectAdminForm [data-project-asset-host]"];
+  assert.equal(ctx.state.sopHosted, false);
+  assert.equal(ctx.state.sopScope, "shared", "the SOP scope is restored on leave");
+  delete dom["#assetsView"]; delete dom["#mcpView"]; delete dom["#sopsView"];
+  delete dom["#paPanel-assets [data-project-asset-host]"]; delete dom["#paPanel-sops [data-project-asset-host]"];
 }
 
 (async()=>{

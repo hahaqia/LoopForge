@@ -57,14 +57,9 @@ func TestSharedScheduleDirectReferenceUnshareAndRestoreGuards(t *testing.T) {
 	check(f.s.PutAgent(agent))
 	agent.Shared = true
 	check(f.s.PutAgent(agent))
-	workflow := domain.WorkflowDefinition{ID: "direct-sop", Name: "SOP", ProjectID: "direct-refs", SandboxProfileID: "local", Nodes: []domain.WorkflowNode{{ID: "approval", Name: "Approval", Type: "approval"}}}
-	check(f.s.PutWorkflow(workflow))
-	workflow, _ = f.s.Workflow(workflow.ID)
-	workflow.Shared = true
-	check(f.s.PutWorkflow(workflow))
 	skill := domain.SkillDefinition{ID: "direct-skill", Name: "Skill", ProjectID: "direct-refs", Shared: true}
 	check(f.s.PutSkill(skill))
-	job := domain.ScheduleJob{ID: "direct-job", Name: "Job", ProjectID: "direct-refs", SkipDispatch: true, AssistantPrompt: "inspect", References: []domain.AssistantReference{{Type: "agent", ID: agent.ID}, {Type: "skill", ID: skill.ID}, {Type: "sop", ID: workflow.ID}}}
+	job := domain.ScheduleJob{ID: "direct-job", Name: "Job", ProjectID: "direct-refs", SkipDispatch: true, AssistantPrompt: "inspect", References: []domain.AssistantReference{{Type: "agent", ID: agent.ID}, {Type: "skill", ID: skill.ID}}}
 	check(f.s.PutScheduleJob(job))
 	version, err := f.s.PublishSharedSchedule(job.ID, job.ProjectID, domain.SharedScheduleVersion{Name: "Shared", Prompt: "inspect"}, 0)
 	check(err)
@@ -74,7 +69,6 @@ func TestSharedScheduleDirectReferenceUnshareAndRestoreGuards(t *testing.T) {
 	}{
 		{"/api/agents", domain.AgentDefinition{ID: agent.ID, Name: agent.Name, ProjectID: agent.ProjectID}},
 		{"/api/skills", domain.SkillDefinition{ID: skill.ID, Name: skill.Name, ProjectID: skill.ProjectID}},
-		{"/api/workflows", domain.WorkflowDefinition{ID: workflow.ID, Name: workflow.Name, ProjectID: workflow.ProjectID, SandboxProfileID: "local"}},
 	} {
 		if rec := cvBRequest(t, f, http.MethodPut, tc.path, tc.body, true); rec.Code != http.StatusConflict {
 			t.Fatalf("unshare %s = %d: %s", tc.path, rec.Code, rec.Body.String())
@@ -82,7 +76,6 @@ func TestSharedScheduleDirectReferenceUnshareAndRestoreGuards(t *testing.T) {
 	}
 	for _, tc := range []struct{ kind, id, path string }{
 		{"agent", agent.ID, "/api/agents/" + agent.ID},
-		{"workflow", workflow.ID, "/api/workflows/" + workflow.ID},
 	} {
 		revisions := f.s.Revisions(tc.kind, tc.id)
 		if len(revisions) != 1 {

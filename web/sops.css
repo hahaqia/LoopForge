@@ -82,25 +82,6 @@
 .scope-share.adopt-action:hover{border-color:var(--blue);background:var(--blue-soft)}
 
 /* 通用模板复制弹窗：依赖预检 */
-.generic-template-card{max-width:620px}
-.generic-structure{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
-.generic-structure span{padding:4px 9px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-size:10.5px;font-weight:700}
-.generic-structure span.highlight{border-color:color-mix(in srgb,var(--blue) 34%,var(--line));background:var(--blue-soft);color:var(--blue)}
-.generic-requirement-head{display:flex;flex-direction:column;gap:3px;margin:16px 0 8px}
-.generic-requirement-head b{font-size:12px;color:var(--text)}
-.generic-requirement-head span{font-size:10.5px;color:var(--muted-2);line-height:1.5}
-.generic-requirements{display:grid;gap:8px}
-.req-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg-soft)}
-.req-row.missing{border-color:color-mix(in srgb,var(--amber) 34%,var(--line))}
-.req-row .req-mark{width:22px;height:22px;flex:0 0 22px;display:grid;place-items:center;border-radius:50%;font-size:11px;font-weight:800;background:var(--panel-2);color:var(--muted)}
-.req-row.ok .req-mark{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}
-.req-row.missing .req-mark{background:color-mix(in srgb,var(--amber) 18%,transparent);color:color-mix(in srgb,var(--amber) 80%,var(--text))}
-.req-row>div{flex:1;min-width:0}
-.req-row b{display:block;font-size:12px;color:var(--text)}
-.req-row p{margin:2px 0 0;font-size:10.5px;color:var(--muted-2);line-height:1.5}
-.req-row .req-state{font-size:10px;font-weight:750;color:var(--muted-2);white-space:nowrap}
-.req-row.ok .req-state{color:var(--green)}
-.req-row.missing .req-state{color:color-mix(in srgb,var(--amber) 78%,var(--text))}
 
 .sop-playbooks{width:100%;max-width:840px;display:flex;flex-direction:column;gap:12px;padding:0 0 24px}
 .sop-playbook-list{display:flex;flex-direction:column;gap:10px}

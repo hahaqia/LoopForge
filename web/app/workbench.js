@@ -1660,6 +1660,7 @@ function renderPlatformNav(){
 const PLATFORM_TABS=[
   {id:'accounts',zh:'成员账号',en:'Accounts'},
   {id:'admins',zh:'平台管理员',en:'Admins'},
+  {id:'templates',zh:'平台 SOP',en:'Platform SOPs'},
   {id:'sharedKey',zh:'共享 CodeBuddy Key',en:'Shared CodeBuddy Key'},
   {id:'gitHostTrust',zh:'Git 主机信任',en:'Git Host Trust'},
 ];
@@ -1829,15 +1830,46 @@ function renderPlatformAdminPanel(){
       </div>
     </div>
     `)}
+    ${platformTabPanel('templates',tab,platformTemplatesHTML())}
     ${platformTabPanel('sharedKey',tab,platformSharedKeyHTML())}
     ${platformTabPanel('gitHostTrust',tab,platformSSHHostTrustHTML()+platformHTTPSHostTrustHTML())}
   `;
   bindPlatformTabs(host);
+  bindPlatformTemplates(host);
   loadPlatformAccounts(host);
   loadPlatformSharedKey(host);
   loadPlatformSSHHosts(host);
   loadPlatformHTTPSHosts(host);
   loadPlatformAdmins(host);
+}
+
+// 平台管理 → 平台 SOP：平台模板的唯一维护入口（目录页保持只读）。
+function platformTemplatesHTML(){
+  const list=(state.data?.workflows||[]).filter(catalogGeneric);
+  const rows=list.length?list.map(w=>`<div class="platform-sop-row">
+      <div class="platform-sop-meta">
+        <b>${escapeHTML(w.name)}</b>
+        <small>v${w.version||1} · ${escapeHTML(w.owner||'平台')} · ${(w.nodes||[]).length} 个节点 · ${escapeHTML(w.status||'draft')}</small>
+      </div>
+      <button type="button" class="button ghost small" data-edit-platform-sop="${escapeHTML(w.id)}">编辑</button>
+    </div>`).join(''):'<p class="pa-rows-empty">还没有平台 SOP。新建后各项目可以在「项目配置 › SOP 流程」里复制使用。</p>';
+  return `<section class="platform-admin-main-card" id="platformTemplatesCard">
+    <div class="platform-admin-head">
+      <div class="platform-admin-head-meta">
+        <h2>平台 SOP</h2>
+        <p>平台 SOP 与项目无关，是各项目复用的唯一通道。项目在「项目配置 › SOP 流程」里复制后自行修改和运行，不再跟随平台更新。</p>
+      </div>
+      <button type="button" class="button primary platform-add-btn" id="newPlatformSOP">＋ 新建平台 SOP</button>
+    </div>
+    <div class="platform-sop-list">${rows}</div>
+  </section>`;
+}
+function bindPlatformTemplates(host){
+  const create=host.querySelector('#newPlatformSOP');
+  if(create)create.addEventListener('click',()=>newPlatformSOP());
+  host.querySelectorAll('[data-edit-platform-sop]').forEach(btn=>{
+    btn.addEventListener('click',()=>openGenericTemplateEditor(btn.dataset.editPlatformSop));
+  });
 }
 
 // 平台管理 → 成员账号 / 平台共享 CodeBuddy Key.

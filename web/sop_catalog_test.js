@@ -63,37 +63,32 @@ assert.ok(own.includes('<span class="is-bad"><b>1</b>失败</span>'), 'non-zero 
 assert.ok(own.includes('example-owner · v7 · 最近 T'), own);
 assert.strictEqual(count(own, 'data-hover-ink-control'), 2, 'primary and ⋯ carry hover ink');
 
-const foreign = ctx.sopCatalogCard(wf('foreign'), new Map(), []);
-assert.strictEqual(count(foreign, 'class="sop-card-primary"'), 1, foreign);
-assert.ok(foreign.includes('data-clone-workflow="foreign"') && foreign.includes('复制到本项目'), foreign);
-assert.ok(!foreign.includes('data-sop-menu'), 'shared cards have no ⋯');
-assert.ok(foreign.includes('<span class="sop-card-tag">来自 平台基础设施</span>'), 'source tag sits in the meta row');
+// ---------- 共享 SOP 卡片随共享机制一起移除 ----------
+assert.strictEqual(ctx.sharedSOPCard, undefined, '项目 SOP 不再跨项目共享，不再有共享卡片');
+assert.strictEqual(ctx.toggleShare.length, 1, 'toggleShare 只服务角色共享');
+assert.ok(!ctx.sopCatalogCard(wf('foreign'), new Map(), []).includes('data-clone-workflow'), '目录卡片不再提供复制入口');
 assert.strictEqual(ctx.sopCardMenuItems(wf('foreign')).length, 0);
 
 const generic = ctx.genericSOPCard(wf('gen'));
-assert.ok(generic.includes('class="sop-card generic" data-generic-id="gen" tabindex="0" role="button"'), generic);
-assert.strictEqual(count(generic, 'class="sop-card-primary"'), 1, generic);
-assert.ok(generic.includes('data-adopt-generic="gen"'), generic);
-assert.ok(generic.includes('data-sop-menu="gen"'), generic);
+assert.ok(generic.includes('class="sop-card generic is-readonly" data-generic-id="gen"'), generic);
+assert.ok(!generic.includes('tabindex'), 'platform cards are not interactive');
+assert.ok(!generic.includes('sop-card-primary'), 'platform cards expose no primary action');
+assert.ok(!generic.includes('data-adopt-generic'), generic);
+assert.ok(!generic.includes('data-sop-menu'), generic);
 assert.ok(generic.includes('sop-badge tone-accent') && generic.includes('>通用<'), 'generic status is accent');
-assert.ok(!/data-(run|edit)-generic/.test(generic), 'run / edit live in the ⋯ menu');
-const adopted = ctx.genericSOPCard(wf('gen2'));
-assert.ok(adopted.includes('data-open-sop="copy"') && adopted.includes('查看项目副本'), adopted);
-assert.ok(!adopted.includes('data-adopt-generic'), adopted);
+assert.ok(!/data-(run|edit)-generic/.test(generic), 'platform templates expose no actions');
 
 // ---------- ⋯ menu items ----------
 const ownMenu = ctx.sopCardMenuHTML(wf('own'));
-assert.ok(ownMenu.includes('data-share-workflow="own"') && ownMenu.includes('共享给其他项目'), ownMenu);
+assert.ok(!ownMenu.includes('data-share-workflow'), 'project SOPs no longer expose sharing');
 assert.ok(ownMenu.includes('class="issue-popover-item danger" data-sop-action="delete" data-delete-workflow="own"'), ownMenu);
-assert.strictEqual(count(ownMenu, 'role="menuitem"'), 2, ownMenu);
-assert.ok(ctx.sopCardMenuHTML(wf('own-shared')).includes('取消共享'));
-ctx.admin = false;
-let genMenu = ctx.sopCardMenuHTML(wf('gen'));
-assert.ok(genMenu.includes('data-run-generic="gen"') && genMenu.includes('直接运行'), genMenu);
-assert.ok(!genMenu.includes('data-edit-generic'), 'only platform admins edit generic templates');
+assert.strictEqual(count(ownMenu, 'role="menuitem"'), 1, ownMenu);
+assert.strictEqual(ctx.sopCardMenuHTML(wf('gen')), '', '平台 SOP 目录保持只读，没有 ⋯ 菜单');
 ctx.admin = true;
-genMenu = ctx.sopCardMenuHTML(wf('gen'));
-assert.ok(genMenu.includes('data-edit-generic="gen"') && genMenu.includes('编辑模板'), genMenu);
+assert.strictEqual(ctx.sopCardMenuHTML(wf('gen')), '', '平台模板维护入口在平台管理视图，不在目录页');
+const promoteMenu = ctx.sopCardMenuHTML(wf('own'));
+assert.ok(promoteMenu.includes('data-promote-workflow="own"') && promoteMenu.includes('提升为平台模板'), promoteMenu);
+ctx.admin = false;
 
 // ---------- Badge tones ----------
 const tone = (m, live = 0) => ctx.sopHealthTone(ctx.metricHealth(m, live)).tone;

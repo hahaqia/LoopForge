@@ -3,10 +3,12 @@ package httpapi
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	"agentflow/internal/domain"
+	"agentflow/internal/repo"
 )
 
 // adoptGenericWorkflow clones a built-in generic template into a project: the
@@ -305,4 +307,130 @@ func (h *catalogHandlers) genericTemplateSandbox(preferred, projectID string) st
 		}
 	}
 	return ""
+}
+
+// createGenericWorkflow writes a brand-new platform SOP into generic_templates.
+// Project SOPs never land here: the id must not collide with any stored SOP.
+func (h *catalogHandlers) createGenericWorkflow(v domain.WorkflowDefinition) (domain.WorkflowDefinition, int, error) {
+	if _, taken := h.repo.GenericTemplateByWorkflow(v.ID); taken {
+		return domain.WorkflowDefinition{}, http.StatusConflict, fmt.Errorf("平台 SOP %s 已存在", v.ID)
+	}
+	if _, taken := h.repo.Workflow(v.ID); taken {
+		return domain.WorkflowDefinition{}, http.StatusConflict, fmt.Errorf("ID %s 已被占用，请换一个", v.ID)
+	}
+	profile, ok := h.repo.Sandbox(v.SandboxProfileID)
+	if !ok {
+		return domain.WorkflowDefinition{}, http.StatusBadRequest, errors.New("平台 SOP 需要选择一个运行沙箱")
+	}
+	if profile.ProjectID != "" && !profile.Shared {
+		return domain.WorkflowDefinition{}, http.StatusBadRequest, fmt.Errorf("平台 SOP 必须使用平台共享沙箱：%s", profile.Name)
+	}
+	v.Generic, v.ProjectID, v.Shared = true, "", false
+	v.Revision, v.PublishedRevision = 0, 0
+	if v.Version == 0 {
+		v.Version = 1
+	}
+	if strings.TrimSpace(v.Status) == "" {
+		v.Status = "draft"
+	}
+	if strings.TrimSpace(v.SOPLane) == "" {
+		v.SOPLane = domain.InferSOPLane(v)
+	}
+	attached, err := domain.AttachPreviewBuild(v)
+	if err != nil {
+		return domain.WorkflowDefinition{}, http.StatusBadRequest, err
+	}
+	if err := h.repo.PutGenericTemplate(repo.GenericTemplate{Workflow: attached}); err != nil {
+		return domain.WorkflowDefinition{}, http.StatusBadRequest, err
+	}
+	return attached, http.StatusCreated, nil
+}
+
+// promoteWorkflow copies a project SOP into the platform catalog. The project
+// SOP stays untouched; its roles, rules and skills are bundled into the new
+// template so any project can adopt a runnable copy.
+func (h *catalogHandlers) promoteWorkflow(src domain.WorkflowDefinition, id, name, owner string) (domain.WorkflowDefinition, int, error) {
+	id, name = strings.TrimSpace(id), strings.TrimSpace(name)
+	if id == "" || name == "" {
+		return domain.WorkflowDefinition{}, http.StatusBadRequest, errors.New("平台 SOP 需要 id 和名称")
+	}
+	if src.Generic {
+		return domain.WorkflowDefinition{}, http.StatusConflict, errors.New("平台 SOP 无需提升")
+	}
+	if _, taken := h.repo.GenericTemplateByWorkflow(id); taken {
+		return domain.WorkflowDefinition{}, http.StatusConflict, fmt.Errorf("平台 SOP %s 已存在", id)
+	}
+	if _, taken := h.repo.Workflow(id); taken {
+		return domain.WorkflowDefinition{}, http.StatusConflict, fmt.Errorf("ID %s 已被占用，请换一个", id)
+	}
+	if profile, ok := h.repo.Sandbox(src.SandboxProfileID); !ok || (profile.ProjectID != "" && !profile.Shared) {
+		return domain.WorkflowDefinition{}, http.StatusBadRequest, errors.New("提升为平台 SOP 前，请先把该 SOP 的运行沙箱换成平台共享沙箱")
+	}
+	template := repo.GenericTemplate{}
+	seenRole, seenRule, seenSkill := map[string]bool{}, map[string]bool{}, map[string]bool{}
+	for _, node := range src.Nodes {
+		if node.Type != "agent" {
+			continue
+		}
+		agentID := strings.TrimSpace(node.AgentID)
+		if agentID == "" || domain.IsPreviewBuildAgent(agentID) || seenRole[agentID] {
+			continue
+		}
+		role, ok := h.repo.Agent(agentID)
+		if !ok {
+			return domain.WorkflowDefinition{}, http.StatusBadRequest, fmt.Errorf("角色 %q 不存在，请先补齐后再提升", agentID)
+		}
+		seenRole[agentID] = true
+		role.ProjectID, role.Shared = "", false
+		template.Agents = append(template.Agents, role)
+		for _, ruleID := range role.Rules {
+			if seenRule[ruleID] {
+				continue
+			}
+			rule, ok := h.repo.Rule(ruleID)
+			if !ok {
+				return domain.WorkflowDefinition{}, http.StatusBadRequest, fmt.Errorf("角色 %q 引用的规则 %q 不存在，请先补齐后再提升", role.Name, ruleID)
+			}
+			seenRule[ruleID] = true
+			rule.ProjectID, rule.Shared = "", false
+			template.Rules = append(template.Rules, rule)
+		}
+		for _, skillID := range role.Skills {
+			if seenSkill[skillID] {
+				continue
+			}
+			skill, ok := h.repo.Skill(skillID)
+			if !ok {
+				return domain.WorkflowDefinition{}, http.StatusBadRequest, fmt.Errorf("角色 %q 引用的技能 %q 不存在，请先补齐后再提升", role.Name, skillID)
+			}
+			seenSkill[skillID] = true
+			skill.ProjectID, skill.Shared = "", false
+			template.Skills = append(template.Skills, skill)
+		}
+	}
+	promoted := src
+	promoted.Nodes = append([]domain.WorkflowNode(nil), src.Nodes...)
+	promoted.Edges = append([]domain.WorkflowEdge(nil), src.Edges...)
+	promoted.Requirements = append([]domain.WorkflowRequirement(nil), src.Requirements...)
+	promoted.Tags = make([]string, 0, len(src.Tags))
+	for _, tag := range src.Tags {
+		if strings.HasPrefix(tag, "generic-source:") {
+			continue
+		}
+		promoted.Tags = append(promoted.Tags, tag)
+	}
+	promoted.ID, promoted.Name, promoted.Owner = id, name, owner
+	promoted.Generic, promoted.ProjectID, promoted.Shared = true, "", false
+	promoted.Status, promoted.Version, promoted.Revision = "draft", 1, 0
+	promoted.PublishedRevision = 0
+	promoted.CreatedAt, promoted.UpdatedAt = time.Time{}, time.Time{}
+	if strings.TrimSpace(promoted.SOPLane) == "" {
+		promoted.SOPLane = domain.InferSOPLane(src)
+	}
+	template.Workflow = promoted
+	if err := h.repo.PutGenericTemplate(template); err != nil {
+		return domain.WorkflowDefinition{}, http.StatusBadRequest, err
+	}
+	stored, _ := h.repo.Workflow(id)
+	return stored, http.StatusCreated, nil
 }

@@ -809,8 +809,13 @@ func normalizeSOPBindings(store *repo.Store, projectID string, in []domain.Issue
 				return nil, fmt.Errorf("步骤责任人必须是有效用户")
 			}
 		}
-		if wf, ok := store.Workflow(binding.WorkflowID); ok && strings.TrimSpace(wf.ProjectID) != "" && wf.ProjectID != projectID && !wf.Shared && !wf.Generic {
-			return nil, fmt.Errorf("SOP %s 不属于当前项目", binding.WorkflowID)
+		if wf, ok := store.Workflow(binding.WorkflowID); ok {
+			if wf.Generic {
+				return nil, fmt.Errorf("平台 SOP %s 请先复制到本项目再绑定", binding.WorkflowID)
+			}
+			if strings.TrimSpace(wf.ProjectID) != "" && wf.ProjectID != projectID && !wf.Shared {
+				return nil, fmt.Errorf("SOP %s 不属于当前项目", binding.WorkflowID)
+			}
 		}
 		bindings[i] = binding
 	}
@@ -857,6 +862,14 @@ func (h issuesHandlers) assignIssueWorkflow(issue *domain.Issue, workflowID stri
 	}
 	if !knownWorkflow(h.repo, workflowID) {
 		return fmt.Errorf("workflow not found")
+	}
+	if wf, ok := h.repo.Workflow(workflowID); ok {
+		if wf.Generic {
+			return fmt.Errorf("平台 SOP 请先复制到本项目再使用")
+		}
+		if projectID := strings.TrimSpace(issue.ProjectID); projectID != "" && strings.TrimSpace(wf.ProjectID) != "" && wf.ProjectID != projectID && !wf.Shared {
+			return fmt.Errorf("SOP 不属于当前项目")
+		}
 	}
 	issue.WorkflowID = workflowID
 	return nil

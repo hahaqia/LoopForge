@@ -57,10 +57,18 @@ func (r *CatalogRepo) directScheduleReferences(refs []domain.AssistantReference)
 
 // shareScheduleReference delegates the next dependency boundary to the
 // referenced asset's sharing path. The caller supplies the publish transaction.
+// SOPs are the exception: project SOPs are no longer shared across projects, so
+// a shared schedule may only reference an already published platform SOP.
 func (r *CatalogRepo) shareScheduleReference(ref domain.AssistantReference, projectID string) error {
 	canonical, shared, found := r.sharedScheduleReference(ref)
 	if !found {
 		return fmt.Errorf("%w：%s/%s 不存在", ErrSharedScheduleReferences, ref.Type, ref.ID)
+	}
+	if ref.Type == "sop" {
+		if v, ok := r.Workflow(ref.ID); !ok || !v.Generic {
+			return fmt.Errorf("%w：项目 SOP 不再支持跨项目共享，请在共享任务中引用平台 SOP", ErrSharedScheduleReferences)
+		}
+		return nil
 	}
 	if shared {
 		return nil
@@ -74,8 +82,6 @@ func (r *CatalogRepo) shareScheduleReference(ref domain.AssistantReference, proj
 		err = r.ShareAgent(ref.ID)
 	case "skill":
 		err = r.ShareSkill(ref.ID)
-	case "sop":
-		err = r.ShareWorkflow(ref.ID)
 	default:
 		return fmt.Errorf("%w：%s 不支持随 AI 定时任务共享", ErrSharedScheduleReferences, ref.Type)
 	}
