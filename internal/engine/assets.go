@@ -100,7 +100,10 @@ func (e *Engine) resolveAssets(agent domain.AgentDefinition, projectID, workflow
 			if v.ProjectID == "" {
 				continue
 			}
-			if v.ProjectID != projectID {
+			// 共享角色在其他项目复用时，它自己项目里共享的技能要跟着走，
+			// 否则定时任务/SOP 引用共享角色时会被技能隔离规则吃掉资产；
+			// 私有技能仍不跨项目，避免把源项目私有资产带出去。
+			if v.ProjectID != projectID && !(agent.Shared && v.ProjectID == agent.ProjectID && v.Shared) {
 				if tmpl, found := e.repo.GenericSkillByID(id); found {
 					bundle.Skills = append(bundle.Skills, tmpl)
 				}

@@ -67,6 +67,8 @@ ENV PATH="/app/bin:${PATH}"
 # An explicit ZHIYAN_COMMIT wins. Otherwise read HEAD from the build context
 # so `docker build` stamps the same corner label as the release workflow.
 ARG ZHIYAN_COMMIT=
+ARG LOOPFORGE_RELEASE_VERSION=
+ENV LOOPFORGE_RELEASE_VERSION=${LOOPFORGE_RELEASE_VERSION}
 RUN --mount=type=bind,source=.,target=/ctx,ro \
     sh /ctx/scripts/image-commit.sh /ctx /app/zhiyan-commit
 EXPOSE 8080

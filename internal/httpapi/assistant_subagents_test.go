@@ -190,7 +190,7 @@ func TestSkillMentionsAreScopedHintedAndWrittenToHome(t *testing.T) {
 	root := t.TempDir()
 	// 本项目技能在未提及时也会安装；其他项目的共享技能不会。
 	plain := assistantRequest{ProjectID: "workbench", Messages: []assistantMessage{{Role: "user", Content: "写一下"}}}
-	if err := h.writeConversationAssets(root, plain); err != nil {
+	if err := h.writeConversationAssets(root, plain, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "home", ".codebuddy", "skills", "lint", "SKILL.md")); err != nil {
@@ -237,6 +237,10 @@ func TestProjectSkillsInstallAndPlatformSkillsStayOut(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	stored, found := h.repo.Skill("ops-runbook")
+	if !found {
+		t.Fatal("ops-runbook not stored")
+	}
 	asset := []byte{0, 1, 2, 255}
 	skillMD := []byte("---\nname: own\ndescription: own skill\n---\nUse the attached asset.\n")
 	if err := h.repo.PutSkillFiles("own", []repo.SkillFileInput{
@@ -250,33 +254,46 @@ func TestProjectSkillsInstallAndPlatformSkillsStayOut(t *testing.T) {
 		"workbench": {"own"},
 		"":          nil,
 	} {
-		root := t.TempDir()
-		if err := h.writeConversationAssets(root, assistantRequest{ProjectID: project}); err != nil {
-			t.Fatal(err)
-		}
-		dir := filepath.Join(root, "home", ".codebuddy", "skills")
-		entries, err := os.ReadDir(dir)
-		if len(want) == 0 {
-			if err == nil && len(entries) > 0 {
-				t.Fatalf("project %q installed %d skills, want none", project, len(entries))
+		for _, mentioned := range []bool{false, true} {
+			req := assistantRequest{ProjectID: project}
+			if mentioned {
+				req.skills = []domain.SkillDefinition{stored}
 			}
-			continue
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		got := map[string]bool{}
-		for _, entry := range entries {
-			got[entry.Name()] = true
-		}
-		if len(got) != len(want) {
-			t.Fatalf("project %q installed %v, want %v", project, got, want)
-		}
-		if !got["own"] {
-			t.Fatalf("project %q missing own skill (got %v)", project, got)
-		}
-		if data, err := os.ReadFile(filepath.Join(dir, "own", "assets", "check.bin")); err != nil || !bytes.Equal(data, asset) {
-			t.Fatalf("project %q own skill asset = %v %v", project, data, err)
+			root := t.TempDir()
+			if err := h.writeConversationAssets(root, req, nil); err != nil {
+				t.Fatal(err)
+			}
+			dir := filepath.Join(root, "home", ".codebuddy", "skills")
+			entries, err := os.ReadDir(dir)
+			if err != nil && !os.IsNotExist(err) {
+				t.Fatal(err)
+			}
+			got := map[string]bool{}
+			for _, entry := range entries {
+				got[entry.Name()] = true
+			}
+			expected := len(want)
+			if mentioned {
+				expected++
+			}
+			if len(got) != expected {
+				t.Fatalf("project %q mentioned=%v installed %v, want %d entries", project, mentioned, got, expected)
+			}
+			if mentioned {
+				if !got["ops-runbook"] {
+					t.Fatalf("project %q mentioned skill not installed (got %v)", project, got)
+				}
+			} else if _, err := os.Stat(filepath.Join(dir, "ops-runbook")); !os.IsNotExist(err) {
+				t.Fatalf("project %q unmentioned shared skill was installed", project)
+			}
+			if len(want) > 0 {
+				if !got["own"] {
+					t.Fatalf("project %q missing own skill (got %v)", project, got)
+				}
+				if data, err := os.ReadFile(filepath.Join(dir, "own", "assets", "check.bin")); err != nil || !bytes.Equal(data, asset) {
+					t.Fatalf("project %q own skill asset = %v %v", project, data, err)
+				}
+			}
 		}
 	}
 }
@@ -301,7 +318,7 @@ func TestManyPlatformSkillsDoNotLeakIntoProjectConversations(t *testing.T) {
 	}
 	for _, project := range []string{"workbench", ""} {
 		root := t.TempDir()
-		if err := h.writeConversationAssets(root, assistantRequest{ProjectID: project}); err != nil {
+		if err := h.writeConversationAssets(root, assistantRequest{ProjectID: project}, nil); err != nil {
 			t.Fatal(err)
 		}
 		entries, err := os.ReadDir(filepath.Join(root, "home", ".codebuddy", "skills"))

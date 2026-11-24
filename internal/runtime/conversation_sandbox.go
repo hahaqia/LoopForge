@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -226,6 +227,16 @@ func (s *dockerSandbox) ensureDockerCLI(ctx context.Context, provider, home stri
 			return "", fmt.Errorf("探测工作区 CLI %s 失败：%w: %s", binary, err, conversationSetupOutput(probe))
 		}
 		installMode = "install"
+		if provider == AgentCLICursor && goruntime.GOOS == "linux" {
+			shared, err := prepareSharedCursorCLI(ctx, false)
+			// An unavailable shared directory must not block installation
+			// in the container. Probe any shared copy as the task user,
+			// since a different architecture or libc may need the installer.
+			if err == nil && shared != "" && s.probeCLIVersion(ctx, provider, shared) != "" {
+				taskPathSetup += "PATH=$PATH:" + shellSingleQuote(filepath.Dir(shared)) + "\nexport PATH\n"
+				installMode = "reuse"
+			}
+		}
 	}
 
 	setupArgs := []string{"exec", "--user", "0:0", "--workdir", "/"}
@@ -270,10 +281,6 @@ func dockerCLISetup(provider, binary string) (string, error) {
 			// The official CLI is shipped with ZCode or built from its source;
 			// it has no standalone npm package. Never install a namesake.
 			installer = "echo 'ZCode CLI 未安装；请在工作区镜像中预装官方 ZCode CLI 并将 zcode 加入 PATH' >&2; exit 1"
-		case AgentCLICursor:
-			installer = conversationScriptInstaller(cursorInstallerURL)
-		case AgentCLIAntigravity:
-			installer = conversationScriptInstaller(agyInstallerURL)
 		default:
 			return "", fmt.Errorf("不支持的会话CLI %s", provider)
 		}
