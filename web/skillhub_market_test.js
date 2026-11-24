@@ -22,6 +22,7 @@ const ctx = {
   catalogForeign: projectId => !!projectId && projectId !== ctx.state.projectFilter,
   catalogShared: (projectId, shared) => !projectId || (!!shared && projectId !== ctx.state.projectFilter),
   catalogVisible: () => true,
+  isPlatformAdmin: () => ctx.state.platformAdmin !== false,
   renderMarkdown: md => `<p>${md}</p>`,
   highlightCode: code => code,
   toast() {},
@@ -64,24 +65,23 @@ assert.ok(trace.includes('安全扫描') && trace.includes('data-trace-dim="trus
 assert.ok(!trace.includes('data-trace-dim="effectiveness"'), 'missing dimension is not drawn');
 assert.ok(ctx.skillhubTraceHTML({ available: false }).includes('暂无质量评测'));
 
-// ---------- Installed / update state is per project ----------
+// ---------- Installed / update state is platform-scoped ----------
 reset();
 const src = (slug, version, namespace = 'team') => ({ provider: 'skillhub', slug, version, namespace });
 ctx.state.data.skills = [
-  { id: 'pdf', projectId: 'p1', source: src('pdf-tools', '1.0.0') },
-  { id: 'review', projectId: 'p2', shared: true, source: src('code-review', '2.0.0') },
-  { id: 'plain', projectId: 'p1' },
-  { id: 'other-ns', projectId: 'p1', source: src('find-skills', '1.0.0', 'indiv-a') },
+  { id: 'pdf', projectId: '', shared: true, source: src('pdf-tools', '1.0.0') },
+  { id: 'review', projectId: 'p2', source: src('code-review', '2.0.0') },
+  { id: 'plain', projectId: '', shared: true },
+  { id: 'other-ns', projectId: '', shared: true, source: src('find-skills', '1.0.0', 'indiv-a') },
 ];
 assert.strictEqual(ctx.skillhubCardState({ slug: 'pdf-tools', namespace: 'team', version: '1.3.0' }).state, 'update');
 assert.strictEqual(ctx.skillhubCardState({ slug: 'pdf-tools', namespace: 'team', version: '1.0.0' }).state, 'installed');
 assert.strictEqual(ctx.skillhubCardState({ slug: 'pdf-tools', namespace: '', version: '1.0.0' }).state, 'installed', 'empty namespace matches');
-assert.strictEqual(ctx.skillhubCardState({ slug: 'code-review', namespace: 'team', version: '2.0.0' }).state, 'none', 'another project install does not count');
+assert.strictEqual(ctx.skillhubCardState({ slug: 'code-review', namespace: 'team', version: '2.0.0' }).state, 'none', 'a project copy does not count as installed');
 assert.strictEqual(ctx.skillhubCardState({ slug: 'find-skills', namespace: 'org-b', version: '1.0.0' }).state, 'none', 'same slug in another namespace is a different skill');
 assert.strictEqual(ctx.skillhubCardState({ slug: 'plain', version: '1' }).state, 'none', 'hand-made skills never match');
 ctx.state.projectFilter = 'p2';
-assert.strictEqual(ctx.skillhubCardState({ slug: 'code-review', namespace: 'team', version: '2.0.0' }).state, 'installed');
-assert.strictEqual(ctx.skillhubCardState({ slug: 'pdf-tools', namespace: 'team', version: '1.0.0' }).state, 'none');
+assert.strictEqual(ctx.skillhubCardState({ slug: 'pdf-tools', namespace: 'team', version: '1.0.0' }).state, 'installed', 'platform install is not affected by the project filter');
 
 // ---------- Card HTML: escaping and actions ----------
 reset();
@@ -89,16 +89,17 @@ const evil = { slug: 'x"><img src=x onerror=alert(1)>', name: '<script>alert(1)<
 let card = ctx.skillhubCardHTML(evil, 0);
 assert.ok(!/<script|<img|<b>/.test(card), card);
 assert.ok(card.includes('&lt;script&gt;') && card.includes('9.8 万') && card.includes('需要 API Key'), card);
-assert.ok(card.includes('data-skillhub-install="0"') && !card.includes('disabled'), 'install enabled with a project');
-ctx.state.projectFilter = '';
+assert.ok(card.includes('data-skillhub-install="0"') && !card.includes('disabled'), 'install enabled for platform admins');
+ctx.state.platformAdmin = false;
 card = ctx.skillhubCardHTML({ slug: 'a', name: 'A', version: '1' }, 3);
-assert.ok(card.includes('data-skillhub-install="3" disabled title="请先选择项目"'), card);
+assert.ok(card.includes('data-skillhub-install="3" disabled title="只有平台管理员可以安装技能"'), card);
+ctx.state.platformAdmin = true;
 reset();
-ctx.state.data.skills = [{ id: 'pdf', projectId: 'p1', source: src('pdf-tools', '1.0.0') }];
+ctx.state.data.skills = [{ id: 'pdf', projectId: '', shared: true, source: src('pdf-tools', '1.0.0') }];
 card = ctx.skillhubCardHTML({ slug: 'pdf-tools', namespace: 'team', name: 'PDF', version: '1.3.0' }, 1);
 assert.ok(card.includes('data-tone="warn"') && card.includes('hui-lamp') && card.includes('有新版本 v1.3.0') && card.includes('data-skillhub-update="1"'), card);
 card = ctx.skillhubCardHTML({ slug: 'pdf-tools', namespace: 'team', name: 'PDF', version: '1.0.0' }, 1);
-assert.ok(card.includes('data-tone="success"') && card.includes('已安装 v1.0.0') && !card.includes('<button'), card);
+assert.ok(card.includes('data-tone="success"') && card.includes('平台已安装 v1.0.0') && !card.includes('<button'), card);
 
 // ---------- Security reports degrade ----------
 assert.ok(ctx.skillhubSecurityHTML(null).includes('暂无安全认证信息'));
@@ -114,10 +115,11 @@ assert.ok(ctx.skillhubSecuritySummary({ keen: { safe: false, status: 'malicious'
 
 // ---------- Install id hints ----------
 reset();
-ctx.state.data.skills = [{ id: 'mine', projectId: 'p1' }, { id: 'theirs', projectId: 'p2', shared: true }];
+ctx.state.data.skills = [{ id: 'mine', projectId: 'p1' }, { id: 'theirs', projectId: 'p2', shared: true }, { id: 'plat', projectId: '', shared: true }];
 assert.strictEqual(ctx.skillhubIdProblem('fresh-id'), '');
 assert.ok(ctx.skillhubIdProblem('mine').includes('本项目'));
 assert.ok(ctx.skillhubIdProblem('theirs').includes('项目「数据中台」'));
+assert.ok(ctx.skillhubIdProblem('plat').includes('平台'), ctx.skillhubIdProblem('plat'));
 assert.ok(ctx.skillhubIdProblem('../x').includes('只能包含'));
 assert.ok(ctx.skillhubIdProblem('  ').includes('请填写'));
 
@@ -142,6 +144,9 @@ assert.strictEqual(els['#skillhubMarket'].hidden, true);
 reset({ skillScope: 'project' });
 ctx.skillhubSyncChrome();
 assert.strictEqual(scopeButtons.skillhub.hidden, false, 'skills page shows the SkillHub tab');
+reset({ skillScope: 'project', platformAdmin: false });
+ctx.skillhubSyncChrome();
+assert.strictEqual(scopeButtons.skillhub.hidden, true, 'non-admins never see the SkillHub tab');
 assert.strictEqual(els['#skillhubMarket'].hidden, true, 'market stays hidden on the project scope');
 assert.strictEqual(els['#assetList'].hidden, false);
 reset({ skillScope: 'skillhub' });

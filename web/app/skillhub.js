@@ -34,11 +34,11 @@ function skillhubTraceScore(dimensions){
 }
 function skillhubSourceOf(skill){const s=skill?.source;return s&&s.provider==='skillhub'?s:null}
 function skillhubKey(namespace,slug){return `${namespace||''}/${slug||''}`}
-// Only skills owned by the current project count as installed; an empty
-// namespace on either side matches, the same rule the server enforces.
+// 市场只出现在平台侧：平台已安装 = projectId 为空且来源是 skillhub。
+// namespace 任一侧为空都视为匹配，与服务端 skillhubInstalled 规则一致。
 function skillhubInstalledSkill(item,skills=state.data?.skills){
   if(!item?.slug)return null;
-  return (skills||[]).find(s=>{const src=skillhubSourceOf(s);return !!src&&catalogOwned(s.projectId)&&src.slug===item.slug&&(!src.namespace||!item.namespace||src.namespace===item.namespace)})||null;
+  return (skills||[]).find(s=>{const src=skillhubSourceOf(s);return !!src&&!String(s.projectId||'')&&src.slug===item.slug&&(!src.namespace||!item.namespace||src.namespace===item.namespace)})||null;
 }
 function skillhubCardState(item,skills){
   const skill=skillhubInstalledSkill(item,skills);
@@ -77,13 +77,13 @@ function skillhubProjectName(id){return (state.data?.projects||[]).find(p=>p.id=
 function skillhubCardHTML(item,index){
   const st=skillhubCardState(item);
   const labels=skillhubLabelBadges(item.labels).map(([tone,label])=>skillhubBadge(tone,label)).join('');
-  const status=st.state==='installed'?skillhubBadge('success',`已安装 v${st.version}`,huiIcon('check'))
+  const status=st.state==='installed'?skillhubBadge('success',`平台已安装 v${st.version}`,huiIcon('check'))
     :st.state==='update'?skillhubBadge('warn',`有新版本 v${item.version}`,skillhubLamp())
     :`<span class="asset-status">${escapeHTML(item.ownerName||item.namespace||'')}</span>`;
-  const noProject=!state.projectFilter;
+  const noPermission=!isPlatformAdmin();
   const action=st.state==='update'?`<button type="button" class="button small hui-btn-soft" data-skillhub-update="${index}">${huiIcon('refresh')}更新</button>`
     :st.state==='installed'?`<span class="asset-card-go">详情${huiIcon('chevron-right')}</span>`
-    :`<button type="button" class="button small hui-btn-soft" data-skillhub-install="${index}"${noProject?' disabled title="请先选择项目"':''}>${huiIcon('plus')}安装</button>`;
+    :`<button type="button" class="button small hui-btn-soft" data-skillhub-install="${index}"${noPermission?' disabled title="只有平台管理员可以安装技能"':''}>${huiIcon('plus')}安装到平台</button>`;
   return `<article class="asset-card skillhub-card" role="link" tabindex="0" data-skillhub-open="${index}" aria-label="查看「${escapeHTML(item.name||item.slug)}」"><div class="asset-card-top"><span class="asset-tile skillhub-tile">${skillhubTile(item.name||item.slug)}</span><div class="asset-card-name"><h3>${escapeHTML(item.name||item.slug)}</h3><code class="asset-mono">${escapeHTML(item.slug)}${item.version?` · v${escapeHTML(item.version)}`:''}</code></div></div><p class="asset-card-desc">${escapeHTML(item.description||'暂无说明')}</p><div class="asset-meta"><span>${huiIcon('download')}${escapeHTML(skillhubCount(item.downloads))}</span><span>${huiIcon('star')}${escapeHTML(skillhubCount(item.stars))}</span>${item.category?`<span>${huiIcon('layers')}${escapeHTML(skillhubCategoryName(item.category))}</span>`:''}${labels}</div><div class="asset-card-foot">${status}${action}</div></article>`;
 }
 function skillhubSecurityRows(reports){
@@ -130,16 +130,16 @@ function skillhubIdProblem(id,{skills=state.data?.skills}={}){
   if(!v)return '请填写技能标识';
   if(!SKILLHUB_ID_PATTERN.test(v))return '标识只能包含字母、数字、点、下划线和短横线，且以字母或数字开头';
   const hit=(skills||[]).find(s=>s.id===v);
-  if(hit)return `技能标识「${v}」已被${catalogOwned(hit.projectId)?'本项目':`项目「${skillhubProjectName(hit.projectId)}」`}使用，请换一个`;
+  if(hit)return `技能标识「${v}」已被${!String(hit.projectId||'')?'平台':`项目「${skillhubProjectName(hit.projectId)}」`}使用，请换一个`;
   return '';
 }
 
 // ---------- Market list ----------
 function skillhubSyncChrome(){
   const skills=state.assetType==='skills';
-  // SkillHub 只在平台侧（能力资产页）保留入口；项目侧技能只能新建或从平台技能复制，
-  // 避免项目直接挂载市场技能、让平台技能与项目技能两套口径混在一起。
-  const allowMarket=skills&&!state.assetHosted;
+  // SkillHub 只在平台侧（能力资产页）对平台管理员开放：安装产物是平台技能，
+  // 项目侧只能新建或从平台技能复制，避免两套口径混在一起。
+  const allowMarket=skills&&!state.assetHosted&&isPlatformAdmin();
   if(!allowMarket&&state.skillScope==='skillhub')state.skillScope='project';
   const scope=state[assetScopeKey(state.assetType)];
   const market=allowMarket&&scope==='skillhub'&&!state.selectedAsset;
@@ -327,8 +327,8 @@ function skillhubDrawerView(d){
 }
 function skillhubDrawerActionHTML(view,st){
   if(st.state==='none'){
-    const noProject=!state.projectFilter;
-    return `<button type="button" class="button primary" data-skillhub-drawer-install${noProject?' disabled title="请先选择项目"':''}>${huiIcon('plus')}安装到本项目</button>`;
+    const noPermission=!isPlatformAdmin();
+    return `<button type="button" class="button primary" data-skillhub-drawer-install${noPermission?' disabled title="只有平台管理员可以安装技能"':''}>${huiIcon('plus')}安装到平台</button>`;
   }
   const go=`<button type="button" class="button" data-skillhub-goto="${escapeHTML(st.skill.id)}">查看技能${huiIcon('chevron-right')}</button>`;
   if(view.latest&&st.version!==view.latest)return `${skillhubBadge('warn',`有新版本 v${view.latest}`,skillhubLamp())}${go}<button type="button" class="button primary" data-skillhub-drawer-update>${huiIcon('refresh')}更新</button>`;
@@ -388,7 +388,7 @@ function skillhubVersionsHTML(d,view,installedVersion){
   if(d.errors.versions)return `<p class="skillhub-none">版本列表加载失败：${escapeHTML(d.errors.versions)}</p>`;
   if(!d.versions)return '<div class="skillhub-loading">正在加载版本…</div>';
   if(!view.versions.length)return '<p class="skillhub-none">暂无版本信息</p>';
-  return `<div class="skillhub-panel skillhub-versions">${view.versions.map(v=>{const latest=v.version===view.latest;const marks=(v.version===installedVersion?skillhubBadge('muted','本项目已安装'):'')+(latest?skillhubBadge('accent','最新'):'');return `<button type="button" class="skillhub-vrow${latest?' is-latest':''}${v.version===d.version?' is-current':''}" data-skillhub-version="${escapeHTML(v.version)}"><span class="skillhub-dot"></span><span class="skillhub-v">${escapeHTML(v.version)}</span><span class="skillhub-c">${escapeHTML(v.changelog||'无更新说明')}<small>${escapeHTML(skillhubDate(v.createdAt))}</small></span><span class="skillhub-marks">${marks}</span></button>`}).join('')}</div>`;
+  return `<div class="skillhub-panel skillhub-versions">${view.versions.map(v=>{const latest=v.version===view.latest;const marks=(v.version===installedVersion?skillhubBadge('muted','平台已安装'):'')+(latest?skillhubBadge('accent','最新'):'');return `<button type="button" class="skillhub-vrow${latest?' is-latest':''}${v.version===d.version?' is-current':''}" data-skillhub-version="${escapeHTML(v.version)}"><span class="skillhub-dot"></span><span class="skillhub-v">${escapeHTML(v.version)}</span><span class="skillhub-c">${escapeHTML(v.changelog||'无更新说明')}<small>${escapeHTML(skillhubDate(v.createdAt))}</small></span><span class="skillhub-marks">${marks}</span></button>`}).join('')}</div>`;
 }
 function renderSkillhubDrawer(){
   const d=state.skillhubDrawer,host=$('#skillhubDrawer');if(!d||!host)return;
@@ -398,7 +398,7 @@ function renderSkillhubDrawer(){
   const body=host.querySelector('.skillhub-dbody'),scroll=body?body.scrollTop:0;
   const versionOpts=(view.versions.length?view.versions:[{version:d.version}]).filter(v=>v.version).map(v=>`<option value="${escapeHTML(v.version)}"${v.version===d.version?' selected':''}>v${escapeHTML(v.version)}${v.version===view.latest?' · 最新':''}</option>`).join('');
   const tabs=[['overview','概览',''],['files','文件',d.files?String(d.files.length):''],['quality','质量与安全',''],['versions','版本',d.versions?String(view.versions.length):'']];
-  const installedBadge=st.state==='none'?'':st.state==='installed'?skillhubBadge('success','本项目已安装',huiIcon('check')):skillhubBadge('accent',`本项目 v${st.version}`);
+  const installedBadge=st.state==='none'?'':st.state==='installed'?skillhubBadge('success','平台已安装',huiIcon('check')):skillhubBadge('accent',`平台 v${st.version}`);
   const panel=d.tab==='files'?skillhubFilesHTML(d):d.tab==='quality'?skillhubQualityHTML(d,view):d.tab==='versions'?skillhubVersionsHTML(d,view,st.version):skillhubOverviewHTML(d,view);
   host.innerHTML=`<div class="skillhub-dhead"><div class="skillhub-drow"><span class="asset-tile skillhub-tile is-large">${skillhubTile(view.name)}</span><div class="skillhub-dtitle"><h2 id="skillhubDrawerTitle"><span>${escapeHTML(view.name)}</span>${installedBadge}</h2><div class="skillhub-dmeta"><code>${escapeHTML(view.namespace?`${view.namespace}/${view.slug}`:view.slug)}</code>${view.owner?`<span>作者 <b>${escapeHTML(view.owner)}</b></span>`:''}${view.category?`<span>${escapeHTML(skillhubCategoryName(view.category))}</span>`:''}${view.homepage?`<a href="${escapeHTML(view.homepage)}" target="_blank" rel="noopener noreferrer">在 SkillHub 打开${huiIcon('globe')}</a>`:''}</div></div><button type="button" class="hui-icon-btn" data-skillhub-close aria-label="关闭">${huiIcon('close')}</button></div><div class="skillhub-dacts"><div class="skillhub-ghost-select"><select id="skillhubDrawerVersion" data-icon="history" aria-label="查看的版本">${versionOpts}</select></div><span class="skillhub-sp"></span>${skillhubDrawerActionHTML(view,st)}</div></div><div class="asset-pane-tabs skillhub-dtabs" role="tablist" aria-label="技能详情">${tabs.map(([k,label,n])=>`<button type="button" role="tab" data-skillhub-tab="${k}" class="${d.tab===k?'active':''}" aria-selected="${d.tab===k}">${label}${n?`<span class="sliding-tab-count">${n}</span>`:''}</button>`).join('')}</div><div class="skillhub-dbody" role="tabpanel">${panel}</div>`;
   const sel=host.querySelector('#skillhubDrawerVersion');
@@ -426,7 +426,7 @@ async function skillhubFetchVersions(slug,namespace){
 }
 function openSkillhubInstall(item,opener,{version='',versions=null}={}){
   if(!item?.slug)return;
-  if(!state.projectFilter)return toast('请先选择项目','warn');
+  if(!isPlatformAdmin())return toast('只有平台管理员可以安装技能','warn');
   bindSkillhubOnce();
   const m=state.skillhubModal={mode:'install',item,slug:item.slug,namespace:item.namespace||'',latest:item.version||'',version:version||item.version||'',versions,id:item.slug,name:item.name||item.slug,busy:false,error:'',opener:opener||document.activeElement};
   renderSkillhubModal();
@@ -434,7 +434,7 @@ function openSkillhubInstall(item,opener,{version='',versions=null}={}){
 }
 function openSkillhubUpdate(skill,{latest='',versions=null,version='',opener=null}={}){
   const src=skillhubSourceOf(skill);if(!src)return;
-  if(!catalogOwned(skill.projectId))return toast('只能更新本项目的技能','warn');
+  if(String(skill.projectId||'')!==''&&!catalogOwned(skill.projectId))return toast('只能更新本项目或平台的技能','warn');
   bindSkillhubOnce();
   const m=state.skillhubModal={mode:'update',skill,slug:src.slug,namespace:src.namespace||'',installed:src.version,latest,version:version&&version!==src.version?version:latest,versions,busy:false,error:'',opener:opener||document.activeElement};
   renderSkillhubModal();
@@ -446,14 +446,13 @@ function renderSkillhubModal(){
   const versions=list.length?list:(m.version?[{version:m.version}]:[]);
   const latest=m.latest||list[0]?.version||'';
   const opts=versions.map(v=>`<option value="${escapeHTML(v.version)}"${v.version===m.version?' selected':''}>v${escapeHTML(v.version)}${v.version===latest?' · 最新':''}${m.mode==='update'&&v.version===m.installed?' · 当前':''}</option>`).join('');
-  const project=skillhubProjectName(state.projectFilter);
   const name=m.mode==='install'?(m.item.name||m.slug):(m.skill.name||m.skill.id);
   const changelog=list.find(v=>v.version===m.version)?.changelog;
   const fields=m.mode==='install'
     ?`<div class="skillhub-field"><label for="skillhubModalId">技能标识</label><input id="skillhubModalId" class="asset-input is-mono" value="${escapeHTML(m.id)}" autocomplete="off" spellcheck="false" required><div class="skillhub-field-err" data-skillhub-id-err hidden>${huiIcon('alert')}<span></span></div><div class="skillhub-field-help" data-skillhub-id-help>运行时目录名，全平台唯一。</div></div><div class="skillhub-field"><label for="skillhubModalName">名称</label><input id="skillhubModalName" class="asset-input" value="${escapeHTML(m.name)}" maxlength="100" autocomplete="off"></div>`
     :`<div class="skillhub-field"><label>更新内容</label><div class="skillhub-changelog">${escapeHTML(changelog||(m.versions?'无更新说明':'正在加载…'))}<small>更新会整批替换文件；标识、名称、角色绑定和共享状态不变。</small></div></div>`;
   const ok=m.mode==='install'?`${huiIcon('plus')}安装`:`${huiIcon('refresh')}更新`;
-  host.innerHTML=`<form class="skillhub-mcard" novalidate><h3 id="skillhubModalTitle">${m.mode==='install'?`安装「${escapeHTML(name)}」到本项目`:`更新「${escapeHTML(name)}」`}</h3><p class="skillhub-msub">${m.mode==='install'?`保存所选版本的快照到「${escapeHTML(project)}」，安装后可在「角色定义」里绑定。`:`当前已安装 v${escapeHTML(m.installed||'?')}，选择要更新到的版本。`}</p><div class="skillhub-field"><label for="skillhubModalVersion">版本</label><div class="skillhub-full-select"><select id="skillhubModalVersion" aria-label="版本"${versions.length?'':' disabled'}>${opts||'<option value="">正在加载版本…</option>'}</select></div>${m.versionsError?`<div class="skillhub-field-help">版本列表加载失败，将安装最新版本：${escapeHTML(m.versionsError)}</div>`:''}</div>${fields}${m.error?`<div class="skillhub-callout is-error" role="alert">${huiIcon('alert')}${escapeHTML(m.error)}</div>`:''}<div class="skillhub-mact"><button type="button" class="button" data-skillhub-modal-cancel>取消</button><button type="submit" class="button primary" data-skillhub-modal-ok>${m.busy?(m.mode==='install'?'安装中…':'更新中…'):ok}</button></div></form>`;
+  host.innerHTML=`<form class="skillhub-mcard" novalidate><h3 id="skillhubModalTitle">${m.mode==='install'?`安装「${escapeHTML(name)}」到平台`:`更新「${escapeHTML(name)}」`}</h3><p class="skillhub-msub">${m.mode==='install'?`保存所选版本的快照到平台技能库，项目在配置中按需复制使用。`:`当前平台已安装 v${escapeHTML(m.installed||'?')}，选择要更新到的版本。`}</p><div class="skillhub-field"><label for="skillhubModalVersion">版本</label><div class="skillhub-full-select"><select id="skillhubModalVersion" aria-label="版本"${versions.length?'':' disabled'}>${opts||'<option value="">正在加载版本…</option>'}</select></div>${m.versionsError?`<div class="skillhub-field-help">版本列表加载失败，将安装最新版本：${escapeHTML(m.versionsError)}</div>`:''}</div>${fields}${m.error?`<div class="skillhub-callout is-error" role="alert">${huiIcon('alert')}${escapeHTML(m.error)}</div>`:''}<div class="skillhub-mact"><button type="button" class="button" data-skillhub-modal-cancel>取消</button><button type="submit" class="button primary" data-skillhub-modal-ok>${m.busy?(m.mode==='install'?'安装中…':'更新中…'):ok}</button></div></form>`;
   host.hidden=false;host.classList.add('is-open');
   const sel=host.querySelector('#skillhubModalVersion');
   if(sel){window.enhanceSelect?.(sel);sel.addEventListener('change',()=>{m.version=sel.value;if(m.mode==='install'){m.id=$('#skillhubModalId')?.value??m.id;m.name=$('#skillhubModalName')?.value??m.name}renderSkillhubModal()})}
@@ -499,7 +498,7 @@ async function submitSkillhubModal(){
   try{
     let saved;
     if(m.mode==='install'){
-      saved=await api('/api/skillhub/install',{method:'POST',body:JSON.stringify({slug:m.slug,namespace:m.namespace,version:m.version,projectId:state.projectFilter,id:String(m.id).trim(),name:String(m.name||'').trim()})});
+      saved=await api('/api/skillhub/install',{method:'POST',body:JSON.stringify({slug:m.slug,namespace:m.namespace,version:m.version,id:String(m.id).trim(),name:String(m.name||'').trim()})});
     }else{
       saved=await api('/api/skillhub/update',{method:'POST',body:JSON.stringify({skillId:m.skill.id,version:m.version})});
     }
@@ -507,7 +506,7 @@ async function submitSkillhubModal(){
     const src=skillhubSourceOf(saved);
     if(src&&m.latest)skillhubState().latest[skillhubKey(src.namespace,src.slug)]=m.latest;
     m.busy=false;closeSkillhubModal();
-    if(m.mode==='install')toast(`已安装「${saved.name||saved.id}」，可在「本项目」中查看并绑定到角色`,'ok',4200);
+    if(m.mode==='install'){state.skillScope='shared';toast(`已安装「${saved.name||saved.id}」到平台，项目配置中可复制使用`,'ok',4200);}
     else toast(`已更新到 v${src?.version||m.version}，角色绑定与共享状态不变`,'ok',4200);
     renderAssets();
     renderSkillhubDrawer();

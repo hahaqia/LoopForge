@@ -32,7 +32,7 @@ function assetPageCopy(type=state.assetType){
   })[type]||{group:'运行环境',page:'环境资产',tab:'Dockerfile',desc:'维护当前项目的容器构建定义。',create:'新建 Dockerfile'};
 }
 function assetSharedDescription(type=state.assetType){
-  if(assetPlatformSurface())return type==='rules'?'平台规则对所有项目生效，项目里的角色可直接绑定；仅平台管理员可维护。':type==='skills'?'平台技能由平台管理员集中维护，但不会自动对项目生效；项目需先把技能复制到本项目，才能绑定给角色。':'平台模板可直接绑定到任意项目角色的交付物；仅平台管理员可维护。';
+  if(assetPlatformSurface())return type==='rules'?'平台规则对所有项目生效，项目里的角色可直接绑定；仅平台管理员可维护。':type==='skills'?'平台技能（含 SkillHub 安装来源）由平台管理员集中维护，不会自动对项目生效；项目需先把技能复制到本项目，才能绑定给角色。':'平台模板可直接绑定到任意项目角色的交付物；仅平台管理员可维护。';
   return type==='rules'?'查看其他项目与平台共享的规则；平台规则由平台管理员维护，其他项目共享的规则只读，可直接绑定到本项目角色。':type==='skills'?'查看平台技能与共享来源；平台技能不自动生效，需先复制到本项目才能绑定角色。':type==='templates'?'查看其他项目与平台共享的产物模板；平台模板由平台管理员维护，可直接绑定到本项目角色的交付物。':'查看其他项目共享的环境资产；共享资产只读，可直接用于本项目。'
 }
 function assetIconName(type=state.assetType){return ({rules:'gate',skills:'skills',dockerfiles:'layers',environments:'terminal',sandboxes:'server',templates:'doc'})[type]||'layers'}
@@ -125,7 +125,7 @@ function renderAssetListChrome(){
   const scope=state[assetScopeKey(state.assetType)],copy=assetPageCopy();
   if($('#assetPageEyebrow'))$('#assetPageEyebrow').textContent=copy.group;
   if($('#assetPageTitle'))$('#assetPageTitle').textContent=copy.page;
-  if($('#assetPageDescription'))$('#assetPageDescription').textContent=scope==='skillhub'?'从 SkillHub 搜索公开技能，查看质量评测与安全认证后安装到本项目。':scope==='shared'?assetSharedDescription():copy.desc;
+  if($('#assetPageDescription'))$('#assetPageDescription').textContent=scope==='skillhub'?'从 SkillHub 安装技能到平台技能库；项目在配置中按需复制使用。':scope==='shared'?assetSharedDescription():copy.desc;
   const platformCreatable=['rules','skills','templates'].includes(state.assetType)&&isPlatformAdmin()&&!state.assetHosted;
   if($('#newAssetLabel'))$('#newAssetLabel').textContent=scope==='shared'&&platformCreatable?`新建平台${copy.tab}`:copy.create;
   if($('#newAsset'))$('#newAsset').hidden=!(scope==='project'||(scope==='shared'&&platformCreatable));
