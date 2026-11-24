@@ -747,6 +747,10 @@ func (h *catalogHandlers) skills(c *gin.Context) {
 		return
 	}
 	if c.Request.Method == http.MethodDelete {
+		// 平台技能由平台管理员维护；项目技能沿用项目写权限。
+		if item, ok := h.repo.Skill(strings.TrimSpace(c.Query("id"))); ok && strings.TrimSpace(item.ProjectID) == "" && !h.requirePlatformAdmin(c) {
+			return
+		}
 		h.deleteCatalogAsset(c, "技能", "skill not found", func(id string) (bool, bool) {
 			item, ok := h.repo.Skill(id)
 			// 平台技能（projectId 为空）由平台管理员维护，不适用"取消共享后才能删"的限制。

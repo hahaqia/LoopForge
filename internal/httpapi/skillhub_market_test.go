@@ -538,7 +538,6 @@ func TestSkillhubInstallConflicts(t *testing.T) {
 		t.Fatalf("same slug twice in a project: %d %s", rec.Code, rec.Body.String())
 	}
 	for _, body := range []map[string]any{
-		{"slug": "pdf-tools", "projectId": ""},
 		{"slug": "../x", "projectId": "platform"},
 		{"slug": "pdf-tools", "projectId": "platform", "id": "bad id"},
 		{"slug": "pdf-tools", "projectId": "platform", "version": "1.0;x"},
@@ -549,6 +548,82 @@ func TestSkillhubInstallConflicts(t *testing.T) {
 	}
 	if rec := installSkillhub(t, h, map[string]any{"slug": "pdf-tools", "projectId": "nope"}); rec.Code != http.StatusNotFound {
 		t.Fatalf("unknown project answered %d", rec.Code)
+	}
+}
+
+func TestSkillhubInstallPlatformSkill(t *testing.T) {
+	f, s, h := newSkillhubTestServer(t, "")
+	f.publish("team", "pdf-tools", "1.3.0", map[string]string{"SKILL.md": "# pdf"})
+
+	rec := installSkillhub(t, h, map[string]any{"slug": "pdf-tools", "namespace": "team"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("platform install %d: %s", rec.Code, rec.Body.String())
+	}
+	skill := decodeSkillResponse(t, rec)
+	if skill.ProjectID != "" || !skill.Shared {
+		t.Fatalf("platform skill must have empty projectId and shared=true: %+v", skill)
+	}
+	if skill.Source == nil || skill.Source.Provider != "skillhub" || skill.Source.Version != "1.3.0" {
+		t.Fatalf("platform skill source: %+v", skill.Source)
+	}
+	if _, ok := s.SkillFileContent("pdf-tools", "SKILL.md"); !ok {
+		t.Fatal("platform skill files not stored")
+	}
+
+	if rec := installSkillhub(t, h, map[string]any{"slug": "pdf-tools", "namespace": "team", "id": "pdf-second"}); rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "平台已安装该技能") {
+		t.Fatalf("duplicate platform install: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSkillhubPlatformSkillWritesRequireAdmin(t *testing.T) {
+	t.Setenv("AGENTFLOW_SCHEDULER_ENABLED", "false")
+	f, _, h := newSkillhubTestServer(t, "")
+	t.Setenv("AGENTFLOW_AUTH_REQUIRED", "true")
+	f.publish("team", "pdf-tools", "1.3.0", map[string]string{"SKILL.md": "# pdf"})
+
+	session := func(login string) *http.Cookie {
+		r := httptest.NewRequest("POST", "http://localhost/api/auth/register", bytes.NewBufferString(`{"login":"`+login+`","password":"secret1"}`))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Origin", "http://localhost")
+		r.RemoteAddr = "192.0.2.10:1234"
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != 200 || len(w.Result().Cookies()) != 1 {
+			t.Fatalf("register %s: %d %s", login, w.Code, w.Body.String())
+		}
+		return w.Result().Cookies()[0]
+	}
+	send := func(cookie *http.Cookie, method, path, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, "http://localhost"+path, bytes.NewBufferString(body))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Origin", "http://localhost")
+		r.AddCookie(cookie)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	boss, member := session("platform-boss"), session("plain-member")
+	installBody := `{"slug":"pdf-tools","namespace":"team"}`
+
+	if rec := send(member, "POST", "/api/skillhub/install", installBody); rec.Code != http.StatusForbidden {
+		t.Fatalf("member install platform skill: %d %s", rec.Code, rec.Body.String())
+	}
+	rec := send(boss, "POST", "/api/skillhub/install", installBody)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("admin install platform skill: %d %s", rec.Code, rec.Body.String())
+	}
+	skill := decodeSkillResponse(t, rec)
+	if skill.ProjectID != "" {
+		t.Fatalf("platform skill project: %q", skill.ProjectID)
+	}
+	if rec := send(member, "POST", "/api/skillhub/update", `{"skillId":"`+skill.ID+`"}`); rec.Code != http.StatusForbidden {
+		t.Fatalf("member update platform skill: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := send(member, "DELETE", "/api/skills?id="+skill.ID, ""); rec.Code != http.StatusForbidden {
+		t.Fatalf("member delete platform skill: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := send(boss, "DELETE", "/api/skills?id="+skill.ID, ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("admin delete platform skill: %d %s", rec.Code, rec.Body.String())
 	}
 }
 

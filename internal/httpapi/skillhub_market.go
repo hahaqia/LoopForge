@@ -419,12 +419,14 @@ func (h *skillhubHandlers) install(c *gin.Context) {
 	if !ok {
 		return
 	}
+	// projectId 为空表示安装到平台技能库（内部 SkillHub），只有平台管理员可写；
+	// 非空保留旧行为，供历史调用方按项目安装。
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, map[string]string{"error": "请先选择项目"})
-		return
-	}
-	if _, exists := h.repo.Project(projectID); !exists {
+		if !h.requirePlatformAdmin(c) {
+			return
+		}
+	} else if _, exists := h.repo.Project(projectID); !exists {
 		c.JSON(http.StatusNotFound, map[string]string{"error": "项目不存在"})
 		return
 	}
@@ -466,7 +468,7 @@ func (h *skillhubHandlers) install(c *gin.Context) {
 	}
 	now := time.Now().UTC()
 	skill := domain.SkillDefinition{
-		ID: id, Name: name, ProjectID: projectID,
+		ID: id, Name: name, ProjectID: projectID, Shared: projectID == "",
 		Description: truncateSkillhubText(firstNonEmpty(detail.Skill.SummaryZh, detail.Skill.Summary)),
 		Source: &domain.SkillSource{
 			Provider: domain.SkillSourceSkillHub, Namespace: namespace, Slug: slug, Version: version,
@@ -494,14 +496,23 @@ func (h *skillhubHandlers) install(c *gin.Context) {
 
 func (h *skillhubHandlers) installConflict(projectID, namespace, slug, id string) error {
 	if existing, found := skillhubInstalled(h.repo.Skills(), projectID, namespace, slug); found {
-		return HTTPError{Status: http.StatusConflict, Message: fmt.Sprintf("本项目已安装该技能（标识 %s），如需新版本请使用更新", existing.ID)}
+		scope := "本项目"
+		if projectID == "" {
+			scope = "平台"
+		}
+		return HTTPError{Status: http.StatusConflict, Message: fmt.Sprintf("%s已安装该技能（标识 %s），如需新版本请使用更新", scope, existing.ID)}
 	}
 	if existing, found := h.repo.Skill(id); found {
 		owner := "其他项目"
-		if existing.ProjectID == projectID {
+		switch {
+		case strings.TrimSpace(existing.ProjectID) == "":
+			owner = "平台"
+		case existing.ProjectID == projectID:
 			owner = "本项目"
-		} else if p, ok := h.repo.Project(existing.ProjectID); ok && strings.TrimSpace(p.Name) != "" {
-			owner = "项目「" + p.Name + "」"
+		default:
+			if p, ok := h.repo.Project(existing.ProjectID); ok && strings.TrimSpace(p.Name) != "" {
+				owner = "项目「" + p.Name + "」"
+			}
 		}
 		return HTTPError{Status: http.StatusConflict, Message: fmt.Sprintf("技能标识「%s」已被%s使用，请换一个", id, owner)}
 	}
@@ -524,6 +535,10 @@ func (h *skillhubHandlers) update(c *gin.Context) {
 	skill, found := h.repo.Skill(skillID)
 	if !found {
 		c.JSON(http.StatusNotFound, map[string]string{"error": "skill not found"})
+		return
+	}
+	// 平台技能（projectId 为空）由平台管理员维护，与平台共享资产的写权限一致。
+	if strings.TrimSpace(skill.ProjectID) == "" && !h.requirePlatformAdmin(c) {
 		return
 	}
 	if skill.Source == nil || skill.Source.Provider != domain.SkillSourceSkillHub {
