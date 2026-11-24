@@ -26,7 +26,8 @@ html[data-theme="light"]{--bg:#ffffff;--bg-soft:#ffffff;--panel:#ffffff;--panel-
 
 #confirmPromptMultiline{width:100%;min-height:140px;resize:vertical}#confirmPromptMultiline[hidden],#confirmPromptInput[hidden]{display:none}
 
-:root{--rail-w:56px;--sidebar-w:304px}
+:root{--rail-w:160px;--rail-w-icon:56px;--sidebar-w:304px}
+@media(max-width:1000px){:root{--rail-w:56px}}
 @media(max-width:1280px) and (min-width:1001px){.app-shell{grid-template-columns:var(--rail-w) var(--sidebar-w) minmax(0,1fr)!important}.platform-sidebar{width:100%!important;max-width:var(--sidebar-w)!important}}
 .sidebar-resize{position:absolute;top:0;bottom:0;right:0;z-index:30;width:6px;min-width:0;padding:0;margin:0;border:0;appearance:none;background:transparent;cursor:col-resize;touch-action:none}
 .sidebar-resize:hover,.sidebar-resize:focus-visible,.sidebar-resizing .sidebar-resize{background:color-mix(in srgb,var(--blue) 45%,transparent)}

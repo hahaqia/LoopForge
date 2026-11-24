@@ -11,4 +11,8 @@
     theme=preference==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):preference;
   }catch(e){theme='light'}
   document.documentElement.dataset.theme=theme;
+  // Rail collapse state is applied on <html> so the first paint already has the final column width.
+  try{
+    if(localStorage.getItem('agentflow.railCollapsed')==='1')document.documentElement.classList.add('rail-collapsed');
+  }catch(e){}
 })();

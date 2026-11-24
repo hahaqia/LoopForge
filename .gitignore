@@ -26,3 +26,6 @@ test-results/
 # Code-OSS has vendored runtime dependencies embedded by Go.
 !web/vscode-web/**/node_modules/
 !web/vscode-web/**
+
+# IDE project metadata, regenerated whenever the project is imported.
+.idea/

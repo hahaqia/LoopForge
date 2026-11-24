@@ -6,14 +6,22 @@ import (
 	"testing"
 )
 
-func TestIconRailHasNoExpandToggle(t *testing.T) {
+func TestIconRailCollapseToggle(t *testing.T) {
 	htmlRaw, err := os.ReadFile("index.html")
 	if err != nil {
 		t.Fatal(err)
 	}
 	html := string(htmlRaw)
-	if strings.Contains(html, `id="railSidebarToggle"`) || strings.Contains(html, `data-tooltip="展开导航"`) || strings.Contains(html, `aria-label="展开导航"`) {
-		t.Fatal("icon rail must not offer an expand control")
+	head := strings.Index(html, `class="rail-head"`)
+	toggle := strings.Index(html, `id="railCollapseToggle"`)
+	nav := strings.Index(html, `class="rail-nav"`)
+	if head < 0 || toggle < 0 || nav < 0 || toggle < head || nav < toggle {
+		t.Fatal("rail must expose a collapse toggle above the nav items")
+	}
+	for _, want := range []string{`aria-controls="platformRail"`, `data-tooltip="收起一级栏"`} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("rail collapse toggle needs %s", want)
+		}
 	}
 	bottom := strings.Index(html, `class="rail-bottom"`)
 	settings := strings.Index(html, `id="railSettingsEntry"`)
@@ -35,8 +43,18 @@ func TestIconRailHasNoExpandToggle(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := string(app)
-	if strings.Contains(src, "railSidebarToggle") || strings.Contains(src, "setPlatformRailExpanded(") || strings.Contains(src, "platform-rail-expanded") || strings.Contains(src, "只显示图标") {
-		t.Fatal("icon rail expand toggle must be removed")
+	for _, want := range []string{"setRailCollapsed", "syncRailCollapseToggle", "agentflow.railCollapsed"} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("app.js must wire the rail collapse toggle (%s)", want)
+		}
+	}
+
+	boot, err := os.ReadFile("boot-theme.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(boot), "rail-collapsed") {
+		t.Fatal("boot-theme.js must restore the collapsed rail before first paint")
 	}
 
 	css, err := os.ReadFile("product-v4.css")
@@ -45,9 +63,21 @@ func TestIconRailHasNoExpandToggle(t *testing.T) {
 	}
 	sheet := string(css)
 	if strings.Contains(sheet, "platform-rail-expanded") || strings.Contains(sheet, "--rail-w: 240px") {
-		t.Fatal("icon rail must stay at the icon width")
+		t.Fatal("rail only switches between the label width and the icon width")
 	}
-	if !strings.Contains(sheet, "--rail-w: 56px") || !strings.Contains(sheet, ".platform-rail .rail-label") {
-		t.Fatal("icon rail labels stay hidden at the default icon width")
+	// 展开 160px 常显中文名；收起与窄屏回退 56px 纯图标。
+	if !strings.Contains(sheet, "--rail-w: 160px") || !strings.Contains(sheet, "--rail-w-icon: 56px") {
+		t.Fatal("rail must be 160px wide with labels and fall back to the 56px icon width")
+	}
+	labelIdx := strings.Index(sheet, "\n.platform-rail .rail-label {")
+	if labelIdx < 0 || !strings.Contains(sheet[labelIdx:labelIdx+260], "display: block") {
+		t.Fatal("rail labels must be visible beside the icons when expanded")
+	}
+	collapsedIdx := strings.Index(sheet, "\nhtml.rail-collapsed {")
+	if collapsedIdx < 0 || !strings.Contains(sheet[collapsedIdx:collapsedIdx+120], "--rail-w: var(--rail-w-icon)") {
+		t.Fatal("collapsed rail must fall back to the icon width")
+	}
+	if !strings.Contains(sheet, "html.rail-collapsed .platform-rail .rail-label") {
+		t.Fatal("collapsed rail must hide the Chinese labels")
 	}
 }

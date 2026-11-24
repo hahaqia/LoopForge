@@ -1,6 +1,6 @@
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const SIDEBAR_WIDTH_KEY='agentflow.sidebarWidth',SIDEBAR_LAYOUT_KEY='agentflow.sidebarLayoutVersion',SIDEBAR_LAYOUT_VERSION='grasp-reference-v3';
+const SIDEBAR_WIDTH_KEY='agentflow.sidebarWidth',SIDEBAR_LAYOUT_KEY='agentflow.sidebarLayoutVersion',SIDEBAR_LAYOUT_VERSION='grasp-reference-v3',RAIL_COLLAPSED_KEY='agentflow.railCollapsed';
 // Apply the Grasp reference width once before a workbench iframe can read old widths.
 if(localStorage.getItem(SIDEBAR_LAYOUT_KEY)!==SIDEBAR_LAYOUT_VERSION){localStorage.removeItem(SIDEBAR_WIDTH_KEY);localStorage.setItem(SIDEBAR_LAYOUT_KEY,SIDEBAR_LAYOUT_VERSION)}
 window.__AGENTFLOW_APP_DOMAIN__ = document.querySelector('meta[name="agentflow-app-domain"]')?.content || window.__AGENTFLOW_APP_DOMAIN__ || '';
@@ -1016,6 +1016,8 @@ function bind(){
       switchView('collaboration');
     }else switchView(btn.dataset.view);
   });
+  $('#railCollapseToggle')?.addEventListener('click',()=>setRailCollapsed(!railCollapsed()));
+  syncRailCollapseToggle();
   $('#settingsSidebarToggle')?.addEventListener('click',()=>{cancelSettingsRouteTransition();setSettingsSidebarExpanded(!settingsSidebarExpanded())});
   $('#settingsSidebarExpand')?.addEventListener('click',()=>{
     cancelSettingsRouteTransition();
@@ -1377,23 +1379,7 @@ function bind(){
   if(issueDrawer&&issueDrawer.parentElement!==document.body)document.body.appendChild(issueDrawer);
   $$('[data-close-drawer]').forEach(el=>el.onclick=closeIssueDrawer);
   $('#projectSwitcher').onchange=async e=>{
-    if(!await confirmAssetLeave()){e.target.value=state.projectFilter||'';return}
-    const frame=$('#chatNextFrame');
-    if(frame?.contentWindow)frame.contentWindow.postMessage({type:'agentflow-project-context',projectId:e.target.value},location.origin);
-    closeScheduleJobModal();
-    state.projectFilter=e.target.value;state.selectedIssue=null;
-    if(state.currentView==='aiSchedules')refreshAISchedules();
-    localStorage.setItem('agentflow.activeProject',state.projectFilter);
-    if($('#botsView')?.classList.contains('active'))loadBots();
-    resetListPages();
-    syncWorkflowToProject();
-    renderProjectSwitcher();renderIssues();renderSync();renderProjectAdmin();
-    renderSOPCatalog();renderAgents();renderAssets();renderMCPManagement();renderRuns();renderWorkflowMeta();
-    renderApprovals(true);
-    renderObsTabs();
-    if($('#dashboardView').classList.contains('active'))renderDashboard();
-    if($('#observabilityView').classList.contains('active'))refreshObs();
-    if($('#sopsView').classList.contains('active'))refreshWorkflowMetrics();
+    if(!await switchActiveProject(e.target.value)){e.target.value=state.projectFilter||''}
   };
   document.querySelectorAll('[data-scope-for]').forEach(bar=>{
     bar.querySelectorAll('[data-scope]').forEach(btn=>btn.onclick=()=>{
@@ -1647,6 +1633,23 @@ function mountNativeChat(){
       :'/chatbot/?projectId='+encodeURIComponent(projectId)+(sessionId?'&session='+encodeURIComponent(sessionId):issueId?'&issueId='+encodeURIComponent(issueId):'')+(quickAccess?'&quickAccess=1':'');
   }
   postNativeChatProject(frame);
+}
+// 一级栏收起：展开态显示图标 + 中文名，收起态只保留图标；状态由 boot-theme.js 在首帧恢复。
+function railCollapsed(){return document.documentElement.classList.contains('rail-collapsed')}
+function syncRailCollapseToggle(){
+  const toggle=$('#railCollapseToggle');
+  if(!toggle)return;
+  const collapsed=railCollapsed(),label=collapsed?'展开一级栏':'收起一级栏';
+  toggle.setAttribute('aria-expanded',String(!collapsed));
+  toggle.setAttribute('aria-label',label);
+  toggle.title=label;
+  toggle.dataset.tooltip=label;
+}
+function setRailCollapsed(collapsed,persist=true){
+  document.documentElement.classList.toggle('rail-collapsed',collapsed);
+  syncRailCollapseToggle();
+  if(!persist)return;
+  try{collapsed?localStorage.setItem(RAIL_COLLAPSED_KEY,'1'):localStorage.removeItem(RAIL_COLLAPSED_KEY)}catch{}
 }
 function settingsSidebarExpanded(){
   return document.body.classList.contains('management-mode')&&!document.body.classList.contains('settings-sidebar-hidden');
@@ -2022,10 +2025,13 @@ function switchView(name){
   // 项目配置、运行记录与需求列表一样是整页工作视图，不需要二级侧栏。
   const noSidebarViews = ['issues', 'approvals', 'observability', 'projects', 'runs'];
   document.body.classList.toggle('no-sidebar', noSidebarViews.includes(name));
+  // 当前视图名挂到 body，供按视图微调顶栏控件（如项目配置页隐藏全局项目切换）。
+  document.body.dataset.view = name;
   document.body.classList.toggle('chat-next-active', name==='collaboration');
   if(name==='collaboration'||isPureManagement)mountNativeChat();
   showDirectRunButton(name==='flow');
   closeIssueDrawer();
+  closeProjectSwitchMenu?.();
   if(name!=='sops'&&typeof hideSOPCardMenu==='function')hideSOPCardMenu();
   // 仅真实用户切换时压栈：boot 首次进入（prevView 为空）与同视图重复调用
   //（staying）不压；hashchange 后退触发的调用 prevView 非空且 hash 已是目标值，

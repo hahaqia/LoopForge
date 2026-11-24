@@ -60,6 +60,40 @@
 
 
 /* ---------- Project bar ---------- */
+/* 项目名本身即切换入口：需求列表页不再依赖顶栏那个下拉。 */
+#issuesView .project-context-switch {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+}
+#issuesView .project-context-switch b {
+  min-width: 0;
+  pointer-events: none;
+}
+#issuesView .project-context-switch .project-context-chevron {
+  flex: none;
+  color: var(--hui-muted);
+  pointer-events: none;
+  transition: color .16s ease, transform .16s ease;
+}
+#issuesView .project-context-switch:hover b,
+#issuesView .project-context-switch[aria-expanded="true"] b { color: var(--hui-accent); }
+#issuesView .project-context-switch:hover .project-context-chevron,
+#issuesView .project-context-switch[aria-expanded="true"] .project-context-chevron { color: var(--hui-accent); }
+#issuesView .project-context-switch[aria-expanded="true"] .project-context-chevron { transform: rotate(180deg); }
+#issuesView .project-context-switch:focus-visible { outline: 2px solid var(--hui-accent); outline-offset: 2px; }
+
 #issuesView .project-context-bar {
   display: flex;
   flex-wrap: nowrap;

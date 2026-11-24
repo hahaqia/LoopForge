@@ -1,3 +1,61 @@
+// 切换全局项目作用域。顶栏切换器与需求列表页的项目名共用这一段，
+// 保证「写 localStorage + 通知工作台 iframe + 重渲染各视图」只有一份实现。
+async function switchActiveProject(projectId){
+  if(projectId===state.projectFilter)return true;
+  if(!await confirmAssetLeave())return false;
+  const frame=$('#chatNextFrame');
+  if(frame?.contentWindow)frame.contentWindow.postMessage({type:'agentflow-project-context',projectId},location.origin);
+  closeScheduleJobModal();
+  state.projectFilter=projectId;state.selectedIssue=null;
+  if(state.currentView==='aiSchedules')refreshAISchedules();
+  localStorage.setItem('agentflow.activeProject',state.projectFilter);
+  if($('#botsView')?.classList.contains('active'))loadBots();
+  resetListPages();
+  syncWorkflowToProject();
+  renderProjectSwitcher();renderIssues();renderSync();renderProjectAdmin();
+  renderSOPCatalog();renderAgents();renderAssets();renderMCPManagement();renderRuns();renderWorkflowMeta();
+  renderApprovals(true);
+  renderObsTabs();
+  if($('#dashboardView').classList.contains('active'))renderDashboard();
+  if($('#observabilityView').classList.contains('active'))refreshObs();
+  if($('#sopsView').classList.contains('active'))refreshWorkflowMetrics();
+  return true;
+}
+function closeProjectSwitchMenu(){
+  const menu=$('#projectSwitchMenu');if(!menu)return;
+  menu.hidden=true;$('#projectContextSwitch')?.setAttribute('aria-expanded','false');
+}
+function openProjectSwitchMenu(){
+  const menu=$('#projectSwitchMenu'),anchor=$('#projectContextSwitch');
+  if(!menu||!anchor)return;
+  const projects=state.data.projects||[];
+  if(!projects.length){toast('还没有可切换的项目','info');return}
+  menu.innerHTML=projects.map(p=>`<button type="button" class="user-combobox-option${p.id===state.projectFilter?' selected':''}" role="option" aria-selected="${p.id===state.projectFilter}" data-project-option="${escapeHTML(p.id)}"><span>${escapeHTML(p.key||'PROJECT')} · ${escapeHTML(p.name)}</span>${p.id===state.projectFilter?'<i>✓</i>':''}</button>`).join('');
+  menu.hidden=false;anchor.setAttribute('aria-expanded','true');
+  const rect=anchor.getBoundingClientRect(),gap=6;
+  // 按钮撑满卡片左栏，菜单跟着铺满会盖住指标区；按内容收窄到 240–340px。
+  const width=Math.max(240,Math.min(340,Math.round(rect.width)));
+  menu.style.width=width+'px';
+  menu.style.left=Math.round(Math.max(12,Math.min(rect.left,window.innerWidth-width-12)))+'px';
+  const below=window.innerHeight-rect.bottom-gap,h=Math.min(300,menu.scrollHeight||300);
+  menu.style.top=below<h&&rect.top>below?Math.round(rect.top-h-gap)+'px':Math.round(rect.bottom+gap)+'px';
+  menu.querySelectorAll('[data-project-option]').forEach(btn=>btn.onclick=async e=>{
+    e.stopPropagation();
+    const id=btn.dataset.projectOption;
+    closeProjectSwitchMenu();
+    await switchActiveProject(id);
+  });
+}
+function bindProjectSwitchMenu(){
+  if(document.body.dataset.projectMenuBound)return;
+  document.body.dataset.projectMenuBound='true';
+  document.addEventListener('click',e=>{
+    const menu=$('#projectSwitchMenu');if(!menu||menu.hidden)return;
+    if(e.target.closest('#projectSwitchMenu')||e.target.closest('#projectContextSwitch'))return;
+    closeProjectSwitchMenu();
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeProjectSwitchMenu()});
+}
 function renderProjectSwitcher(){
   const projects=state.data.projects||[];
   const switcher=$('#projectSwitcher');if(!switcher)return;
@@ -9,6 +67,12 @@ function renderProjectContext(projectIssues){
   const projects=state.data.projects||[],project=projects.find(p=>p.id===state.projectFilter);renderProjectSwitcher();
   $('#projectContextMark').textContent=(project?.key||project?.name||'P').slice(0,2).toUpperCase();$('#projectContextMark').style.background=safeColor(project?.color);
   $('#projectContextName').textContent=project?.name||'暂无项目';$('#projectContextDescription').textContent=project?.description||'工作台数据会按项目整体切换';
+  const jump=$('#projectContextSwitch');
+  if(jump){
+    jump.title=`切换项目（当前：${project?.name||'暂无项目'}）`;
+    jump.onclick=()=>{const menu=$('#projectSwitchMenu');menu&&!menu.hidden?closeProjectSwitchMenu():openProjectSwitchMenu()};
+    bindProjectSwitchMenu();
+  }
   const active=projectIssues.filter(i=>issueRunHealth(i)==='active').length,attention=projectIssues.filter(i=>issueRunHealth(i)==='attention').length,pendingMRs=projectIssues.reduce((n,i)=>n+pendingDeliveryMRCount(i),0),repo=(state.data.repositories||[]).find(r=>r.id===project?.defaultRepositoryId);
   const repoCount=(state.data.repositories||[]).filter(r=>r.projectId===project?.id).length;
   $('#projectContextMetrics').innerHTML=`<button type="button" data-issue-filter="" class="${!state.issueRunFilter?'on':''}"><span>工作项</span><b>${projectIssues.length}</b></button><button type="button" data-issue-filter="active" class="${state.issueRunFilter==='active'?'on':''}"><span>正在推进</span><b>${active}</b></button><button type="button" data-issue-filter="attention" class="${attention?'danger':''} ${state.issueRunFilter==='attention'?'on':''}" title="点此只看待确认澄清结论、门禁失败、运行失败或已中断的工作项"><span>需要介入</span><b>${attention}</b></button><button type="button" data-issue-filter="mr" class="${state.issueRunFilter==='mr'?'on':''}" title="已提 MR 但还没合入的 MR 数（按 MR 计，点击只看涉及的需求）"><span>待处理 MR</span><b>${pendingMRs}</b></button><div class="project-default-sop"><span>代码仓库（${repoCount}）</span><b title="${escapeHTML(repo?.gongfengProjectId||'未绑定')}">默认：${escapeHTML(repo?.name||'未绑定')}</b></div>`;
