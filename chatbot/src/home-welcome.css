@@ -37,14 +37,13 @@
   --wordmark-orbit-size: 48px;
   --wordmark-orbit-start-x: -34px;
   --wordmark-orbit-start-y: 28px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 0;
   min-width: 0;
   max-width: 100%;
-  /* Balance the small sidebearing remaining in the SVG's visible strokes. */
-  padding-inline-end: 3px;
 }
 
 [data-theme="dark"] .chat-shell.home-shell .home-welcome-lockup {
@@ -54,7 +53,13 @@
   --home-logo-highlight: #f0fbff;
 }
 
+/* The mark hangs beside the wordmark rather than sharing its row, so the
+   wordmark and its subtitle centre on the page instead of on mark + text. */
 .chat-shell.home-shell .home-welcome-lockup > .home-logo {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 14px);
+  translate: 0 -50%;
   flex: 0 0 auto;
   margin: 0;
 }
@@ -249,7 +254,10 @@
     --wordmark-orbit-size: 40px;
     --wordmark-orbit-start-x: -28px;
     --wordmark-orbit-start-y: 24px;
-    gap: 12px;
+  }
+
+  .chat-shell.home-shell .home-welcome-lockup > .home-logo {
+    right: calc(100% + 12px);
   }
 
   .chat-shell.home-shell .home-welcome .home-welcome-title {
