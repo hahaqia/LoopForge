@@ -127,8 +127,10 @@ func TestPromoteSOPRejectsProjectScopedRule(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	api.ServeHTTP(rec, authedRequest(t, req, admin))
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "不在平台资产库") {
-		t.Fatalf("promote with a project rule = %d %s", rec.Code, rec.Body.String())
+	// 报错要指明规则属于哪个项目，否则运维只看到「不在平台资产库」无从下手。
+	body := rec.Body.String()
+	if rec.Code != http.StatusBadRequest || !strings.Contains(body, "属于项目") || !strings.Contains(body, "promote-proj") {
+		t.Fatalf("promote with a project rule = %d %s", rec.Code, body)
 	}
 	if _, ok := st.GenericTemplateByWorkflow("generic-promoted"); ok {
 		t.Fatal("a rejected promote must not create a template")

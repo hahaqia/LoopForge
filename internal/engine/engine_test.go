@@ -176,7 +176,10 @@ func TestResolveAssetsEnforcesProjectAndPersonalScope(t *testing.T) {
 		MCPServers: []string{"legacy", "p1-mcp", "p2-mcp", "mine", "other"},
 	}
 	assets := e.resolveAssets(agent, "p1", "", 2)
-	if len(assets.Rules) != 2 || assets.Rules[0].ID != "p1-rule" || assets.Rules[1].ID != "shared-rule" {
+	// 规则与 MCP 同构：平台规则（无 projectId）对所有项目可见，shared 只负责
+	// 把项目私有规则开放出去。前端 catalogShared 也是这么判的，两边必须一致，
+	// 否则平台规则漏勾 shared 时资产页显示共享、运行期却被静默丢掉。
+	if len(assets.Rules) != 3 || assets.Rules[0].ID != "legacy-rule" || assets.Rules[1].ID != "p1-rule" || assets.Rules[2].ID != "shared-rule" {
 		t.Fatalf("resolved rules = %#v", assets.Rules)
 	}
 	// 技能按项目隔离：平台技能（无 projectId）与其他项目共享的技能都不注入，
@@ -323,6 +326,9 @@ func TestGlobalRuleInjectsIntoEveryNodeOfBoundWorkflow(t *testing.T) {
 		{ID: "plain", Name: "Plain", ProjectID: "p1", Content: "not global", WorkflowIDs: []string{"sop-a"}},
 		{ID: "foreign", Name: "Foreign", ProjectID: "p2", Content: "foreign", Global: true, WorkflowIDs: []string{"sop-a"}},
 		{ID: "shared-global", Name: "Shared global", ProjectID: "p2", Content: "shared", Shared: true, Global: true, WorkflowIDs: []string{"sop-a"}},
+		// 平台规则没有 projectId，天然对所有项目可见，shared 未勾也应注入：
+		// 后端与前端 catalogShared 的口径必须一致，否则资产页显示共享、运行期被丢。
+		{ID: "platform-global", Name: "Platform global", Content: "platform", Global: true, WorkflowIDs: []string{"sop-a"}},
 	} {
 		if err := st.PutRule(rule); err != nil {
 			t.Fatal(err)
@@ -335,7 +341,7 @@ func TestGlobalRuleInjectsIntoEveryNodeOfBoundWorkflow(t *testing.T) {
 	for _, rule := range assets.Rules {
 		got[rule.ID]++
 	}
-	if got["bound"] != 1 || got["global-sop"] != 1 || got["shared-global"] != 1 {
+	if got["bound"] != 1 || got["global-sop"] != 1 || got["shared-global"] != 1 || got["platform-global"] != 1 {
 		t.Fatalf("sop-a rules = %#v", assets.Rules)
 	}
 	if got["global-other"] != 0 || got["plain"] != 0 || got["foreign"] != 0 {

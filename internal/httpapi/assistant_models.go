@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -135,7 +134,6 @@ func refreshCLIModels(ctx context.Context, environment, apiKey string) {
 		return
 	}
 	models := discoverCLIModels(ctx, environment, apiKey)
-	log.Printf("[models-debug] discover env=%q keyLen=%d hit=%v -> %d models", environment, len(apiKey), ok, len(models))
 	cliModelMu.Lock()
 	if models != nil || !ok {
 		cliModelCache[cacheKey] = cliModelEntry{environment: environment, models: models, at: time.Now()}
@@ -253,10 +251,6 @@ func (h *assistantHandlers) models(c *gin.Context) {
 	if shared {
 		catalog.SponsoredModel, catalog.SponsoredModels = key.Models[0], key.Models
 	}
-	log.Printf("[models-debug] signedIn=%v shared=%v usingSharedKey=%v keyLen=%d baseURL=%q env=%q default=%q models=%d cachedCLI=%d",
-		signedIn, shared, usingSharedKey, len(strings.TrimSpace(user.CodeBuddyAPIKey)), user.CodeBuddyBaseURL,
-		user.CodeBuddyInternetEnvironment, catalog.Default, len(catalog.Models),
-		len(cachedCLIModels(user.CodeBuddyInternetEnvironment, user.CodeBuddyAPIKey)))
 	if signedIn {
 		c.Header("Cache-Control", "private, no-store")
 		if user.AssistantDefaults != (domain.AssistantDefaults{}) {

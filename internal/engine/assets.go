@@ -79,7 +79,7 @@ func (e *Engine) resolveAssets(agent domain.AgentDefinition, projectID, workflow
 	bundle := domain.AgentAssetBundle{}
 	for _, id := range agent.Rules {
 		if v, ok := e.repo.Rule(id); ok {
-			if v.ProjectID != projectID && !v.Shared {
+			if !ruleVisible(v, projectID) {
 				continue
 			}
 			bundle.Rules = append(bundle.Rules, v)
@@ -176,7 +176,7 @@ func (e *Engine) appendWorkflowGlobalRules(bundle *domain.AgentAssetBundle, proj
 		if _, ok := have[rule.ID]; ok {
 			continue
 		}
-		if rule.ProjectID != projectID && !rule.Shared {
+		if !ruleVisible(rule, projectID) {
 			continue
 		}
 		if !ruleTargetsWorkflow(rule, workflowID) {
@@ -185,6 +185,19 @@ func (e *Engine) appendWorkflowGlobalRules(bundle *domain.AgentAssetBundle, proj
 		bundle.Rules = append(bundle.Rules, rule)
 		have[rule.ID] = struct{}{}
 	}
+}
+
+// ruleVisible reports whether a rule bound to a role may reach this run. A
+// platform rule carries no project, so it is visible to every project
+// regardless of its shared flag: shared only scopes project-private rules.
+// The frontend's catalogShared reads the same way, and keeping the two aligned
+// stops a platform rule with an unchecked shared box from vanishing silently at
+// run time while the asset page still shows it as shared.
+func ruleVisible(rule domain.RuleDefinition, projectID string) bool {
+	if rule.ProjectID == "" {
+		return true
+	}
+	return rule.ProjectID == projectID || rule.Shared
 }
 
 func ruleTargetsWorkflow(rule domain.RuleDefinition, workflowID string) bool {

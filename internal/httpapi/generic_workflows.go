@@ -85,8 +85,11 @@ func (h *catalogHandlers) resolveTemplateAgents(template repo.GenericTemplate) (
 	out := make([]domain.AgentDefinition, 0, len(ids))
 	for _, id := range ids {
 		role, ok := h.repo.Agent(id)
-		if !ok || role.ProjectID != "" {
-			return nil, fmt.Errorf("平台 SOP 引用的角色 %q 不在平台角色库中，请先在「角色定义」创建该角色", id)
+		if !ok {
+			return nil, fmt.Errorf("平台 SOP 引用的角色 %q 不存在，请先在「角色定义」创建该角色", id)
+		}
+		if role.ProjectID != "" {
+			return nil, fmt.Errorf("平台 SOP 引用的角色 %q 属于项目 %q，不是平台角色；请在「角色定义」把该角色提升为平台角色后重试", id, role.ProjectID)
 		}
 		role = h.pinAgentVersion(role, pinned[id])
 		role.SourceTemplateIDs = h.repo.TemplatesReferencingAgent(id)
@@ -142,25 +145,36 @@ func (h *catalogHandlers) collectTemplateAssets(agents []domain.AgentDefinition)
 				continue
 			}
 			seenRule[id] = true
-			if rule, ok := h.repo.Rule(id); ok && rule.ProjectID == "" {
-				rules = append(rules, rule)
-				continue
+			rule, ok := h.repo.Rule(id)
+			if !ok || rule.ProjectID != "" {
+				return nil, nil, platformAssetRefError("规则", agent.Name, id, rule.ProjectID, ok)
 			}
-			return nil, nil, fmt.Errorf("角色 %q 引用的规则 %q 不在平台资产库中", agent.Name, id)
+			rules = append(rules, rule)
 		}
 		for _, id := range agent.Skills {
 			if seenSkill[id] {
 				continue
 			}
 			seenSkill[id] = true
-			if skill, ok := h.repo.Skill(id); ok && skill.ProjectID == "" {
-				skills = append(skills, skill)
-				continue
+			skill, ok := h.repo.Skill(id)
+			if !ok || skill.ProjectID != "" {
+				return nil, nil, platformAssetRefError("技能", agent.Name, id, skill.ProjectID, ok)
 			}
-			return nil, nil, fmt.Errorf("角色 %q 引用的技能 %q 不在平台资产库中", agent.Name, id)
+			skills = append(skills, skill)
 		}
 	}
 	return rules, skills, nil
+}
+
+// platformAssetRefError explains why a role binding blocks adoption: the asset
+// is missing entirely, or it resolves to a project-scoped copy. Naming the
+// owning project turns a dead end into an actionable message — the operator
+// either fixes the binding or promotes that asset to the platform.
+func platformAssetRefError(kind, roleName, id, ownerProjectID string, exists bool) error {
+	if !exists {
+		return fmt.Errorf("角色 %q 引用的%s %q 不存在，请先在「资产库」创建该%s", roleName, kind, id, kind)
+	}
+	return fmt.Errorf("角色 %q 引用的%s %q 属于项目 %q，不是平台资产；请在「资产库」把该%s提升为平台资产后重试", roleName, kind, id, ownerProjectID, kind)
 }
 
 // cloneGenericTemplateAgents copies the roles a platform SOP orchestrates into
@@ -510,13 +524,15 @@ func (h *catalogHandlers) registerPromotedRoles(src domain.WorkflowDefinition) (
 			role = promoted
 		}
 		for _, ruleID := range role.Rules {
-			if rule, ok := h.repo.Rule(ruleID); !ok || rule.ProjectID != "" {
-				return nil, http.StatusBadRequest, fmt.Errorf("角色 %q 引用的规则 %q 不在平台资产库中，请先提升该规则", role.Name, ruleID)
+			rule, ok := h.repo.Rule(ruleID)
+			if !ok || rule.ProjectID != "" {
+				return nil, http.StatusBadRequest, platformAssetRefError("规则", role.Name, ruleID, rule.ProjectID, ok)
 			}
 		}
 		for _, skillID := range role.Skills {
-			if skill, ok := h.repo.Skill(skillID); !ok || skill.ProjectID != "" {
-				return nil, http.StatusBadRequest, fmt.Errorf("角色 %q 引用的技能 %q 不在平台资产库中，请先提升该技能", role.Name, skillID)
+			skill, ok := h.repo.Skill(skillID)
+			if !ok || skill.ProjectID != "" {
+				return nil, http.StatusBadRequest, platformAssetRefError("技能", role.Name, skillID, skill.ProjectID, ok)
 			}
 		}
 		// Version stays 0 until publish freezes it, so a draft SOP tracks the

@@ -9,9 +9,13 @@ import (
 )
 
 type RuleDefinition struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	ProjectID   string `json:"projectId,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ProjectID string `json:"projectId,omitempty"`
+	// Shared only scopes project-private rules: it lets a rule owned by one
+	// project be bound by another. A platform rule carries no ProjectID and is
+	// visible everywhere, so its flag is ignored at run time — same reading as
+	// the frontend's catalogShared.
 	Shared      bool   `json:"shared,omitempty"`
 	Description string `json:"description"`
 	Content     string `json:"content"`

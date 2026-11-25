@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -173,6 +174,35 @@ func TestGenericTemplateCloneUsesSelectedSandbox(t *testing.T) {
 		if copy.SandboxProfileID != sandbox {
 			t.Fatalf("cloned with %q, want %q", copy.SandboxProfileID, sandbox)
 		}
+	}
+}
+
+func TestGenericTemplateCloneNamesProjectOfForeignRule(t *testing.T) {
+	h, s := newGenericTemplateServer(t)
+	if err := s.PutRule(domain.RuleDefinition{ID: "alpha-policy", Name: "Alpha 私有规则", ProjectID: "alpha", Content: "x"}); err != nil {
+		t.Fatal(err)
+	}
+	role, ok := s.Agent(repo.GenericAgentDesign)
+	if !ok {
+		t.Fatalf("fixture role %q missing", repo.GenericAgentDesign)
+	}
+	role.Rules = []string{repo.GenericRuleCore, "alpha-policy"}
+	if err := s.PutAgent(role); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/workflows/"+repo.GenericBackendDeliveryWorkflowID+"/clone",
+		strings.NewReader(`{"id":"alpha-blocked","name":"复制","projectId":"alpha"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	// 报错要点名规则所属项目，否则运维只看到「不在平台资产库」无从下手。
+	body := rec.Body.String()
+	if rec.Code != http.StatusBadRequest || !strings.Contains(body, "属于项目") || !strings.Contains(body, "alpha-policy") {
+		t.Fatalf("clone with a project rule = %d %s", rec.Code, body)
+	}
+	if workflowRowExists(t, s, "alpha-blocked") {
+		t.Fatal("a rejected clone must not create a draft")
 	}
 }
 
