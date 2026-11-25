@@ -2,6 +2,17 @@ package repo
 
 import "agentflow/internal/domain"
 
+// testGenericSeed is the platform-catalog half of a fixture: roles, rules and
+// skills land in their own tables, the template keeps only references. This
+// mirrors migration 052 so tests exercise the same reference model as a
+// migrated production database.
+type testGenericSeed struct {
+	template GenericTemplate
+	roles    []domain.AgentDefinition
+	rules    []domain.RuleDefinition
+	skills   []domain.SkillDefinition
+}
+
 // SeedTestGenericTemplates inserts compact generic_templates rows so tests can
 // exercise listing, clone, and catalog lookups without shipping playbook text
 // in the production binary.
@@ -9,32 +20,76 @@ func SeedTestGenericTemplates(s *Store) error {
 	if s == nil {
 		return nil
 	}
-	for _, template := range []GenericTemplate{testBackendGenericTemplate(), testNamedGenericTemplate(GenericProductDeliveryWorkflowID, "通用产品交付 SOP", GenericAgentProductPRD), testNamedGenericTemplate(GenericFrontendDeliveryWorkflowID, "通用前端交付 SOP", GenericAgentFrontendShape)} {
-		if err := s.PutGenericTemplate(template); err != nil {
+	for _, seed := range testGenericSeeds() {
+		for _, agent := range seed.roles {
+			agent.ProjectID, agent.Shared = "", false
+			if err := s.PutAgent(agent); err != nil {
+				return err
+			}
+		}
+		for _, rule := range seed.rules {
+			rule.ProjectID, rule.Shared = "", false
+			if err := s.PutRule(rule); err != nil {
+				return err
+			}
+		}
+		for _, skill := range seed.skills {
+			skill.ProjectID, skill.Shared = "", false
+			if err := s.PutSkill(skill); err != nil {
+				return err
+			}
+		}
+		if err := s.PutGenericTemplate(seed.template); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func testNamedGenericTemplate(id, name, agentID string) GenericTemplate {
-	return GenericTemplate{
-		Workflow: domain.WorkflowDefinition{
-			ID: id, Name: name, Version: 1, Revision: 1, Status: "published",
-			Owner: "平台", Description: name, SandboxProfileID: GenericDockerSandboxID,
-			Generic: true,
-			Nodes: []domain.WorkflowNode{
-				{ID: "work", Name: "执行", Type: "agent", AgentID: agentID, MaxAttempts: 1, ArtifactOutputs: []domain.ArtifactContract{{Name: "report", Path: "report.md", Required: true}}},
+func testGenericSeeds() []testGenericSeed {
+	return []testGenericSeed{
+		testBackendGenericTemplate(),
+		testNamedGenericTemplate(GenericProductDeliveryWorkflowID, "通用产品交付 SOP", GenericAgentProductPRD),
+		testNamedGenericTemplate(GenericFrontendDeliveryWorkflowID, "通用前端交付 SOP", GenericAgentFrontendShape),
+	}
+}
+
+// testAgentRefs derives the references a template stores from its agent nodes.
+func testAgentRefs(nodes []domain.WorkflowNode) []GenericAgentRef {
+	seen := make(map[string]bool, len(nodes))
+	refs := make([]GenericAgentRef, 0, len(nodes))
+	for _, node := range nodes {
+		if node.Type != "agent" || node.AgentID == "" || seen[node.AgentID] {
+			continue
+		}
+		seen[node.AgentID] = true
+		refs = append(refs, GenericAgentRef{ID: node.AgentID})
+	}
+	return refs
+}
+
+func testNamedGenericTemplate(id, name, agentID string) testGenericSeed {
+	nodes := []domain.WorkflowNode{
+		{ID: "work", Name: "执行", Type: "agent", AgentID: agentID, MaxAttempts: 1, ArtifactOutputs: []domain.ArtifactContract{{Name: "report", Path: "report.md", Required: true}}},
+	}
+	return testGenericSeed{
+		template: GenericTemplate{
+			Workflow: domain.WorkflowDefinition{
+				ID: id, Name: name, Version: 1, Revision: 1, Status: "published",
+				Owner: "平台", Description: name, SandboxProfileID: GenericDockerSandboxID,
+				Generic: true,
+				Nodes:   nodes,
 			},
+			AgentRefs: testAgentRefs(nodes),
 		},
-		Agents: []domain.AgentDefinition{{
+		roles: []domain.AgentDefinition{{
 			ID: agentID, Name: name + "角色", Version: 1, ExecutorID: "codebuddy",
 			Prompt: "完成任务\n\n任务输入：{{input}}",
 		}},
 	}
 }
 
-func testBackendGenericTemplate() GenericTemplate {
+func testBackendGenericTemplate() testGenericSeed {
 	agents := []struct {
 		id, name string
 		mcp      []string
@@ -81,32 +136,35 @@ func testBackendGenericTemplate() GenericTemplate {
 			Position:        domain.Position{X: float64(80 + i*80), Y: 200},
 		})
 	}
-	return GenericTemplate{
-		Workflow: domain.WorkflowDefinition{
-			ID: GenericBackendDeliveryWorkflowID, Name: "通用后端交付 SOP（智研工坊）",
-			Version: 1, Revision: 1, Status: "published", Owner: "平台",
-			Description:      "测试用通用后端 SOP",
-			SandboxProfileID: GenericDockerSandboxID, Generic: true,
-			Requirements: []domain.WorkflowRequirement{
-				{Key: RequirementGongfengGitToken, NodeID: "mr", Label: "工蜂 Git Token", Hint: "push 需要 Git Token", Setup: "settings"},
-				{Key: RequirementGongfengMCP, NodeID: "mr", Label: "工蜂 MCP", Hint: "创建 MR 需要工蜂 MCP", Setup: "mcp"},
+	return testGenericSeed{
+		template: GenericTemplate{
+			Workflow: domain.WorkflowDefinition{
+				ID: GenericBackendDeliveryWorkflowID, Name: "通用后端交付 SOP（智研工坊）",
+				Version: 1, Revision: 1, Status: "published", Owner: "平台",
+				Description:      "测试用通用后端 SOP",
+				SandboxProfileID: GenericDockerSandboxID, Generic: true,
+				Requirements: []domain.WorkflowRequirement{
+					{Key: RequirementGongfengGitToken, NodeID: "mr", Label: "工蜂 Git Token", Hint: "push 需要 Git Token", Setup: "settings"},
+					{Key: RequirementGongfengMCP, NodeID: "mr", Label: "工蜂 MCP", Hint: "创建 MR 需要工蜂 MCP", Setup: "mcp"},
+				},
+				Nodes: nodes,
+				Edges: []domain.WorkflowEdge{
+					{ID: "e1", Source: "requirement", Target: "design", When: "success"},
+					{ID: "e2", Source: "design", Target: "implement", When: "success"},
+					{ID: "e3", Source: "implement", Target: "review", When: "success"},
+					{ID: "e4", Source: "review", Target: "test", When: "success"},
+					{ID: "e5", Source: "test", Target: "mr", When: "success"},
+					{ID: "e6", Source: "mr", Target: "summary", When: "success"},
+				},
 			},
-			Nodes: nodes,
-			Edges: []domain.WorkflowEdge{
-				{ID: "e1", Source: "requirement", Target: "design", When: "success"},
-				{ID: "e2", Source: "design", Target: "implement", When: "success"},
-				{ID: "e3", Source: "implement", Target: "review", When: "success"},
-				{ID: "e4", Source: "review", Target: "test", When: "success"},
-				{ID: "e5", Source: "test", Target: "mr", When: "success"},
-				{ID: "e6", Source: "mr", Target: "summary", When: "success"},
-			},
+			AgentRefs: testAgentRefs(nodes),
 		},
-		Agents: outAgents,
-		Rules: []domain.RuleDefinition{
+		roles: outAgents,
+		rules: []domain.RuleDefinition{
 			{ID: GenericRuleCore, Name: "智研工坊 核心", Content: "follow the stored template"},
 			{ID: GenericRuleBackendProfile, Name: "后端画像", Content: "backend delivery"},
 		},
-		Skills: []domain.SkillDefinition{
+		skills: []domain.SkillDefinition{
 			{ID: GenericSkillClarifyRequirements, Name: "澄清需求", Content: "clarify"},
 			{ID: GenericSkillBrainstorming, Name: "方案头脑风暴", Content: "brainstorm"},
 			{ID: GenericSkillTechDesign, Name: "技术方案", Content: "design"},

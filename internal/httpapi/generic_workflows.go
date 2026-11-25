@@ -70,8 +70,103 @@ func (h *catalogHandlers) adoptGenericWorkflow(template domain.WorkflowDefinitio
 	return stored, nil
 }
 
-// cloneGenericTemplateAgents copies the template roles into the project and
-// returns the source-id -> project-id mapping used to rewrite node bindings.
+// resolveTemplateAgents returns the platform roles a template orchestrates, in
+// node order. Roles live only in the platform catalog: a node binding an id the
+// catalog does not resolve to a platform role is a broken template.
+func (h *catalogHandlers) resolveTemplateAgents(template repo.GenericTemplate) ([]domain.AgentDefinition, error) {
+	ids := orderedTemplateAgentIDs(template.Workflow)
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	pinned := make(map[string]int, len(template.AgentRefs))
+	for _, ref := range template.AgentRefs {
+		pinned[ref.ID] = ref.Version
+	}
+	out := make([]domain.AgentDefinition, 0, len(ids))
+	for _, id := range ids {
+		role, ok := h.repo.Agent(id)
+		if !ok || role.ProjectID != "" {
+			return nil, fmt.Errorf("平台 SOP 引用的角色 %q 不在平台角色库中，请先在「角色定义」创建该角色", id)
+		}
+		role = h.pinAgentVersion(role, pinned[id])
+		role.SourceTemplateIDs = h.repo.TemplatesReferencingAgent(id)
+		out = append(out, role)
+	}
+	return out, nil
+}
+
+// pinAgentVersion returns the definition a published template was pinned to.
+// Snapshots rotate out after maxRevisionsPerEntity revisions; when the pinned
+// one is gone the current definition is used so adoption still succeeds.
+func (h *catalogHandlers) pinAgentVersion(role domain.AgentDefinition, version int) domain.AgentDefinition {
+	if version <= 0 || version == role.Version {
+		return role
+	}
+	if pinned, ok := h.repo.AgentRevision(role.ID, version); ok {
+		return pinned
+	}
+	return role
+}
+
+// orderedTemplateAgentIDs lists the agent ids bound by workflow nodes, in node
+// order and without duplicates. Preview-build nodes never reach the catalog.
+func orderedTemplateAgentIDs(workflow domain.WorkflowDefinition) []string {
+	seen := make(map[string]bool, len(workflow.Nodes))
+	ids := make([]string, 0, len(workflow.Nodes))
+	for _, node := range workflow.Nodes {
+		if node.Type != "agent" {
+			continue
+		}
+		id := strings.TrimSpace(node.AgentID)
+		if id == "" || domain.IsPreviewBuildAgent(id) || seen[id] {
+			continue
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// collectTemplateAssets resolves the platform rules and skills bound by the
+// given roles, in binding order and without duplicates. An id the catalog does
+// not resolve to a platform asset is a broken entry: adoption fails instead of
+// cloning a role whose bindings cannot resolve at runtime.
+func (h *catalogHandlers) collectTemplateAssets(agents []domain.AgentDefinition) ([]domain.RuleDefinition, []domain.SkillDefinition, error) {
+	seenRule := make(map[string]bool)
+	seenSkill := make(map[string]bool)
+	rules := make([]domain.RuleDefinition, 0, len(agents))
+	skills := make([]domain.SkillDefinition, 0, len(agents))
+	for _, agent := range agents {
+		for _, id := range agent.Rules {
+			if seenRule[id] {
+				continue
+			}
+			seenRule[id] = true
+			if rule, ok := h.repo.Rule(id); ok && rule.ProjectID == "" {
+				rules = append(rules, rule)
+				continue
+			}
+			return nil, nil, fmt.Errorf("角色 %q 引用的规则 %q 不在平台资产库中", agent.Name, id)
+		}
+		for _, id := range agent.Skills {
+			if seenSkill[id] {
+				continue
+			}
+			seenSkill[id] = true
+			if skill, ok := h.repo.Skill(id); ok && skill.ProjectID == "" {
+				skills = append(skills, skill)
+				continue
+			}
+			return nil, nil, fmt.Errorf("角色 %q 引用的技能 %q 不在平台资产库中", agent.Name, id)
+		}
+	}
+	return rules, skills, nil
+}
+
+// cloneGenericTemplateAgents copies the roles a platform SOP orchestrates into
+// the project and returns the source-id -> project-id mapping used to rewrite
+// node bindings. Roles come from the platform catalog, never from the template
+// payload, so editing a platform role changes what the next adoption copies.
 // A role that already exists in the project is reused, so adopting the
 // template twice never overwrites local edits.
 func (h *catalogHandlers) cloneGenericTemplateAgents(workflowID, projectID string) (map[string]string, error) {
@@ -79,19 +174,28 @@ func (h *catalogHandlers) cloneGenericTemplateAgents(workflowID, projectID strin
 	if !ok {
 		return nil, fmt.Errorf("generic template %q not found", workflowID)
 	}
+	sources, err := h.resolveTemplateAgents(template)
+	if err != nil {
+		return nil, err
+	}
 	now := time.Now().UTC()
-	// 智研工坊 rules and skills ship with the template: clone them into the
-	// project first so the role bindings can be remapped onto real assets.
-	ruleRemap, err := h.cloneGenericTemplateRules(template.Rules, projectID, now)
+	// The rule and skill bindings live in the platform catalog as well: clone
+	// them into the project first so role bindings can be remapped onto real
+	// project assets.
+	ruleSources, skillSources, err := h.collectTemplateAssets(sources)
 	if err != nil {
 		return nil, err
 	}
-	skillRemap, err := h.cloneGenericTemplateSkills(template.Skills, projectID, now)
+	ruleRemap, err := h.cloneGenericTemplateRules(ruleSources, projectID, now)
 	if err != nil {
 		return nil, err
 	}
-	remap := make(map[string]string, len(template.Agents))
-	for _, source := range template.Agents {
+	skillRemap, err := h.cloneGenericTemplateSkills(skillSources, projectID, now)
+	if err != nil {
+		return nil, err
+	}
+	remap := make(map[string]string, len(sources))
+	for _, source := range sources {
 		// Projects that did not get the plain template id (a sibling project
 		// owns it) hold a deterministic <id>-<project> clone instead; reuse it
 		// so re-adopting the template never duplicates the roles.
@@ -340,15 +444,88 @@ func (h *catalogHandlers) createGenericWorkflow(v domain.WorkflowDefinition) (do
 	if err != nil {
 		return domain.WorkflowDefinition{}, http.StatusBadRequest, err
 	}
-	if err := h.repo.PutGenericTemplate(repo.GenericTemplate{Workflow: attached}); err != nil {
+	refs, status, err := h.collectPlatformRoleRefs(attached)
+	if err != nil {
+		return domain.WorkflowDefinition{}, status, err
+	}
+	if err := h.repo.PutGenericTemplate(repo.GenericTemplate{Workflow: attached, AgentRefs: refs}); err != nil {
 		return domain.WorkflowDefinition{}, http.StatusBadRequest, err
 	}
 	return attached, http.StatusCreated, nil
 }
 
-// promoteWorkflow copies a project SOP into the platform catalog. The project
-// SOP stays untouched; its roles, rules and skills are bundled into the new
-// template so any project can adopt a runnable copy.
+// collectPlatformRoleRefs validates that every role bound by a platform SOP is
+// already in the platform catalog and returns the references to store. Creating
+// a template never promotes project roles: that would take them away from the
+// project that owns them.
+func (h *catalogHandlers) collectPlatformRoleRefs(v domain.WorkflowDefinition) ([]repo.GenericAgentRef, int, error) {
+	seen := make(map[string]bool, len(v.Nodes))
+	refs := make([]repo.GenericAgentRef, 0, len(v.Nodes))
+	for _, node := range v.Nodes {
+		if node.Type != "agent" {
+			continue
+		}
+		agentID := strings.TrimSpace(node.AgentID)
+		if agentID == "" || domain.IsPreviewBuildAgent(agentID) || seen[agentID] {
+			continue
+		}
+		seen[agentID] = true
+		role, ok := h.repo.Agent(agentID)
+		if !ok || role.ProjectID != "" {
+			return nil, http.StatusBadRequest, fmt.Errorf("节点「%s」绑定的角色 %q 不在平台角色库中，请先在「设置 › 角色定义」创建", node.Name, agentID)
+		}
+		refs = append(refs, repo.GenericAgentRef{ID: role.ID})
+	}
+	return refs, 0, nil
+}
+
+// registerPromotedRoles publishes the roles bound by a promoted SOP into the
+// platform catalog and returns the references to store. A project-owned role is
+// promoted in place, matching migrations/046's semantics for skills; a role
+// owned by a different project is a hard conflict instead of a silent takeover.
+func (h *catalogHandlers) registerPromotedRoles(src domain.WorkflowDefinition) ([]repo.GenericAgentRef, int, error) {
+	seen := make(map[string]bool, len(src.Nodes))
+	refs := make([]repo.GenericAgentRef, 0, len(src.Nodes))
+	for _, node := range src.Nodes {
+		if node.Type != "agent" {
+			continue
+		}
+		agentID := strings.TrimSpace(node.AgentID)
+		if agentID == "" || domain.IsPreviewBuildAgent(agentID) || seen[agentID] {
+			continue
+		}
+		seen[agentID] = true
+		role, ok := h.repo.Agent(agentID)
+		if !ok {
+			return nil, http.StatusBadRequest, fmt.Errorf("角色 %q 不存在，请先补齐后再提升", agentID)
+		}
+		if role.ProjectID != "" {
+			if role.ProjectID != src.ProjectID {
+				return nil, http.StatusConflict, fmt.Errorf("角色 %q 属于项目 %s，不能提升为平台角色；请先改用本项目的角色标识", agentID, role.ProjectID)
+			}
+			promoted, err := h.repo.PromoteAgent(role.ID, src.ProjectID)
+			if err != nil {
+				return nil, http.StatusBadRequest, err
+			}
+			role = promoted
+		}
+		for _, ruleID := range role.Rules {
+			if rule, ok := h.repo.Rule(ruleID); !ok || rule.ProjectID != "" {
+				return nil, http.StatusBadRequest, fmt.Errorf("角色 %q 引用的规则 %q 不在平台资产库中，请先提升该规则", role.Name, ruleID)
+			}
+		}
+		for _, skillID := range role.Skills {
+			if skill, ok := h.repo.Skill(skillID); !ok || skill.ProjectID != "" {
+				return nil, http.StatusBadRequest, fmt.Errorf("角色 %q 引用的技能 %q 不在平台资产库中，请先提升该技能", role.Name, skillID)
+			}
+		}
+		// Version stays 0 until publish freezes it, so a draft SOP tracks the
+		// newest platform role.
+		refs = append(refs, repo.GenericAgentRef{ID: role.ID})
+	}
+	return refs, 0, nil
+}
+
 func (h *catalogHandlers) promoteWorkflow(src domain.WorkflowDefinition, id, name, owner string) (domain.WorkflowDefinition, int, error) {
 	id, name = strings.TrimSpace(id), strings.TrimSpace(name)
 	if id == "" || name == "" {
@@ -366,47 +543,12 @@ func (h *catalogHandlers) promoteWorkflow(src domain.WorkflowDefinition, id, nam
 	if profile, ok := h.repo.Sandbox(src.SandboxProfileID); !ok || (profile.ProjectID != "" && !profile.Shared) {
 		return domain.WorkflowDefinition{}, http.StatusBadRequest, errors.New("提升为平台 SOP 前，请先把该 SOP 的运行沙箱换成平台共享沙箱")
 	}
-	template := repo.GenericTemplate{}
-	seenRole, seenRule, seenSkill := map[string]bool{}, map[string]bool{}, map[string]bool{}
-	for _, node := range src.Nodes {
-		if node.Type != "agent" {
-			continue
-		}
-		agentID := strings.TrimSpace(node.AgentID)
-		if agentID == "" || domain.IsPreviewBuildAgent(agentID) || seenRole[agentID] {
-			continue
-		}
-		role, ok := h.repo.Agent(agentID)
-		if !ok {
-			return domain.WorkflowDefinition{}, http.StatusBadRequest, fmt.Errorf("角色 %q 不存在，请先补齐后再提升", agentID)
-		}
-		seenRole[agentID] = true
-		role.ProjectID, role.Shared = "", false
-		template.Agents = append(template.Agents, role)
-		for _, ruleID := range role.Rules {
-			if seenRule[ruleID] {
-				continue
-			}
-			rule, ok := h.repo.Rule(ruleID)
-			if !ok {
-				return domain.WorkflowDefinition{}, http.StatusBadRequest, fmt.Errorf("角色 %q 引用的规则 %q 不存在，请先补齐后再提升", role.Name, ruleID)
-			}
-			seenRule[ruleID] = true
-			rule.ProjectID, rule.Shared = "", false
-			template.Rules = append(template.Rules, rule)
-		}
-		for _, skillID := range role.Skills {
-			if seenSkill[skillID] {
-				continue
-			}
-			skill, ok := h.repo.Skill(skillID)
-			if !ok {
-				return domain.WorkflowDefinition{}, http.StatusBadRequest, fmt.Errorf("角色 %q 引用的技能 %q 不存在，请先补齐后再提升", role.Name, skillID)
-			}
-			seenSkill[skillID] = true
-			skill.ProjectID, skill.Shared = "", false
-			template.Skills = append(template.Skills, skill)
-		}
+	// Promoting records the roles in the platform catalog and keeps only the
+	// references in the template, so later role edits reach this SOP without a
+	// second copy of the definition drifting in payload.
+	refs, status, err := h.registerPromotedRoles(src)
+	if err != nil {
+		return domain.WorkflowDefinition{}, status, err
 	}
 	promoted := src
 	promoted.Nodes = append([]domain.WorkflowNode(nil), src.Nodes...)
@@ -427,7 +569,7 @@ func (h *catalogHandlers) promoteWorkflow(src domain.WorkflowDefinition, id, nam
 	if strings.TrimSpace(promoted.SOPLane) == "" {
 		promoted.SOPLane = domain.InferSOPLane(src)
 	}
-	template.Workflow = promoted
+	template := repo.GenericTemplate{Workflow: promoted, AgentRefs: refs}
 	if err := h.repo.PutGenericTemplate(template); err != nil {
 		return domain.WorkflowDefinition{}, http.StatusBadRequest, err
 	}

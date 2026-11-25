@@ -45,12 +45,22 @@ ARG TARGETARCH
 ARG PYTHON_STANDALONE=20261110/cpython-3.12.16+20261110
 ARG PYTHON_STANDALONE_SHA256_AMD64=6a9e62dad033790aef722dbd370e0ce76ce17b73627ba3ae679f537049350b39
 ARG PYTHON_STANDALONE_SHA256_ARM64=b6a41defec4975d94b4ff1950236e7383e5c02ba40ea48c9ec33c66087a35aab
-RUN case "${TARGETARCH:-amd64}" in \
+# The archive lives on GitHub Releases, which some developer networks reach only
+# through a TLS-inspecting proxy. PYTHON_PROXY carries that proxy and the
+# `proxy_ca` build secret carries its root CA; both are empty on CI, so the
+# download stays a direct connection there. ${proxy_ca} is deliberately unquoted
+# so the empty case expands to no argument at all.
+ARG PYTHON_PROXY=
+RUN --mount=type=secret,id=proxy_ca,required=false \
+    case "${TARGETARCH:-amd64}" in \
       amd64) arch=x86_64 sum="${PYTHON_STANDALONE_SHA256_AMD64}" ;; \
       arm64) arch=aarch64 sum="${PYTHON_STANDALONE_SHA256_ARM64}" ;; \
       *) echo "unsupported arch ${TARGETARCH}" >&2; exit 1 ;; \
-    esac \
- && curl -fsSL -o /tmp/python.tar.gz "https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE}-${arch}-unknown-linux-gnu-install_only_stripped.tar.gz" \
+    esac ; \
+    proxy_ca="" ; \
+    if [ -s /run/secrets/proxy_ca ]; then proxy_ca="--cacert /run/secrets/proxy_ca" ; fi ; \
+    HTTPS_PROXY="${PYTHON_PROXY}" HTTP_PROXY="${PYTHON_PROXY}" \
+    curl -fsSL ${proxy_ca} -o /tmp/python.tar.gz "https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE}-${arch}-unknown-linux-gnu-install_only_stripped.tar.gz" \
  && echo "${sum}  /tmp/python.tar.gz" | sha256sum -c - \
  && mkdir -p /app \
  && tar -xzf /tmp/python.tar.gz -C /app \

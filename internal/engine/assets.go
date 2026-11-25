@@ -80,15 +80,8 @@ func (e *Engine) resolveAssets(agent domain.AgentDefinition, projectID, workflow
 	for _, id := range agent.Rules {
 		if v, ok := e.repo.Rule(id); ok {
 			if v.ProjectID != projectID && !v.Shared {
-				if tmpl, found := e.repo.GenericRuleByID(id); found {
-					bundle.Rules = append(bundle.Rules, tmpl)
-				}
 				continue
 			}
-			bundle.Rules = append(bundle.Rules, v)
-			continue
-		}
-		if v, ok := e.repo.GenericRuleByID(id); ok {
 			bundle.Rules = append(bundle.Rules, v)
 		}
 	}
@@ -104,9 +97,6 @@ func (e *Engine) resolveAssets(agent domain.AgentDefinition, projectID, workflow
 			// 否则定时任务/SOP 引用共享角色时会被技能隔离规则吃掉资产；
 			// 私有技能仍不跨项目，避免把源项目私有资产带出去。
 			if v.ProjectID != projectID && !(agent.Shared && v.ProjectID == agent.ProjectID && v.Shared) {
-				if tmpl, found := e.repo.GenericSkillByID(id); found {
-					bundle.Skills = append(bundle.Skills, tmpl)
-				}
 				continue
 			}
 			if len(v.FileRefs) > 0 {
@@ -117,10 +107,6 @@ func (e *Engine) resolveAssets(agent domain.AgentDefinition, projectID, workflow
 					bundle.SkillFiles[v.ID] = contents
 				}
 			}
-			bundle.Skills = append(bundle.Skills, v)
-			continue
-		}
-		if v, ok := e.repo.GenericSkillByID(id); ok {
 			bundle.Skills = append(bundle.Skills, v)
 		}
 	}
@@ -215,18 +201,18 @@ func workflowAgent(st *repo.Store, wf domain.WorkflowDefinition, id string) (dom
 		return domain.PreviewBuildAgent(wf.Preview), true
 	}
 	if wf.Generic {
-		if template, ok := st.GenericTemplateByWorkflow(wf.ID); ok {
-			for _, role := range template.Agents {
-				if role.ID == id {
-					return role, true
-				}
+		// The platform catalog is authoritative: a template references roles, it
+		// does not own them, so a project-owned row sharing the id must never
+		// shadow the platform definition.
+		if agent, ok := st.Agent(id); ok && agent.ProjectID == "" {
+			if template, hasTemplate := st.GenericTemplateByWorkflow(wf.ID); hasTemplate {
+				agent = pinTemplateAgent(st, agent, template)
 			}
+			return agent, true
 		}
+		return domain.AgentDefinition{}, false
 	}
 	if agent, ok := st.Agent(id); ok {
-		if st.AgentShadowsTemplateOutside(agent, wf.ProjectID) {
-			return st.GenericAgentByID(id)
-		}
 		if wf.ID == BaselineAlignWorkflowID && id == BaselineAlignAgentID {
 			for _, node := range wf.Nodes {
 				if node.Type == "agent" && node.AgentID == id && node.ExecutorID != "" {
@@ -239,7 +225,22 @@ func workflowAgent(st *repo.Store, wf domain.WorkflowDefinition, id string) (dom
 		}
 		return agent, true
 	}
-	return st.GenericAgentByID(id)
+	return domain.AgentDefinition{}, false
+}
+
+// pinTemplateAgent replays the definition a published template was pinned to,
+// so an adopted copy keeps behaving like the version it shipped with even after
+// the platform role moved on.
+func pinTemplateAgent(st *repo.Store, agent domain.AgentDefinition, template repo.GenericTemplate) domain.AgentDefinition {
+	for _, ref := range template.AgentRefs {
+		if ref.ID != agent.ID || ref.Version <= 0 || ref.Version == agent.Version {
+			continue
+		}
+		if pinned, ok := st.AgentRevision(agent.ID, ref.Version); ok {
+			return pinned
+		}
+	}
+	return agent
 }
 
 // projectSandbox resolves a generic template's preferred sandbox without ever

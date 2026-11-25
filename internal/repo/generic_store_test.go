@@ -77,88 +77,44 @@ func TestUpdateGenericWorkflowGuardsStaleWritesAndKeepsHistory(t *testing.T) {
 	}
 }
 
-func TestUpdateGenericAgentStaysInTemplateAndIgnoresProjectCatalog(t *testing.T) {
+func TestGenericTemplateRolesLiveInPlatformCatalog(t *testing.T) {
 	s := testStoreWithGenericTemplates(t)
-	if err := s.PutProject(domain.Project{ID: "skillhub", Key: "SH", Name: "SkillHub"}); err != nil {
-		t.Fatal(err)
-	}
-	hijack := domain.AgentDefinition{ID: GenericAgentReview, Name: "SkillHub 评审", ProjectID: "skillhub", Version: 9, Prompt: "project copy"}
-	if err := s.PutAgent(hijack); err != nil {
-		t.Fatal(err)
-	}
 	template, ok := s.GenericTemplateByWorkflow(GenericBackendDeliveryWorkflowID)
 	if !ok {
 		t.Fatal("backend template missing")
 	}
-	var review domain.AgentDefinition
-	for _, agent := range template.Agents {
-		if agent.ID == GenericAgentReview {
-			review = agent
+	if len(template.AgentRefs) == 0 {
+		t.Fatal("template must reference the platform roles it orchestrates")
+	}
+	for _, ref := range template.AgentRefs {
+		role, ok := s.Agent(ref.ID)
+		if !ok {
+			t.Fatalf("referenced role %q missing from the platform catalog", ref.ID)
 		}
-	}
-	if review.ID == "" {
-		t.Fatal("review role missing from template")
-	}
-	review.Prompt = "platform review instructions"
-	saved, err := s.UpdateGenericAgent(GenericBackendDeliveryWorkflowID, review)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if saved.ProjectID != "" || saved.Prompt != "platform review instructions" {
-		t.Fatalf("generic agent save leaked a project identity: %+v", saved)
-	}
-	got, _ := s.GenericAgentByID(GenericAgentReview)
-	if got.Prompt != "platform review instructions" {
-		t.Fatalf("template role was not updated: %+v", got)
-	}
-	projectCopy, _ := s.Agent(GenericAgentReview)
-	if projectCopy.Prompt != "project copy" || projectCopy.ProjectID != "skillhub" {
-		t.Fatalf("project catalog role was overwritten: %+v", projectCopy)
-	}
-	if _, err := s.UpdateGenericAgent(GenericBackendDeliveryWorkflowID, domain.AgentDefinition{ID: "skillhub-reviewer"}); err == nil {
-		t.Fatal("updating a role that is not on the template must fail")
+		if role.ProjectID != "" {
+			t.Fatalf("referenced role %q is not a platform role: %+v", ref.ID, role)
+		}
 	}
 }
 
-func TestUpdateGenericAgentRejectsStaleWrite(t *testing.T) {
+func TestAgentRevisionReplaysAPinnedRole(t *testing.T) {
 	s := testStoreWithGenericTemplates(t)
-	base, ok := s.GenericAgentByID(GenericAgentReview)
+	base, ok := s.Agent(GenericAgentReview)
 	if !ok {
 		t.Fatal("review role missing")
 	}
-	first, second := base, base
-	first.Description = "先保存的人写的"
-	first.Version = base.Version
-	saved, err := s.UpdateGenericAgent(GenericBackendDeliveryWorkflowID, first)
-	if err != nil {
+	current := base
+	current.Prompt = "v2 prompt"
+	current.Version = base.Version + 1
+	if err := s.PutAgent(current); err != nil {
 		t.Fatal(err)
 	}
-	if saved.Version != base.Version+1 {
-		t.Fatalf("version = %d, want %d", saved.Version, base.Version+1)
+	pinned, ok := s.AgentRevision(GenericAgentReview, base.Version)
+	if !ok {
+		t.Fatal("archived revision missing")
 	}
-	second.Description = "后保存的人写的"
-	second.Version = base.Version
-	if _, err := s.UpdateGenericAgent(GenericBackendDeliveryWorkflowID, second); err == nil {
-		t.Fatal("a stale write silently overwrote the other admin's edit")
-	}
-	got, _ := s.GenericAgentByID(GenericAgentReview)
-	if got.Description != "先保存的人写的" {
-		t.Fatalf("stored description = %q", got.Description)
-	}
-}
-
-func TestUpdateGenericAgentAcceptsUnversionedWrite(t *testing.T) {
-	s := testStoreWithGenericTemplates(t)
-	base, _ := s.GenericAgentByID(GenericAgentReview)
-	patch := base
-	patch.Version = 0
-	patch.Description = "脚本改的"
-	saved, err := s.UpdateGenericAgent(GenericBackendDeliveryWorkflowID, patch)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if saved.Version != base.Version+1 {
-		t.Fatalf("version = %d, want %d", saved.Version, base.Version+1)
+	if pinned.Prompt == "v2 prompt" {
+		t.Fatalf("pinned revision returned the current definition: %+v", pinned)
 	}
 }
 
@@ -175,5 +131,49 @@ func TestPublishGenericWorkflow(t *testing.T) {
 	}
 	if published.Status != "published" || published.Version != before.Version+1 {
 		t.Fatalf("publish = %+v", published)
+	}
+}
+
+func TestPublishFreezesReferencedRoleVersion(t *testing.T) {
+	s := testStoreWithGenericTemplates(t)
+	// The fixture ships as published; touch the workflow so publish has work.
+	before, _ := s.GenericWorkflowByID(GenericBackendDeliveryWorkflowID)
+	before.Description += " freeze"
+	if _, err := s.UpdateGenericWorkflow(before); err != nil {
+		t.Fatal(err)
+	}
+	role, ok := s.Agent(GenericAgentReview)
+	if !ok {
+		t.Fatal("review role missing")
+	}
+	template, ok := s.GenericTemplateByWorkflow(GenericBackendDeliveryWorkflowID)
+	if !ok || len(template.AgentRefs) == 0 {
+		t.Fatalf("template does not reference any role: %+v", template.AgentRefs)
+	}
+	if _, err := s.PublishGenericWorkflow(GenericBackendDeliveryWorkflowID); err != nil {
+		t.Fatal(err)
+	}
+	published, _ := s.GenericTemplateByWorkflow(GenericBackendDeliveryWorkflowID)
+	pin := 0
+	for _, ref := range published.AgentRefs {
+		if ref.ID == GenericAgentReview {
+			pin = ref.Version
+		}
+	}
+	if pin != role.Version {
+		t.Fatalf("publish must pin the shipped role version: pin=%d role=%d", pin, role.Version)
+	}
+
+	// A later role edit must not move the pin of an already published SOP.
+	role.Prompt = "post-release prompt"
+	role.Version++
+	if err := s.PutAgent(role); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := s.GenericTemplateByWorkflow(GenericBackendDeliveryWorkflowID)
+	for _, ref := range after.AgentRefs {
+		if ref.ID == GenericAgentReview && ref.Version != pin {
+			t.Fatalf("published pin followed the role edit: got %d want %d", ref.Version, pin)
+		}
 	}
 }

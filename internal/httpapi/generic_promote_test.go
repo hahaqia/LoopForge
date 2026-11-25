@@ -57,7 +57,7 @@ func seedPromotableSOP(t *testing.T, st *repo.Store) {
 	}
 }
 
-func TestPromoteSOPToPlatformBundlesRoles(t *testing.T) {
+func TestPromoteSOPRegistersPlatformRoles(t *testing.T) {
 	api, _, admin, st := promoteFixture(t)
 	seedPromotableSOP(t, st)
 
@@ -73,14 +73,65 @@ func TestPromoteSOPToPlatformBundlesRoles(t *testing.T) {
 	if !ok {
 		t.Fatal("promoted template is missing from the platform catalog")
 	}
-	if len(template.Agents) != 1 || template.Agents[0].ID != "role-a" || template.Agents[0].ProjectID != "" {
-		t.Fatalf("roles were not bundled into the template: %+v", template.Agents)
+	// The template references roles; it must not carry a second copy.
+	if len(template.AgentRefs) != 1 || template.AgentRefs[0].ID != "role-a" {
+		t.Fatalf("promoted template must reference the promoted role: %+v", template.AgentRefs)
+	}
+	role, ok := st.Agent("role-a")
+	if !ok || role.ProjectID != "" {
+		t.Fatalf("project role was not registered as a platform role: %+v", role)
 	}
 	if template.Workflow.ProjectID != "" || !template.Workflow.Generic {
 		t.Fatalf("promoted workflow must be platform scoped: %+v", template.Workflow)
 	}
 	if _, ok := st.Workflow("sop-a"); !ok {
 		t.Fatal("the project SOP must be kept after promotion")
+	}
+}
+
+func TestPromoteSOPRejectsForeignProjectRole(t *testing.T) {
+	api, _, admin, st := promoteFixture(t)
+	seedPromotableSOP(t, st)
+	if err := st.PutProject(domain.Project{ID: "other-proj", Name: "Other"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.PutAgent(domain.AgentDefinition{ID: "role-a", Name: "别人的角色", ProjectID: "other-proj"}); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/workflows/sop-a/promote", strings.NewReader(`{"id":"generic-promoted","name":"平台版 SOP"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	api.ServeHTTP(rec, authedRequest(t, req, admin))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("promote with a foreign role = %d %s", rec.Code, rec.Body.String())
+	}
+	if role, _ := st.Agent("role-a"); role.ProjectID != "other-proj" {
+		t.Fatalf("a rejected promote must not take over another project's role: %+v", role)
+	}
+}
+
+func TestPromoteSOPRejectsProjectScopedRule(t *testing.T) {
+	api, _, admin, st := promoteFixture(t)
+	seedPromotableSOP(t, st)
+	if err := st.PutRule(domain.RuleDefinition{ID: "rule-a", Name: "项目规则", ProjectID: "promote-proj", Content: "x"}); err != nil {
+		t.Fatal(err)
+	}
+	role, _ := st.Agent("role-a")
+	role.Rules = []string{"rule-a"}
+	if err := st.PutAgent(role); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/workflows/sop-a/promote", strings.NewReader(`{"id":"generic-promoted","name":"平台版 SOP"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	api.ServeHTTP(rec, authedRequest(t, req, admin))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "不在平台资产库") {
+		t.Fatalf("promote with a project rule = %d %s", rec.Code, rec.Body.String())
+	}
+	if _, ok := st.GenericTemplateByWorkflow("generic-promoted"); ok {
+		t.Fatal("a rejected promote must not create a template")
 	}
 }
 

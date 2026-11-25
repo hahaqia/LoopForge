@@ -15,8 +15,8 @@ func TestGenericSOPCopyUsesPersonalDefaultForUnpinnedRoles(t *testing.T) {
 	}
 	t.Cleanup(func() { st.Close() })
 	if err := st.PutGenericTemplate(repo.GenericTemplate{
-		Workflow: domain.WorkflowDefinition{ID: "sop-template", Name: "Template"},
-		Agents:   []domain.AgentDefinition{{ID: "reviewer"}, {ID: "author"}},
+		Workflow:  domain.WorkflowDefinition{ID: "sop-template", Name: "Template"},
+		AgentRefs: []repo.GenericAgentRef{{ID: "reviewer"}, {ID: "author"}},
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -33,7 +33,40 @@ func BaselineAlignResolverAgent() domain.AgentDefinition {
 
 func (r *CatalogRepo) Agents() []domain.AgentDefinition {
 	out := payloadList[domain.AgentDefinition](r.DB, "agents", "")
+	refs := r.templateReferencesByAgent()
+	for i := range out {
+		out[i].SourceTemplateIDs = refs[out[i].ID]
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// TemplatesReferencingAgent lists the platform SOPs that bind the given role.
+func (r *CatalogRepo) TemplatesReferencingAgent(id string) []string {
+	if strings.TrimSpace(id) == "" {
+		return nil
+	}
+	return r.templateReferencesByAgent()[id]
+}
+
+// templateReferencesByAgent maps a role id to the platform SOPs binding it.
+// Computed from workflow nodes on every read so a template edit or delete can
+// never leave a stale reference behind.
+func (r *CatalogRepo) templateReferencesByAgent() map[string][]string {
+	out := make(map[string][]string)
+	for _, template := range r.GenericTemplates() {
+		id := template.Workflow.ID
+		for _, node := range template.Workflow.Nodes {
+			if node.Type != "agent" || node.AgentID == "" {
+				continue
+			}
+			refs := out[node.AgentID]
+			if len(refs) > 0 && refs[len(refs)-1] == id {
+				continue
+			}
+			out[node.AgentID] = append(refs, id)
+		}
+	}
 	return out
 }
 
@@ -109,6 +142,31 @@ func (r *CatalogRepo) PutAgent(v domain.AgentDefinition) error {
 	return upsert(r.DB, "agents", map[string]any{
 		"id": v.ID, "name": v.Name, "payload": mustJSON(v), "updated_at": timePtr(v.UpdatedAt),
 	})
+}
+
+// PromoteAgent moves a project-owned role into the platform catalog. It is the
+// only write path allowed to clear projectId: PutAgent deliberately keeps it so
+// an ordinary save can never publish a project asset by accident.
+func (r *CatalogRepo) PromoteAgent(id, projectID string) (domain.AgentDefinition, error) {
+	agent, ok := r.Agent(id)
+	if !ok {
+		return domain.AgentDefinition{}, fmt.Errorf("agent %q not found", id)
+	}
+	if agent.ProjectID != projectID {
+		return domain.AgentDefinition{}, fmt.Errorf("agent %q is owned by project %q", id, agent.ProjectID)
+	}
+	if err := r.snapshotRevision("agent", agent.ID, agent.Name, agent.Version, 0, agent); err != nil {
+		return domain.AgentDefinition{}, err
+	}
+	agent.ProjectID, agent.Shared = "", true
+	agent.Version++
+	agent.UpdatedAt = time.Now().UTC()
+	if err := upsert(r.DB, "agents", map[string]any{
+		"id": agent.ID, "name": agent.Name, "payload": mustJSON(agent), "updated_at": timePtr(agent.UpdatedAt),
+	}); err != nil {
+		return domain.AgentDefinition{}, err
+	}
+	return agent, nil
 }
 
 // ---------- Rules / Skills / MCP servers ----------
@@ -823,6 +881,27 @@ func (r *CatalogRepo) Revisions(kind, entityID string) []domain.DefinitionRevisi
 
 func (r *CatalogRepo) Revision(id string) (domain.DefinitionRevision, bool) {
 	return payloadOne[domain.DefinitionRevision](r.DB, "definition_revisions", id)
+}
+
+// AgentRevision returns the archived definition of an agent at an exact
+// version. Snapshots are written by PutAgent before it overwrites a row, so a
+// platform SOP that pins a version can adopt the definition it was published
+// with even after the role moved on.
+func (r *CatalogRepo) AgentRevision(id string, version int) (domain.AgentDefinition, bool) {
+	if version <= 0 {
+		return domain.AgentDefinition{}, false
+	}
+	for _, rev := range r.Revisions("agent", id) {
+		if rev.Version != version {
+			continue
+		}
+		var agent domain.AgentDefinition
+		if err := json.Unmarshal(rev.Payload, &agent); err != nil {
+			continue
+		}
+		return agent, true
+	}
+	return domain.AgentDefinition{}, false
 }
 
 func (r *CatalogRepo) RestoreWorkflowRevision(id string) (domain.WorkflowDefinition, error) {

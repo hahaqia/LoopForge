@@ -107,11 +107,13 @@ func templateSOPRoleIDs(st *repo.Store, wf domain.WorkflowDefinition) map[string
 	if !ok {
 		return nil
 	}
-	ids := make(map[string]bool, len(template.Agents))
-	for _, role := range template.Agents {
-		ids[role.ID] = true
+	ids := make(map[string]bool, len(template.AgentRefs))
+	// Templates reference platform roles; a project copy carries the
+	// deterministic <id>-<projectId> suffix.
+	for _, ref := range template.AgentRefs {
+		ids[ref.ID] = true
 		if !wf.Generic {
-			ids[role.ID+"-"+wf.ProjectID] = true
+			ids[ref.ID+"-"+wf.ProjectID] = true
 		}
 	}
 	return ids

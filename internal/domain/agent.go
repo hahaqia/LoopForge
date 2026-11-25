@@ -88,8 +88,8 @@ type AgentDefinition struct {
 	// AllowHumanAsk lets the role pause mid-node and ask the operator a
 	// question through the gate MCP instead of guessing. Off by default: only
 	// roles that genuinely need a discussion (requirement, design) should nag.
-	AllowHumanAsk bool          `json:"allowHumanAsk,omitempty"`
-	Hooks         []AgentHook   `json:"hooks,omitempty"`
+	AllowHumanAsk   bool                     `json:"allowHumanAsk,omitempty"`
+	Hooks           []AgentHook              `json:"hooks,omitempty"`
 	ExecutorID      string                   `json:"executorId,omitempty"`
 	Model           string                   `json:"model,omitempty"`
 	Effort          string                   `json:"effort,omitempty"`
@@ -98,6 +98,11 @@ type AgentDefinition struct {
 	ArtifactOutputs []ArtifactContract       `json:"artifactOutputs,omitempty"`
 	Verification    []VerificationGate       `json:"verification"`
 	UpdatedAt       time.Time                `json:"updatedAt"`
+
+	// SourceTemplateIDs lists the platform SOPs that bind this role. It is
+	// computed on read and never persisted, so the reference relation has
+	// exactly one source of truth: the workflow nodes.
+	SourceTemplateIDs []string `json:"sourceTemplateIds,omitempty"`
 }
 
 // AgentHook is a role-scoped lifecycle script. The runtime compiles the common

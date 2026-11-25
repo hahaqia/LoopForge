@@ -1,5 +1,14 @@
+-- ⚠ 已被 052 取代，勿重跑。
+-- 本脚本按 payload 内联 {Workflow, Agents, Rules, Skills} 的旧模型编写。
+-- 052 已把内联资产搬进平台资产库（agents/rules/skills）并改写为 AgentRefs；
+-- 在已执行 052 的环境重跑会覆盖 artifact_templates、写回内联键，
+-- 并把 SOP 的 version/status/publishedRevision 重置为初始值。
+-- 正确顺序：seed/001 → 048 → 049 → 050 → 051 → 052 → 053。
+-- 误跑后：重跑 052 恢复引用结构，再重跑 053 重新 pin 角色版本；
+-- version/status 需按实际发布记录人工校正。
+--
 -- Harness 融合交付 SOP · 第 1 段：产物模板 + 自建技能 + 四条规则
--- 顺序执行 048 → 049 → 050。每段可重复执行。
+-- 一次性执行：048 → 049 → 050 → 051，不要单独重跑其中任何一段。
 -- payload 结构固定为 {Workflow, Agents, Rules, Skills}，
 -- 见 internal/repo/generic_workflows.go 的 GenericTemplate。
 -- 规则一律走 payload.Rules + 角色显式引用，不用 global + workflowIds：

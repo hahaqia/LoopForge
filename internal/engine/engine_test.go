@@ -392,9 +392,9 @@ func TestGenericMRRoleResolvesGongfengMarketAlias(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	agent, ok := st.GenericAgentByID(repo.GenericAgentMR)
-	if !ok {
-		t.Fatal("generic MR role missing")
+	agent, ok := st.Agent(repo.GenericAgentMR)
+	if !ok || agent.ProjectID != "" {
+		t.Fatalf("generic MR role missing from the platform catalog: %+v", agent)
 	}
 	if len(agent.MCPServers) != 1 || agent.MCPServers[0] != "gongfeng" {
 		t.Fatalf("generic MR role should bind the gongfeng alias, got %#v", agent.MCPServers)
@@ -423,10 +423,12 @@ func TestGenericCatalogAssetsIgnoreStoredCrossProjectCollisions(t *testing.T) {
 	if err := repo.SeedTestGenericTemplates(st); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.PutAgent(domain.AgentDefinition{ID: repo.GenericAgentRequirement, Name: "Foreign edit", ProjectID: "other", ExecutorID: "missing-executor"}); err != nil {
+	// A project copy carries the deterministic suffix, so it cannot collide with
+	// the platform row the template references.
+	if err := st.PutAgent(domain.AgentDefinition{ID: repo.GenericAgentRequirement + "-other", Name: "Foreign edit", ProjectID: "other", ExecutorID: "missing-executor"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.PutRule(domain.RuleDefinition{ID: repo.GenericRuleCore, Name: "Foreign rule", ProjectID: "other", Content: "wrong"}); err != nil {
+	if err := st.PutRule(domain.RuleDefinition{ID: repo.GenericRuleCore + "-other", Name: "Foreign rule", ProjectID: "other", Content: "wrong"}); err != nil {
 		t.Fatal(err)
 	}
 	wf, ok := st.GenericWorkflowByID(repo.GenericBackendDeliveryWorkflowID)

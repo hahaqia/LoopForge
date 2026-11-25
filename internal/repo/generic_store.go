@@ -131,46 +131,6 @@ func (r *CatalogRepo) UpdateGenericWorkflow(workflow domain.WorkflowDefinition) 
 	return workflow, nil
 }
 
-// UpdateGenericAgent replaces one bundled role on a stored template. The
-// workflow graph, rules and skills stay untouched, and nothing is written
-// into the project agents table.
-func (r *CatalogRepo) UpdateGenericAgent(workflowID string, agent domain.AgentDefinition) (domain.AgentDefinition, error) {
-	template, ok := r.GenericTemplateByWorkflow(workflowID)
-	if !ok {
-		return domain.AgentDefinition{}, errors.New("generic template not found")
-	}
-	id := strings.TrimSpace(agent.ID)
-	if id == "" {
-		return domain.AgentDefinition{}, errors.New("agent id is required")
-	}
-	index := -1
-	for i, existing := range template.Agents {
-		if existing.ID == id {
-			index = i
-			break
-		}
-	}
-	if index < 0 {
-		return domain.AgentDefinition{}, fmt.Errorf("角色 %q 不属于该通用模板", id)
-	}
-	existing := template.Agents[index]
-	agent.ID = id
-	agent.ProjectID = ""
-	agent.Shared = false
-	if agent.Version != 0 && agent.Version != existing.Version {
-		return domain.AgentDefinition{}, fmt.Errorf("角色 %q 版本冲突：当前版本已是 %d，请刷新后重改", id, existing.Version)
-	}
-	agent.Version = existing.Version + 1
-	if agent.UpdatedAt.IsZero() {
-		agent.UpdatedAt = time.Now().UTC()
-	}
-	template.Agents[index] = agent
-	if err := r.putGenericTemplate(template); err != nil {
-		return domain.AgentDefinition{}, err
-	}
-	return agent, nil
-}
-
 // PublishGenericWorkflow publishes only when the stored template has changed.
 func (r *CatalogRepo) PublishGenericWorkflow(id string) (domain.WorkflowDefinition, error) {
 	var published domain.WorkflowDefinition
@@ -202,6 +162,13 @@ func (r *CatalogRepo) publishGenericWorkflow(id string) (domain.WorkflowDefiniti
 	template.Workflow.PublishedRevision = template.Workflow.Revision
 	if template.Workflow.Version < 1 {
 		template.Workflow.Version = 1
+	}
+	// Freeze the role versions this release ships with. Without the pin a later
+	// platform role edit would retroactively change an already published SOP.
+	for i := range template.AgentRefs {
+		if role, ok := r.Agent(template.AgentRefs[i].ID); ok {
+			template.AgentRefs[i].Version = role.Version
+		}
 	}
 	template.Workflow.UpdatedAt = time.Now().UTC()
 	if err := r.putGenericTemplate(template); err != nil {
@@ -241,41 +208,11 @@ func (r *CatalogRepo) GenericWorkflowByID(id string) (domain.WorkflowDefinition,
 	return template.Workflow, true
 }
 
-// GenericAgentByID resolves a template role by id across stored templates.
-func (r *CatalogRepo) GenericAgentByID(id string) (domain.AgentDefinition, bool) {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return domain.AgentDefinition{}, false
-	}
-	for _, template := range r.GenericTemplates() {
-		for _, agent := range template.Agents {
-			if agent.ID == id {
-				return agent, true
-			}
-		}
-	}
-	return domain.AgentDefinition{}, false
-}
-
-// AgentShadowsTemplateOutside reports whether a stored role only binds inside
-// its own project because it reuses a template role id: workflows in any other
-// project (including the generic template itself) run the built-in role.
-func (r *CatalogRepo) AgentShadowsTemplateOutside(agent domain.AgentDefinition, workflowProjectID string) bool {
-	if strings.TrimSpace(agent.ProjectID) == "" || agent.Shared || agent.ProjectID == workflowProjectID {
-		return false
-	}
-	_, inTemplate := r.GenericAgentByID(agent.ID)
-	return inTemplate
-}
-
 // WorkflowNamesUsingAgent lists the SOPs whose nodes resolve to this stored
 // role at run time.
 func (r *CatalogRepo) WorkflowNamesUsingAgent(agent domain.AgentDefinition) []string {
 	var names []string
 	for _, workflow := range r.Workflows() {
-		if r.AgentShadowsTemplateOutside(agent, workflow.ProjectID) {
-			continue
-		}
 		for _, node := range workflow.Nodes {
 			if strings.TrimSpace(node.AgentID) == agent.ID {
 				names = append(names, workflow.Name)
@@ -284,38 +221,6 @@ func (r *CatalogRepo) WorkflowNamesUsingAgent(agent domain.AgentDefinition) []st
 		}
 	}
 	return names
-}
-
-// GenericRuleByID resolves a template rule by id across stored templates.
-func (r *CatalogRepo) GenericRuleByID(id string) (domain.RuleDefinition, bool) {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return domain.RuleDefinition{}, false
-	}
-	for _, template := range r.GenericTemplates() {
-		for _, rule := range template.Rules {
-			if rule.ID == id {
-				return rule, true
-			}
-		}
-	}
-	return domain.RuleDefinition{}, false
-}
-
-// GenericSkillByID resolves a template skill by id across stored templates.
-func (r *CatalogRepo) GenericSkillByID(id string) (domain.SkillDefinition, bool) {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return domain.SkillDefinition{}, false
-	}
-	for _, template := range r.GenericTemplates() {
-		for _, skill := range template.Skills {
-			if skill.ID == id {
-				return skill, true
-			}
-		}
-	}
-	return domain.SkillDefinition{}, false
 }
 
 // GenericWorkflows returns every generic workflow definition from the store.

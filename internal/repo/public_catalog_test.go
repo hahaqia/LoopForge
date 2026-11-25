@@ -11,20 +11,31 @@ import (
 	"testing"
 )
 
-func publicCatalogTemplates(t *testing.T) map[string]GenericTemplate {
+// publicCatalogTemplate decodes the bundled seed payload, which still carries
+// the pre-052 inline assets so migration 052 can move them into the catalog.
+// Production code no longer reads those fields; only this test does, to keep
+// validating the seed content itself.
+type publicCatalogTemplate struct {
+	Workflow domain.WorkflowDefinition
+	Agents   []domain.AgentDefinition
+	Rules    []domain.RuleDefinition
+	Skills   []domain.SkillDefinition
+}
+
+func publicCatalogTemplates(t *testing.T) map[string]publicCatalogTemplate {
 	t.Helper()
 	raw, err := os.ReadFile("../../migrations/seed/001_public_catalog.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 	pattern := regexp.MustCompile(`^INSERT IGNORE INTO generic_templates .*VALUES \('([^']*)','[^']*','(.*)',UTC_TIMESTAMP\(\)\);$`)
-	templates := map[string]GenericTemplate{}
+	templates := map[string]publicCatalogTemplate{}
 	for _, line := range strings.Split(string(raw), "\n") {
 		match := pattern.FindStringSubmatch(line)
 		if match == nil {
 			continue
 		}
-		var template GenericTemplate
+		var template publicCatalogTemplate
 		payload := strings.NewReplacer(`\\`, `\`, `''`, `'`).Replace(match[2])
 		if err := json.Unmarshal([]byte(payload), &template); err != nil {
 			t.Fatal(err)

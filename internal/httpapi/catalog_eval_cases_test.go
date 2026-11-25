@@ -701,8 +701,9 @@ func TestCatalogRemainingReachableBranches(t *testing.T) {
 		body any
 		want int
 	}{
-		{map[string]any{"id": "missing-role", "name": "Missing", "executorId": "unsupported"}, http.StatusBadRequest},
-		{map[string]any{"id": "missing-role", "name": "Missing"}, http.StatusNotFound},
+		// The SOP endpoint is retired: role writes go through PUT /api/agents.
+		{map[string]any{"id": "missing-role", "name": "Missing", "executorId": "unsupported"}, http.StatusConflict},
+		{map[string]any{"id": "missing-role", "name": "Missing"}, http.StatusConflict},
 	} {
 		rec = cvBRequest(t, f, http.MethodPut,
 			"/api/workflows/"+repo.GenericBackendDeliveryWorkflowID+"/agents", tc.body, true)
@@ -713,22 +714,6 @@ func TestCatalogRemainingReachableBranches(t *testing.T) {
 	if rec = cvBRequest(t, f, http.MethodGet,
 		"/api/workflows/"+repo.GenericBackendDeliveryWorkflowID+"/agents", nil, true); rec.Code != http.StatusOK {
 		t.Fatalf("generic agents = %d: %s", rec.Code, rec.Body.String())
-	}
-	template, _ := f.s.GenericTemplateByWorkflow(repo.GenericBackendDeliveryWorkflowID)
-	if len(template.Agents) > 0 {
-		update := template.Agents[0]
-		update.Name += " updated"
-		rec = cvBRequest(t, f, http.MethodPut,
-			"/api/workflows/"+repo.GenericBackendDeliveryWorkflowID+"/agents", update, true)
-		if rec.Code != http.StatusOK {
-			t.Errorf("valid generic agent update = %d: %s", rec.Code, rec.Body.String())
-		}
-		update.Effort = "definitely-invalid"
-		rec = cvBRequest(t, f, http.MethodPut,
-			"/api/workflows/"+repo.GenericBackendDeliveryWorkflowID+"/agents", update, true)
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("invalid generic effort = %d: %s", rec.Code, rec.Body.String())
-		}
 	}
 	rec = cvBRequest(t, f, http.MethodPost,
 		"/api/workflows/"+repo.GenericBackendDeliveryWorkflowID+"/publish", nil, true)

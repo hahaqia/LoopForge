@@ -76,15 +76,23 @@ const (
 	GenericSkillKnowledgeDistill    = "zhiyan-knowledge-distillation"
 )
 
-// GenericTemplate bundles a project-independent SOP with the roles it needs.
-// Rows live in generic_templates; the engine resolves them through the same
+// GenericAgentRef pins one platform role used by a platform SOP. Version 0
+// means "follow the latest definition of the role"; a non-zero version pins
+// the archived definition from definition_revisions instead.
+type GenericAgentRef struct {
+	ID      string `json:"id"`
+	Version int    `json:"version,omitempty"`
+}
+
+// GenericTemplate is a project-independent SOP. A template only orchestrates:
+// the roles it runs are referenced from the platform agent catalog
+// (projectId == "") and its assets from the platform rule/skill catalog. Rows
+// live in generic_templates; the engine resolves them through the same
 // Workflow/Agent catalog lookups as a custom SOP. The Generic flag on the
 // workflow payload is only a marker for listing and clone/edit policy.
 type GenericTemplate struct {
-	Workflow domain.WorkflowDefinition
-	Agents   []domain.AgentDefinition
-	Rules    []domain.RuleDefinition
-	Skills   []domain.SkillDefinition
+	Workflow  domain.WorkflowDefinition
+	AgentRefs []GenericAgentRef
 	// VerdictGateSeedVersion is retained so stored blobs keep decoding.
 	VerdictGateSeedVersion int
 	// PlaybookSeedVersion is retained so stored blobs keep decoding.

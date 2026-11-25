@@ -144,7 +144,7 @@ function accessTokenSetupHTML(token){
       </div>
       <div class="token-setup-action">
         <div class="token-connection" aria-hidden="true">
-          <span class="token-connection-mark"><img src="/images/zhiyan-logo.png" width="28" height="28" alt=""></span>
+          <span class="token-connection-mark"><img src="/images/zhiyan-logo.png?v=3" width="28" height="28" alt=""></span>
           <span class="token-connection-link">${huiIcon('connector')}</span>
           <span class="token-connection-mark"><img id="token-connection-client" class="token-client-icon" width="23" height="23" alt=""></span>
         </div>

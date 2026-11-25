@@ -123,22 +123,27 @@ func TestAdoptedTemplateRolesAreDeletableOnceTheCopyIsGone(t *testing.T) {
 		"/api/workflows/"+repo.GenericBackendDeliveryWorkflowID+"/clone",
 		map[string]any{"id": "alpha-backend-delivery", "name": "后端交付（复制）", "projectId": "alpha"},
 		http.StatusCreated)
-	if agent, ok := s.Agent(repo.GenericAgentMR); !ok || agent.ProjectID != "alpha" {
-		t.Fatalf("expected alpha to own the plain template role id, got %+v ok=%v", agent, ok)
+	// The platform catalog owns the unsuffixed id and the platform SOP
+	// references it, so deleting it must be refused.
+	if agent, ok := s.Agent(repo.GenericAgentMR); !ok || agent.ProjectID != "" {
+		t.Fatalf("platform catalog must own the plain template role id, got %+v ok=%v", agent, ok)
 	}
 	if code := doStatus(h, http.MethodDelete, "/api/agents/"+repo.GenericAgentMR); code != http.StatusConflict {
-		t.Fatalf("role still used by the adopted copy: delete status = %d, want 409", code)
+		t.Fatalf("role still referenced by the platform SOP: delete status = %d, want 409", code)
+	}
+	// The project copy lives on the deterministic suffixed id and is not pinned
+	// by the platform template, so it disappears with its workflow.
+	if agent, ok := s.Agent(repo.GenericAgentMR + "-alpha"); !ok || agent.ProjectID != "alpha" {
+		t.Fatalf("expected the deterministic project copy, got %+v ok=%v", agent, ok)
 	}
 	if code := doStatus(h, http.MethodDelete, "/api/workflows/alpha-backend-delivery"); code != http.StatusNoContent && code != http.StatusOK {
 		t.Fatalf("delete adopted copy status = %d", code)
 	}
-	// The generic template itself runs its built-in role, never alpha's copy,
-	// so it must not pin the project role forever.
-	if code := doStatus(h, http.MethodDelete, "/api/agents/"+repo.GenericAgentMR); code != http.StatusNoContent {
+	if code := doStatus(h, http.MethodDelete, "/api/agents/"+repo.GenericAgentMR+"-alpha"); code != http.StatusNoContent {
 		t.Fatalf("delete orphaned adopted role status = %d, want 204", code)
 	}
-	if _, ok := s.GenericAgentByID(repo.GenericAgentMR); !ok {
-		t.Fatal("template role must survive deleting the project copy")
+	if _, ok := s.Agent(repo.GenericAgentMR); !ok {
+		t.Fatal("platform role must survive deleting the project copy")
 	}
 }
 
@@ -220,8 +225,10 @@ func TestGenericTemplateCloneCreatesProjectRolesAndRemapsNodes(t *testing.T) {
 		t.Fatal("adopted workflow has no agent nodes")
 	}
 	// 智研工坊 rules and skills must be cloned into the project alongside the
-	// roles, and the role bindings must point at the cloned assets.
-	for _, id := range []string{repo.GenericRuleCore, repo.GenericRuleBackendProfile} {
+	// roles, and the role bindings must point at the cloned assets. The platform
+	// catalog owns the unsuffixed ids, so project copies land on the
+	// deterministic <id>-<projectId> suffix.
+	for _, id := range []string{repo.GenericRuleCore + "-alpha", repo.GenericRuleBackendProfile + "-alpha"} {
 		rule, found := s.Rule(id)
 		if !found {
 			t.Fatalf("template rule %q was not cloned into the project", id)
@@ -230,7 +237,7 @@ func TestGenericTemplateCloneCreatesProjectRolesAndRemapsNodes(t *testing.T) {
 			t.Fatalf("cloned rule %q = %+v", id, rule)
 		}
 	}
-	for _, id := range []string{repo.GenericSkillClarifyRequirements, repo.GenericSkillBrainstorming, repo.GenericSkillTechDesign, repo.GenericSkillWritingPlans, repo.GenericSkillKnowledgeDistill} {
+	for _, id := range []string{repo.GenericSkillClarifyRequirements + "-alpha", repo.GenericSkillBrainstorming + "-alpha", repo.GenericSkillTechDesign + "-alpha", repo.GenericSkillWritingPlans + "-alpha", repo.GenericSkillKnowledgeDistill + "-alpha"} {
 		skill, found := s.Skill(id)
 		if !found {
 			t.Fatalf("template skill %q was not cloned into the project", id)
@@ -245,7 +252,7 @@ func TestGenericTemplateCloneCreatesProjectRolesAndRemapsNodes(t *testing.T) {
 			continue
 		}
 		for _, id := range agent.Rules {
-			if id == repo.GenericRuleCore {
+			if id == repo.GenericRuleCore+"-alpha" {
 				coreBindings++
 			}
 		}
@@ -272,11 +279,11 @@ func TestGenericTemplateCloneCreatesProjectRolesAndRemapsNodes(t *testing.T) {
 	if !foundMCP {
 		t.Fatalf("MR agent MCP wiring = %#v, want %q", mrAgent.MCPServers, gongfeng.ID)
 	}
-	// The template role ids stay stable, so re-adopting reuses the project roles
-	// instead of stacking duplicates or overwriting local edits.
+	// The deterministic project ids stay stable, so re-adopting reuses the
+	// project roles instead of stacking duplicates or overwriting local edits.
 	agentsBefore := len(s.Agents())
-	if _, ok := s.Agent(repo.GenericAgentMR); !ok {
-		t.Fatalf("expected template role id %q in the project", repo.GenericAgentMR)
+	if _, ok := s.Agent(repo.GenericAgentMR + "-alpha"); !ok {
+		t.Fatalf("expected project role id %q in the project", repo.GenericAgentMR+"-alpha")
 	}
 	clone("alpha-backend-delivery-2")
 	if got := len(s.Agents()); got != agentsBefore {
@@ -580,7 +587,7 @@ func TestGenericTemplateReadoptKeepsLocalMCPBinding(t *testing.T) {
 			map[string]any{"id": id, "name": id, "projectId": "alpha"}, http.StatusCreated)
 	}
 	clone("alpha-backend-delivery")
-	mrAgent, _ := s.Agent(repo.GenericAgentMR)
+	mrAgent, _ := s.Agent(repo.GenericAgentMR + "-alpha")
 	if len(mrAgent.MCPServers) != 1 || mrAgent.MCPServers[0] != mcpInstallID("61", "project", "alpha") {
 		t.Fatalf("first adoption should bind the default Gongfeng MCP: %#v", mrAgent.MCPServers)
 	}
@@ -590,7 +597,7 @@ func TestGenericTemplateReadoptKeepsLocalMCPBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	clone("alpha-backend-delivery-2")
-	mrAgent, _ = s.Agent(repo.GenericAgentMR)
+	mrAgent, _ = s.Agent(repo.GenericAgentMR + "-alpha")
 	if len(mrAgent.MCPServers) != 1 || mrAgent.MCPServers[0] != "custom-mcp" {
 		t.Fatalf("re-adoption overwrote a local binding: %#v", mrAgent.MCPServers)
 	}
@@ -641,7 +648,7 @@ func TestGenericTemplateAdoptFailureKeepsAssetsForRetry(t *testing.T) {
 			mrAgentID = node.AgentID
 		}
 	}
-	if mrAgentID != repo.GenericAgentMR {
+	if mrAgentID != repo.GenericAgentMR+"-alpha" {
 		t.Fatalf("retry must reuse the pre-created MR role: %q", mrAgentID)
 	}
 }
@@ -709,7 +716,7 @@ func TestGenericTemplateAgentsAreNotTheCurrentProjectCatalog(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := s.PutAgent(domain.AgentDefinition{
-		ID: repo.GenericAgentReview, Name: "SkillHub 独立评审", ProjectID: "alpha",
+		ID: repo.GenericAgentReview + "-alpha", Name: "SkillHub 独立评审", ProjectID: "alpha",
 		Prompt: "this is the project copy", Version: 3,
 	}); err != nil {
 		t.Fatal(err)
@@ -727,12 +734,13 @@ func TestGenericTemplateAgentsAreNotTheCurrentProjectCatalog(t *testing.T) {
 	}
 	admin, _ := s.UserByLoginName("example-admin")
 	review.Prompt = "platform-only review brief"
+	// Role definitions have one write path: the platform agent catalog.
 	saved := requestJSONAuthed[domain.AgentDefinition](t, h, admin, http.MethodPut,
-		"/api/workflows/"+repo.GenericBackendDeliveryWorkflowID+"/agents", *review, http.StatusOK)
+		"/api/agents", *review, http.StatusOK)
 	if saved.Prompt != "platform-only review brief" || saved.ProjectID != "" {
 		t.Fatalf("admin role save = %+v", saved)
 	}
-	projectCopy, _ := s.Agent(repo.GenericAgentReview)
+	projectCopy, _ := s.Agent(repo.GenericAgentReview + "-alpha")
 	if projectCopy.Prompt != "this is the project copy" {
 		t.Fatalf("saving the template role overwrote the project catalog: %+v", projectCopy)
 	}

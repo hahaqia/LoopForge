@@ -998,10 +998,10 @@ function agentBindCard(n){
   const available=workflowAgents(),owned=available.filter(x=>!generic&&x.projectId===projectId),shared=available.filter(x=>!generic&&x.projectId!==projectId);
   const options=items=>items.map(x=>{const owner=projects.find(p=>p.id===x.projectId)?.name||x.projectId;return `<option value="${escapeHTML(x.id)}" ${x.id===n.agentId?'selected':''}>${escapeHTML(x.name)}${!generic&&x.projectId!==projectId?` · 来自 ${escapeHTML(owner)}`:''}</option>`}).join('');
   const grouped=generic
-    ?(available.length?`<optgroup label="通用模板角色 · ${available.length} 个">${options(available)}</optgroup>`:'')
+    ?(available.length?`<optgroup label="平台角色 · ${available.length} 个">${options(available)}</optgroup>`:'')
     :(owned.length?`<optgroup label="本项目角色 · ${owned.length} 个">${options(owned)}</optgroup>`:'')+(shared.length?`<optgroup label="共享角色 · ${shared.length} 个">${options(shared)}</optgroup>`:'');
-  const opts=(invalid+grouped)||(generic?'<option value="">该模板还没有打包角色</option>':'<option value="">当前项目暂无可用角色</option>');
-  const hint=generic?'这些角色打包在通用模板里，和当前项目目录无关。改任务书只影响平台模板，所有项目下次运行生效。':`本项目 ${owned.length} 个 · 共享 ${shared.length} 个；其他项目私有角色已隐藏。`;
+  const opts=(invalid+grouped)||(generic?'<option value="">平台角色库暂无可用角色</option>':'<option value="">当前项目暂无可用角色</option>');
+  const hint=generic?'这些角色引用自平台角色库，与当前项目目录无关。改任务书等同修改平台角色，所有引用该角色的 SOP 与项目下次运行生效。':`本项目 ${owned.length} 个 · 共享 ${shared.length} 个；其他项目私有角色已隐藏。`;
   if(!agent)return `<div class="fd-field"><label>这个步骤用哪个角色</label><select class="select" data-p="agentId">${opts}</select><p class="prop-hint">${hint}</p><p class="prop-hint">先选一个已定义的角色。画布只编排顺序和打回，不改编排角色内部的任务。</p></div>`;
   const arts=effectiveNodeArtifacts(n,agent),gates=roleGates(agent);
   const duty=String(agent.description||'').trim(),taskHint=duty?(duty.length>48?`${duty.slice(0,48)}…`:duty):'还没写职责，可在角色定义里补';

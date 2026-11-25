@@ -1,5 +1,7 @@
 -- Explicit opt-in public catalog. Application startup never seeds data.
 -- INSERT IGNORE preserves operator-edited definitions.
+-- 注意：本脚本写入的是 052 之前的模型（模板 payload 内联 Agents/Rules/Skills）。
+-- 新环境请按 001 → 052 顺序执行；052 会把内联资产搬进平台资产库并改写为 AgentRefs。
 SET NAMES utf8mb4;
 START TRANSACTION;
 INSERT IGNORE INTO sandboxes (`id`,`name`,`payload`) VALUES ('local','本地执行（仅可信任务）','{"id":"local","name":"本地执行（仅可信任务）","driver":"local"}');

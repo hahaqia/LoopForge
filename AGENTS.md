@@ -55,6 +55,9 @@ Preserve the platform architecture; keep deployment-specific adapters isolated. 
 3. 禁止新增 `ensureXxx`/`migrateXxx`/`seedXxx` 之类的启动自愈逻辑写入
    生产路径。测试专用的默认数据只存在于 `internal/repo/opentest.go`
    （`OpenTest`，仅测试调用，生产代码不得引用）。
+4. 脚本之间存在先后依赖时，必须**双向**标注：被取代的脚本在文件头写明
+   「已被 NNN 取代，勿重跑」及误跑后的补救路径，取代方写明「必须在
+   xxx 之后执行」。只写单向说明不够——运维往往只会打开其中一支脚本。
 
 ## handler 层（internal/httpapi）
 

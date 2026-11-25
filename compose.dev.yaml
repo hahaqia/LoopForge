@@ -6,11 +6,16 @@ services:
     image: zhiyan-platform:local
     build:
       context: .
+      # GitHub Releases are only reachable through the host proxy on some
+      # developer networks; CI passes neither and downloads directly.
+      secrets:
+        - proxy_ca
       args:
         ZHIYAN_BUILD_JOBS: ${ZHIYAN_BUILD_JOBS:-}
         ZHIYAN_COMMIT: ${ZHIYAN_COMMIT:-}
         CODEBUDDY_PACKAGE: ${CODEBUDDY_PACKAGE-@tencent-ai/codebuddy-code@2.167.0}
         GOPROXY: ${ZHIYAN_GOPROXY:-https://proxy.golang.org,direct}
+        PYTHON_PROXY: ${HTTPS_PROXY:-}
     environment:
       AGENTFLOW_ISOLATED_IMAGE: zhiyan-platform:local
       # Outbound traffic through a local proxy (for example DEV.SIDECAR).
@@ -23,3 +28,9 @@ services:
       # with its own CA. scripts/install.sh merges the image's system pool with
       # ZHIYAN_PROXY_CA into this file; keep it in sync when the image changes.
       - ${ZHIYAN_CA_BUNDLE:-.data/certs/ca-bundle.crt}:/etc/ssl/certs/ca-certificates.crt:ro
+secrets:
+  # DEV.SIDECAR's root CA, used only while building. Machines without a local
+  # proxy resolve this to an empty file, which the Dockerfile treats as
+  # "download directly".
+  proxy_ca:
+    file: ${ZHIYAN_PROXY_CA:-/dev/null}

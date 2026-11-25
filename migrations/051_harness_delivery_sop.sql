@@ -1,3 +1,11 @@
+-- ⚠ 已被 052 取代，勿重跑。
+-- 本段用 INSERT ... ON DUPLICATE KEY UPDATE 整份覆盖 payload，是这四支里
+-- 唯一写 generic_templates 的地方。052 之后重跑会写回内联 {Agents, Rules,
+-- Skills}、抹掉 AgentRefs，并把 version/status/publishedRevision 重置为初始值。
+-- 正确顺序：seed/001 → 048 → 049 → 050 → 051 → 052 → 053。
+-- 误跑后：重跑 052 恢复引用结构，再重跑 053 重新 pin 角色版本；
+-- version/status 需按实际发布记录人工校正。
+--
 -- Harness 融合交付 SOP · 第 4 段：9 节点 8 边 + 组装写入
 -- 依赖 048(@rules @skill_readiness)、049(@a_clarify @a_design @a_ready)、050(@agents)
 SET NAMES utf8mb4;

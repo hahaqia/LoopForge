@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 const api = process.env.ZHIYAN_API || "http://127.0.0.1:8080";
 export default defineConfig({
   base: "/chatbot/",
@@ -8,8 +9,8 @@ export default defineConfig({
     outDir: "../web/native-chat", emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: new URL("./index.html", import.meta.url).pathname,
-        "prompt-editor": new URL("./src/prompt-editor-entry.jsx", import.meta.url).pathname,
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        "prompt-editor": fileURLToPath(new URL("./src/prompt-editor-entry.jsx", import.meta.url)),
       },
       output: { entryFileNames: (chunk) => chunk.name === "prompt-editor" ? "prompt-editor.js" : "assets/[name]-[hash].js" },
     },

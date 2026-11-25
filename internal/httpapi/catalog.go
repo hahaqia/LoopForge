@@ -395,6 +395,9 @@ func (h *catalogHandlers) agents(c *gin.Context) {
 				return
 			}
 			stored, _ := h.repo.Agent(v.ID)
+			// Roles referenced by platform SOPs must surface the blast radius:
+			// editing one here changes every template that binds it.
+			stored.SourceTemplateIDs = h.repo.TemplatesReferencingAgent(v.ID)
 			c.JSON(200, stored)
 		}
 	}
@@ -1395,35 +1398,18 @@ func (h *catalogHandlers) workflow(c *gin.Context) {
 			return
 		}
 		if c.Request.Method == http.MethodGet {
-			c.JSON(200, template.Agents)
-			return
-		}
-		if !h.isPlatformAdmin(c.Request) {
-			c.JSON(http.StatusConflict, map[string]string{"error": "只有平台管理员可以编辑通用模板角色"})
-			return
-		}
-		var agent domain.AgentDefinition
-		if !decode(c, &agent) {
-			return
-		}
-		if err := validateCatalogAgentExecutor(&agent); err != nil {
-			c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-			return
-		}
-		if err := domain.ValidateVerificationGates(agent.Verification); err != nil {
-			c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-			return
-		}
-		saved, err := h.repo.UpdateGenericAgent(id, agent)
-		if err != nil {
-			if strings.Contains(err.Error(), "不属于") {
-				c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+			agents, err := h.resolveTemplateAgents(template)
+			if err != nil {
+				c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
 				return
 			}
-			respond(c, err)
+			c.JSON(200, agents)
 			return
 		}
-		c.JSON(200, saved)
+		// Role definitions have exactly one write path: PUT /api/agents. Writing
+		// them through the SOP endpoint would hide the fact that the change
+		// applies to every template referencing the role.
+		c.JSON(http.StatusConflict, map[string]string{"error": "平台 SOP 的角色定义已统一到「设置 › 角色定义」，请在那里修改；该修改会影响所有引用此角色的平台 SOP"})
 	case "/api/workflows/:id/publish":
 		if v.Generic {
 			if !h.isPlatformAdmin(c.Request) {
