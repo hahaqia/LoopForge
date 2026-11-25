@@ -1125,7 +1125,7 @@ function bind(){
   $('#agentForm').addEventListener('change',()=>renderAgentPreview(state.agentDraft)); $('#refreshRuns').onclick=()=>refreshRuns(false);$('#runBackBtn')&&($('#runBackBtn').onclick=()=>showRunList());
 	$('#refreshDashboard').onclick=refreshDashboard;
 	$('#refreshIssues').onclick=refreshIssues;
-	$('#refreshSOPs').onclick=refreshWorkflowMetrics;
+	$('#refreshSOPs').onclick=()=>refreshWorkflowMetrics(true);
   $('#agentSearch').oninput=renderAgents;$('#agentPrev').onclick=agentWizardPrev;$('#agentNext').onclick=agentWizardNext;$$('[data-wizard-steps="agent"] [data-agent-tab]').forEach(b=>b.onclick=()=>setAgentTab(b.dataset.agentTab));$$('[data-wizard-steps="agent-create"] [data-create-step]').forEach(b=>b.onclick=()=>{if(!b.disabled)setAgentCreateStep(Number(b.dataset.createStep))});bindAgentModalInputs();$$('.agent-close').forEach(b=>b.onclick=closeAgentWizard);
   $('#newRunFromRuns')&&($('#newRunFromRuns').onclick=()=>switchView('issues'));
   $('#runSearch').oninput=e=>{state.runQuery=e.target.value.trim().toLowerCase();resetListPage('runs');renderRuns()};
@@ -1275,7 +1275,7 @@ function bind(){
   $('#chatInput').addEventListener('input',onReqDescriptionInput);
   window.addEventListener('beforeunload',()=>persistRequirementComposer());
   if($('#sopCreateForm')){$('#sopCreateForm').onsubmit=createSOPFromWizard;$('#sopPrev').onclick=()=>setSOPWizardStep(state.sopWizardStep-1);$('#sopNext').onclick=()=>setSOPWizardStep(state.sopWizardStep+1);$$('[data-wizard-steps="sop"] [data-step-target]').forEach(b=>b.onclick=()=>setSOPWizardStep(Number(b.dataset.stepTarget)));$$('.sop-create-close').forEach(b=>b.onclick=()=>$('#sopCreateModal').classList.remove('open'))}
-  $('#newSOP')&&($('#newSOP').onclick=openSOPWizard);
+  $('#newSOP')&&($('#newSOP').onclick=()=>state.sopScope==='generic'?newPlatformSOP():openSOPWizard());
   $('#newSOPFromFlow')&&($('#newSOPFromFlow').onclick=openSOPWizard);
   $('#sopHealthFilter').onchange=renderSOPCatalog;$('#sopSort').onchange=renderSOPCatalog;
   if($('#manageRepositories'))$('#manageRepositories').onclick=openRepositoryModal;

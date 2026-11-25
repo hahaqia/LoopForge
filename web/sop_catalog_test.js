@@ -70,22 +70,27 @@ assert.ok(!ctx.sopCatalogCard(wf('foreign'), new Map(), []).includes('data-clone
 assert.strictEqual(ctx.sopCardMenuItems(wf('foreign')).length, 0);
 
 const generic = ctx.genericSOPCard(wf('gen'));
-assert.ok(generic.includes('class="sop-card generic is-readonly" data-generic-id="gen"'), generic);
-assert.ok(!generic.includes('tabindex'), 'platform cards are not interactive');
-assert.ok(!generic.includes('sop-card-primary'), 'platform cards expose no primary action');
+assert.ok(generic.includes('class="sop-card generic" data-generic-id="gen" tabindex="0" role="button"'), generic);
+assert.ok(!generic.includes('is-readonly'), '平台 SOP 卡片在流程模板页可交互');
+assert.ok(!generic.includes('sop-card-primary'), '非平台管理员看不到编辑入口');
 assert.ok(!generic.includes('data-adopt-generic'), generic);
 assert.ok(!generic.includes('data-sop-menu'), generic);
 assert.ok(generic.includes('sop-badge tone-accent') && generic.includes('>通用<'), 'generic status is accent');
-assert.ok(!/data-(run|edit)-generic/.test(generic), 'platform templates expose no actions');
+assert.ok(!/data-(run|adopt)-generic/.test(generic), '平台模板不暴露直接运行或复制入口');
+ctx.admin = true;
+const genericAdmin = ctx.genericSOPCard(wf('gen'));
+assert.ok(genericAdmin.includes('data-edit-generic="gen"') && genericAdmin.includes('>编辑模板</button>'), genericAdmin);
+assert.ok(!genericAdmin.includes('data-sop-menu'), '单一动作直接放卡片底部，不套 ⋯ 浮层');
+ctx.admin = false;
 
 // ---------- ⋯ menu items ----------
 const ownMenu = ctx.sopCardMenuHTML(wf('own'));
 assert.ok(!ownMenu.includes('data-share-workflow'), 'project SOPs no longer expose sharing');
 assert.ok(ownMenu.includes('class="issue-popover-item danger" data-sop-action="delete" data-delete-workflow="own"'), ownMenu);
 assert.strictEqual(count(ownMenu, 'role="menuitem"'), 1, ownMenu);
-assert.strictEqual(ctx.sopCardMenuHTML(wf('gen')), '', '平台 SOP 目录保持只读，没有 ⋯ 菜单');
+assert.strictEqual(ctx.sopCardMenuHTML(wf('gen')), '', '平台 SOP 只有编辑动作，直接放卡片底部，没有 ⋯ 菜单');
 ctx.admin = true;
-assert.strictEqual(ctx.sopCardMenuHTML(wf('gen')), '', '平台模板维护入口在平台管理视图，不在目录页');
+assert.strictEqual(ctx.sopCardMenuHTML(wf('gen')), '', '平台模板的编辑入口在卡片主操作，不在 ⋯ 菜单');
 const promoteMenu = ctx.sopCardMenuHTML(wf('own'));
 assert.ok(promoteMenu.includes('data-promote-workflow="own"') && promoteMenu.includes('提升为平台模板'), promoteMenu);
 ctx.admin = false;

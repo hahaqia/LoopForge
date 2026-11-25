@@ -150,7 +150,8 @@ function projectSOPCard(w,m={},liveCount=0){
 function genericSOPCard(w){
   const nodes=w.nodes||[],agentCount=nodes.filter(n=>n.type==='agent').length,gates=nodes.filter(n=>n.type==='approval').length;
   const tags=(w.tags||[]).filter(t=>!t.startsWith('generic-source:')).join(' · ')||'平台模板';
-  return `<article class="sop-card generic is-readonly" data-generic-id="${escapeHTML(w.id)}" aria-label="平台 SOP：${escapeHTML(w.name)}">${sopCardHead(sopStatusBadge(w),'平台维护 · 与项目无关',sopBadge(`v${w.version||1}`,'neutral',''))}${sopCardTitle(w)}<p>${escapeHTML(w.description||'平台提供的通用流程模板')}</p>${sopRunRequirementChips(w)}${genericRequirementChips(w)}<div class="sop-kpis"><span><b>${nodes.length}</b>节点</span><span><b>${agentCount}</b>角色节点</span><span><b>${gates}</b>人工门禁</span><span><b>v${w.version||1}</b>版本</span></div><div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(`${w.owner||'平台'} · ${tags}`)}"><span class="sop-card-tag">${escapeHTML(w.owner||'平台')}</span>${escapeHTML(tags)}</span><span class="sop-card-tag">复制到项目后可用</span></div></article>`;
+  const edit=isPlatformAdmin()?sopCardPrimary('data-edit-generic',w.id,'编辑模板','edit'):'';
+  return `<article class="sop-card generic${state.highlightSOPId===w.id?' is-highlight':''}" data-generic-id="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="打开流程设计器：${escapeHTML(w.name)}">${sopCardHead(sopStatusBadge(w),'平台维护 · 复制到项目后可用',sopBadge(`v${w.version||1}`,'neutral',''))}${sopCardTitle(w)}<p>${escapeHTML(w.description||'平台提供的通用流程模板')}</p>${sopRunRequirementChips(w)}${genericRequirementChips(w)}<div class="sop-kpis"><span><b>${nodes.length}</b>节点</span><span><b>${agentCount}</b>角色节点</span><span><b>${gates}</b>人工门禁</span><span><b>v${w.version||1}</b>版本</span></div><div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(`${w.owner||'平台'} · ${tags}`)}"><span class="sop-card-tag">${escapeHTML(w.owner||'平台')}</span>${escapeHTML(tags)}</span>${edit}</div></article>`;
 }
 function sopCatalogCard(w,metrics,live){
   if(catalogGeneric(w))return genericSOPCard(w);
@@ -164,7 +165,7 @@ const SOP_MENU_ACTIONS={
 };
 function sopCardMenuItems(w){
   if(!w)return [];
-  // 平台 SOP 目录保持只读，维护入口集中在「平台管理 › 平台 SOP」。
+  // 平台 SOP 只有「编辑模板」一个动作，直接放在卡片底部，不再套「⋯」浮层。
   if(catalogGeneric(w))return [];
   if(!catalogOwned(w.projectId))return [];
   const items=isPlatformAdmin()?[{action:'promote',label:'提升为平台模板',icon:'arrow-up'},'-']:[];
@@ -335,7 +336,14 @@ const sopCatalogMotion=(()=>{
     });
     if(before.visible)leave(root,before,keep);
   }
-  return {snapshot,play,reset(){activation++;seen.clear();entering.clear()},get reduced(){return reduced.matches}};
+  // 手动刷新：数据未变时卡片本不会动，这里强制重播入场，让「刷新」有可见变化。
+  function replay(root){
+    if(reduced.matches||!visible(root))return;
+    const t=now();
+    let index=0;
+    liveCards(root).forEach(el=>{const key=keyOf(el);if(!key)return;entering.set(key,{start:t,index});enter(el,key,index++)});
+  }
+  return {snapshot,play,replay,reset(){activation++;seen.clear();entering.clear()},get reduced(){return reduced.matches}};
 })();
 function sopCatalogFocus(root){
   const el=document.activeElement;
@@ -358,8 +366,8 @@ function openSOPDesigner(id,missing='SOP 不存在或已删除'){
   state.workflow=clone(wf);state.selectedNode=null;renderWorkflowMeta();renderCanvas();renderProperties();switchView('flow');
 }
 function activateSOPCard(card){
-  if(card.dataset.genericId)return;
-  if(card.dataset.sop)openSOPDesigner(card.dataset.sop);
+  if(card.dataset.genericId)openGenericTemplateEditor(card.dataset.genericId);
+  else if(card.dataset.sop)openSOPDesigner(card.dataset.sop);
 }
 function bindSOPCatalogEvents(root){
   if(root.dataset.sopEvents)return;
@@ -373,6 +381,7 @@ function bindSOPCatalogEvents(root){
       if(btn.dataset.sopMenu)return showSOPCardMenu(btn);
       hideSOPCardMenu();
       if(btn.dataset.openSop)openSOPDesigner(btn.dataset.openSop,'项目副本不存在或已删除');
+      if(btn.dataset.editGeneric)openGenericTemplateEditor(btn.dataset.editGeneric);
       return;
     }
     hideSOPCardMenu();
@@ -395,7 +404,7 @@ async function openGenericTemplateEditor(id){
   await refreshGenericWorkflowRoles();
 }
 function platformSandboxChoices(){return (state.data?.sandboxes||[]).filter(s=>s.id&&(!s.projectId||s.shared))}
-// 平台页新建平台 SOP：只有平台管理员可见，创建后直接进入设计器。
+// 流程模板页（平台视角）新建平台 SOP：只有平台管理员可见，创建后直接进入设计器。
 async function newPlatformSOP(){
   if(!isPlatformAdmin())return toast('只有平台管理员可以维护平台 SOP');
   const sandbox=platformSandboxChoices()[0];
@@ -425,18 +434,28 @@ async function promoteWorkflowToPlatform(id){
 }
 function renderSOPCatalog(){
   renderCatalogScopes();
-  const newBtn=$('#newSOP');if(newBtn)newBtn.hidden=state.sopScope!=='project';
+  // 平台 SOP 是全局配置：这一屏不出现按项目统计的运行 / Token 指标，顶栏项目切换也一并收起。
+  const generic=state.sopScope==='generic';
+  document.body.classList.toggle('sop-platform-scope',generic);
+  // 平台 SOP 与项目 SOP 共用同一个主按钮：按当前视角切换文案与行为，避免出现第二个新建入口。
+  const newBtn=$('#newSOP');if(newBtn){newBtn.hidden=generic&&!isPlatformAdmin();newBtn.textContent=generic?'＋ 新建平台 SOP':'＋ 新建 SOP';}
   let workflows=scopedWorkflows();
   const metrics=new Map((state.data.workflowMetrics||[]).map(m=>[m.workflowId,m]));
   const live=liveRuns();
   const all=[...metrics.values()],totalRuns=all.reduce((n,m)=>n+m.totalRuns,0),succeeded=all.reduce((n,m)=>n+m.succeededRuns,0),failed=all.reduce((n,m)=>n+m.failedRuns,0),active=live.length,tokens=all.reduce((n,m)=>n+m.totalTokens,0);
-  const scopeLabel=state.sopScope==='generic'?'平台':'项目';
-  $('#sopOverview').innerHTML=`<div class="overview-metric primary"><span>本项目运行</span><b>${totalRuns}</b><small>${workflows.length} 条${scopeLabel} SOP</small></div><div class="overview-metric success"><span>已闭环</span><b>${succeeded}</b><small>${totalRuns?percent(succeeded*100/totalRuns):'暂无运行'}</small></div><div class="overview-metric live"><span>进行中 / 待审批</span><b>${active}</b><small>实时更新 · 不含中断残留</small></div><div class="overview-metric danger${failed>0?' is-bad':''}"><span>失败运行</span><b>${failed}</b><small>${totalRuns?percent(failed*100/totalRuns):'0%'}</small></div><div class="overview-metric"><span>Token 消耗</span><b>${formatTokens(tokens)}</b><small>当前项目累计</small></div>`;
-  const filter=$('#sopHealthFilter')?.value||'all',sort=$('#sopSort')?.value||'recent';
+  const overview=$('#sopOverview');
+  if(overview){
+    overview.hidden=generic;
+    overview.innerHTML=generic?'':`<div class="overview-metric primary"><span>本项目运行</span><b>${totalRuns}</b><small>${workflows.length} 条项目 SOP</small></div><div class="overview-metric success"><span>已闭环</span><b>${succeeded}</b><small>${totalRuns?percent(succeeded*100/totalRuns):'暂无运行'}</small></div><div class="overview-metric live"><span>进行中 / 待审批</span><b>${active}</b><small>实时更新 · 不含中断残留</small></div><div class="overview-metric danger${failed>0?' is-bad':''}"><span>失败运行</span><b>${failed}</b><small>${totalRuns?percent(failed*100/totalRuns):'0%'}</small></div><div class="overview-metric"><span>Token 消耗</span><b>${formatTokens(tokens)}</b><small>当前项目累计</small></div>`;
+  }
+  // 健康状态与排序都建立在运行数据上，平台视角没有这些数据，一并隐藏。
+  const filters=$('#sopsView .sop-toolbar-filters');if(filters)filters.hidden=generic;
+  const filter=generic?'all':($('#sopHealthFilter')?.value||'all'),sort=generic?'name':($('#sopSort')?.value||'recent');
   if(filter!=='all')workflows=workflows.filter(w=>metricHealth(metrics.get(w.id), live.filter(r=>r.workflowId===w.id).length).key===filter);
-  workflows.sort((a,b)=>{const x=metrics.get(a.id)||{},y=metrics.get(b.id)||{};if(sort==='runs')return (y.totalRuns||0)-(x.totalRuns||0);if(sort==='closure')return (y.closureRate||0)-(x.closureRate||0);if(sort==='failures')return (y.failedRuns||0)-(x.failedRuns||0);return new Date(y.lastRunAt||0)-new Date(x.lastRunAt||0)});
+  if(generic)workflows.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'zh-Hans-CN'));
+  else workflows.sort((a,b)=>{const x=metrics.get(a.id)||{},y=metrics.get(b.id)||{};if(sort==='runs')return (y.totalRuns||0)-(x.totalRuns||0);if(sort==='closure')return (y.closureRate||0)-(x.closureRate||0);if(sort==='failures')return (y.failedRuns||0)-(x.failedRuns||0);return new Date(y.lastRunAt||0)-new Date(x.lastRunAt||0)});
   $('#sopStats').innerHTML=`<span class="issue-stat">${workflows.length} SOPs</span><span class="issue-stat">${workflows.filter(w=>w.status==='published').length} 已发布</span><span class="issue-stat">${new Set(workflows.map(w=>w.owner).filter(Boolean)).size} 负责人</span>`;
-  const empty=state.sopScope==='generic'?'平台还没有 SOP 模板。管理员可在「平台管理 › 平台 SOP」新建。':'当前项目还没有 SOP。可以新建，或在项目配置里从平台 SOP 复制一份。';
+  const empty=state.sopScope==='generic'?'平台还没有 SOP 模板。管理员可点右上角「＋ 新建平台 SOP」。':'当前项目还没有 SOP。可以新建，或在项目配置里从平台 SOP 复制一份。';
   const emptyText=filter!=='all'&&scopedWorkflows().length?'当前筛选下没有 SOP。可以切换健康状态查看全部。':empty;
   const sopCatalog=$('#sopCatalog');
   bindSOPCatalogEvents(sopCatalog);
@@ -447,5 +466,39 @@ function renderSOPCatalog(){
   restoreSOPCatalogFocus(sopCatalog,focus);
   syncSOPCardMenu(sopCatalog);
 }
-async function refreshWorkflowMetrics(){try{const opt={silent:true};const [metrics,runs]=await Promise.all([api('/api/workflow-metrics'+projectQuery(),opt),api('/api/runs',opt)]);state.data.workflowMetrics=metrics;state.data.runs=runs;updateApprovalBadge();renderSOPCatalog()}catch(e){toast(e.message)}}
+// 刷新按钮的可见反馈：按下去立刻转起来，数据没变也重播卡片入场，结束后给一条汇总。
+function setSOPRefreshBusy(busy){
+  const btn=$('#refreshSOPs');if(!btn)return;
+  btn.disabled=busy;
+  btn.classList.toggle('is-loading',busy);
+  btn.setAttribute('aria-busy',busy?'true':'false');
+  btn.innerHTML=`<span class="sop-refresh-glyph" aria-hidden="true">↻</span>${busy?'刷新中…':'刷新'}`;
+}
+// feedback 仅由用户点击传入；页面切换时的自动拉取保持静默，不碰按钮状态。
+async function refreshWorkflowMetrics(feedback=false){
+  const loud=feedback===true;
+  const btn=loud?$('#refreshSOPs'):null;
+  if(btn&&btn.disabled)return;          // 进行中连点不叠加请求
+  const started=Date.now(),minMs=520;   // 接口再快也转这么久，避免闪一下就复原
+  if(loud)setSOPRefreshBusy(true);
+  try{
+    const opt={silent:true};
+    const [metrics,runs]=await Promise.all([api('/api/workflow-metrics'+projectQuery(),opt),api('/api/runs',opt)]);
+    state.data.workflowMetrics=metrics;state.data.runs=runs;
+    updateApprovalBadge();renderSOPCatalog();
+    if(loud){
+      sopCatalogMotion.replay($('#sopCatalog'));
+      await new Promise(r=>setTimeout(r,Math.max(0,minMs-(Date.now()-started))));
+      // 平台视角没有项目运行数据，汇总里只报 SOP 数量。
+      const generic=state.sopScope==='generic';
+      const summary=generic?`已刷新 · ${scopedWorkflows().length} 个平台 SOP`:`已刷新 · ${scopedWorkflows().length} 个项目 SOP · ${(runs||[]).length} 次运行`;
+      toast(summary,'ok',1800);
+    }
+  }catch(e){
+    if(loud)toast(e.message||'刷新失败','err');
+    else toast(e.message);
+  }finally{
+    if(loud)setSOPRefreshBusy(false);
+  }
+}
 

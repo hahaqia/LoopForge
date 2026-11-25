@@ -64,7 +64,7 @@
 
 页面名在可视区域只出现一次。视图自带页头（`.page-heading`、`.page-header` 或知识中心的 `.kb-head`）时，导航函数给 `body` 加 `view-has-heading`，`product-v4.css` 隐藏顶栏 `.page-context`；搜索、项目切换、窄屏主题切换和窄屏菜单按钮不受影响。没有页头的流程设计页仍由顶栏显示标题，AI 工作台的顶栏本身隐藏。`#pageTitle` 文本始终随视图更新，供 e2e 断言与辅助技术使用。新增视图如果自带 H1，应使用 `.page-heading`，不要在页面内另写同名标题。
 
-顶栏 `.topbar-project` 是全局项目作用域的主力开关（`#projectSwitcher` 经 `enhanceSelect` 渲染为按钮），切换会写 `agentflow.activeProject` 并向工作台 iframe 推送项目上下文；逻辑集中在 `switchActiveProject`，顶栏切换器与需求列表页的项目名共用。`switchView` 把当前视图名写到 `body[data-view]`：`projects` 页在页内列出全部项目，顶栏切换器在此隐藏，避免与「管理所有项目」的页面语义冲突；`issues` 页把项目名做成按钮（`#projectContextSwitch` + `body` 级 `#projectSwitchMenu`），切换器与它影响的数据同屏，顶栏同样隐藏；运行记录、待我确认、统计仍保留顶栏入口。AI 工作台视图顶栏整体隐藏，项目由 iframe 内的选择器负责并回写 shell。
+顶栏 `.topbar-project` 是全局项目作用域的主力开关（`#projectSwitcher` 经 `enhanceSelect` 渲染为按钮），切换会写 `agentflow.activeProject` 并向工作台 iframe 推送项目上下文；逻辑集中在 `switchActiveProject`，顶栏切换器与需求列表页的项目名共用。`switchView` 把当前视图名写到 `body[data-view]`：`projects` 页在页内列出全部项目，顶栏切换器在此隐藏，避免与「管理所有项目」的页面语义冲突；`issues` 页把项目名做成按钮（`#projectContextSwitch` + `body` 级 `#projectSwitchMenu`），切换器与它影响的数据同屏，顶栏同样隐藏；平台 SOP 视角（`sop-platform-scope`）与不读当前项目的个人页 / 平台页（`settings`、`assistant`、`guide`、`runners`、`platform`、`mcp`）也隐藏切换器——这些页面切换项目不会改变任何内容，挂着只会让人以为筛掉了数据。规则 / 技能 / 产物模板、角色定义、环境资产保留切换器：它们的「复制到本项目」「其他项目共享」按当前项目判定。运行记录、待我确认、统计仍保留顶栏入口。AI 工作台视图顶栏整体隐藏，项目由 iframe 内的选择器负责并回写 shell。
 
 会话树的标题图标中心与竖线对齐。当前树轴为 17px，横向分支为 11px，列表文字统一左对齐。整行悬停底色覆盖标题、参与者和状态标记，不在行尾留出突兀缺口。
 
@@ -409,6 +409,8 @@ AI 助手页（`#assistantView`，路由 `#/assistant`）在设置导航「管�
 
 流程模板页（`#sopsView`）的 `#sopCatalog` 里项目、共享、通用三类 SOP 卡片按 Harness UI 绘制；顶部指标卡、工具栏、通用模板复制弹窗不在此范围。样式在 `web/app/sop-catalog.css`，紧跟 `assets-harness.css` 加载，规则限定在 `#sopsView` 与挂到 `<body>` 的 `.sop-action-popover` 内；`--hui-*` 令牌继承自 `harness-ui.css`。
 
+平台视角（`state.sopScope==='generic'`）不展示任何按项目统计的数据：`#sopOverview` 的五张指标卡（本项目运行、成功完成的运行、进行中 / 待审批、失败运行、Token 消耗）与运行健康筛选 / 排序整体隐藏，顶栏「当前项目」切换器也一并收起（`body.sop-platform-scope`）。平台 SOP 是全局配置，运行与 Token 都归属项目，混在同一屏会让「5 条平台 SOP」和「本项目运行 5」互相矛盾。平台视角卡片按名称排序，工具栏只保留 SOP 数 / 已发布 / 负责人。只有挂到「项目配置 › SOP 流程」的项目视角才显示这套指标。
+
 | 区域 | 约定 |
 | --- | --- |
 | 卡片 | `--hui-surface` 底、细边框、圆角 14px、`--hui-ind-shadow`，最小高 286px；网格 `minmax(330px, 1fr)`，≤1050px 为 280px，≤720px 单列。不再用健康色描边或通用模板蓝色渐变 |
@@ -421,11 +423,13 @@ AI 助手页（`#assistantView`，路由 `#/assistant`）在设置导航「管�
 | 卡片 | 主操作 | 菜单 |
 | --- | --- | --- |
 | 项目 SOP | 「打开」（`data-open-sop`，进入设计器） | 红字「删除」（`deleteWorkflow`）；平台管理员另有「提升为平台模板」（`promoteWorkflowToPlatform`） |
-| 通用模板 | 「复制到本项目」（`openGenericTemplateModal`）；已有副本时为「查看项目副本」 | 「直接运行」（`openRunModal`）；平台管理员另有「编辑模板」（`openGenericTemplateEditor`） |
+| 通用模板 | 「编辑模板」（`data-edit-generic`，平台管理员可见，进入设计器） | 无，单一动作不套「⋯」浮层 |
 
-项目 SOP 不再跨项目共享（复用统一走「平台 SOP → 复制到项目」），因此目录里不再有「共享 SOP」卡片；平台 SOP 的维护入口集中在「平台管理 › 平台 SOP」页签。
+项目 SOP 不再跨项目共享（复用统一走「平台 SOP → 复制到项目」），因此目录里不再有「共享 SOP」卡片。平台 SOP 的维护入口唯一收敛在「流程模板」页：查看、编辑、新建（平台管理员在平台视角看到「＋ 新建平台 SOP」）都在这里完成，「平台管理」页不再提供第二入口；复制到项目仍然只在「项目配置 › SOP 流程」。
 
-整卡（`tabindex=0`、`role=button`）点击或 Enter / 空格：项目 SOP 进入设计器，通用模板打开复制预检弹窗。「⋯」菜单是挂在 `<body>` 的单例浮层（`issue-action-popover sop-action-popover`），复用需求列表的浮层规格；打开时关闭需求页菜单，聚焦首项，方向键 / Home / End 移动，Escape 或 Tab 关闭并把焦点还给「⋯」，外部点击、滚动和窗口缩放关闭；触发器同步 `aria-expanded`。
+整卡（`tabindex=0`、`role=button`）点击或 Enter / 空格：项目 SOP 进入设计器，通用模板同样进入设计器（非平台管理员点通用模板会提示无权编辑，不进入只读态）。「⋯」菜单是挂在 `<body>` 的单例浮层（`issue-action-popover sop-action-popover`），复用需求列表的浮层规格；打开时关闭需求页菜单，聚焦首项，方向键 / Home / End 移动，Escape 或 Tab 关闭并把焦点还给「⋯」，外部点击、滚动和窗口缩放关闭；触发器同步 `aria-expanded`。
+
+右上角「刷新」必须让用户看见动作：点击后按钮立即置为 `is-loading`（`↻` 旋转、文案「刷新中…」、`disabled`、`aria-busy`），请求最快要停留 520ms，完成后重播卡片入场并 toast 汇总「已刷新 · N 个平台 SOP · M 次运行」。页面切换时的自动拉取走 `refreshWorkflowMetrics()` 静默路径，不闪按钮也不弹提示；`prefers-reduced-motion` 下只降透明度不旋转。
 
 健康徽标按 `metricHealth().label` 映射（`sopHealthTone()`）：
 

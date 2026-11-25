@@ -247,6 +247,14 @@ html[data-theme="dark"] #sopsView {
 #sopsView .sop-empty .harness-icon { width: 28px; height: 28px; color: var(--hui-tertiary); }
 
 /* ---------- Motion ---------- */
+/* 刷新按钮：按下立刻转起来，接口快的时候也能看见反馈。 */
+#refreshSOPs .sop-refresh-glyph { display: inline-block; }
+#refreshSOPs.is-loading { opacity: .72; cursor: progress; }
+#refreshSOPs.is-loading .sop-refresh-glyph { animation: sopRefreshSpin .8s linear infinite; }
+@keyframes sopRefreshSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  #refreshSOPs.is-loading .sop-refresh-glyph { animation: none; opacity: .6; }
+}
 #sopsView .sop-card.is-entering {
   animation: sopCardIn .55s var(--sop-ease-spring) both;
   animation-delay: calc(min(var(--card-index, 0), 10) * 30ms);

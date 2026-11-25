@@ -722,6 +722,16 @@ body.view-has-heading .topbar .command-trigger{margin-left:0 !important}
 body[data-view="projects"] .topbar-project{display:none!important}
 /* 需求列表页把切换器放在「当前项目」卡片上，切换点和它影响的数据同屏，顶栏不再重复。 */
 body[data-view="issues"] .topbar-project{display:none!important}
+/* 平台 SOP 是全局配置，与具体项目无关：平台视角下顶栏的「当前项目」没有可切换的对象。 */
+body[data-view="sops"].sop-platform-scope .topbar-project{display:none!important}
+/* 个人页与平台页完全不读当前项目：切换器挂在这里切了也不会改变任何内容，只误导人。
+   规则 / 技能 / 产物模板、角色定义、环境资产有「复制到本项目」「其他项目共享」这类按项目走的动作，仍需保留。 */
+body[data-view="settings"] .topbar-project,
+body[data-view="assistant"] .topbar-project,
+body[data-view="guide"] .topbar-project,
+body[data-view="runners"] .topbar-project,
+body[data-view="platform"] .topbar-project,
+body[data-view="mcp"] .topbar-project{display:none!important}
 /* 卡片项目名的切换菜单挂在 body 上，避免被卡片裁切。 */
 .project-switch-menu{position:fixed;z-index:1300;display:grid;gap:2px;min-width:240px;max-height:300px;overflow:auto;padding:7px;border:1px solid var(--line-strong);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}
 .project-switch-menu[hidden]{display:none}
@@ -871,6 +881,9 @@ html[data-theme="dark"] .status.paused{color:var(--amber)}
 #sopsView .sop-catalog,
 #sopsView .sop-stats{max-width:none;width:100%;margin:0}
 #sopsView .sop-overview{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+/* 平台视角没有按项目统计的运行数据：指标卡和运行筛选整体隐藏。 */
+#sopsView .sop-overview[hidden],
+#sopsView .sop-toolbar-filters[hidden]{display:none!important}
 #sopsView .sop-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0;min-height:0;background:transparent;border:0;border-radius:0;box-shadow:none}
 #sopsView .sop-toolbar-filters{display:flex;gap:8px;margin-left:auto}
 #sopsView .sop-catalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));justify-content:stretch;gap:16px}
