@@ -55,6 +55,11 @@ func sshRepositoryURLs(repositories []domain.RepositoryContext) []string {
 func cloneRemoteForGit(ctx context.Context, remote string) string {
 	// The command-scoped credential helper authenticates HTTPS. Keep tokens
 	// out of clone arguments and the origin URL written by Git.
+	// 下载镜像只替代这份数据的传输：克隆走镜像，origin 随后由调用方设回
+	// 真实地址，fetch/push 仍然直连仓库。
+	if mirrored := gitwork.CloneMirrorURL(remote); mirrored != "" {
+		return mirrored
+	}
 	return remote
 }
 

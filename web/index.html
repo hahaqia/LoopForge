@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="/app/assistant-settings.css">
   <link rel="stylesheet" href="/preferences.css">
   <link rel="stylesheet" href="/app/issues-list.css">
-  <link rel="stylesheet" href="/app/requirement-wizard.css?v=20261116nosop">
+  <link rel="stylesheet" href="/app/requirement-wizard.css?v=20261125reqtitle">
   <link rel="stylesheet" href="/app/assets-harness.css">
   <link rel="stylesheet" href="/app/sops-harness.css">
   <link rel="stylesheet" href="/app/sop-catalog.css">
@@ -930,6 +930,12 @@
         <section id="reqStepDescribe" class="req-pane" aria-label="描述需求">
           <div class="req-chat-composer">
             <textarea id="chatInput" aria-label="需求描述" placeholder="要做什么？例如：个人主页增加徽章，需要兼容现有成就体系。" rows="6"></textarea>
+            <div id="reqTitleRow" class="req-title-row" hidden>
+              <span class="req-title-tag">标题</span>
+              <button type="button" id="reqTitlePreview" class="req-title-text" aria-label="修改需求标题" title="点击修改标题"></button>
+              <input id="reqTitleInput" class="req-title-input" aria-label="需求标题" maxlength="80" autocomplete="off" placeholder="一句话概括这条需求" hidden>
+              <button type="button" id="reqTitleEdit" class="req-title-edit" aria-label="编辑需求标题" title="编辑标题"><svg class="agent-icon harness-icon" data-icon="edit" width="12" height="12" aria-hidden="true"></svg></button>
+            </div>
             <div class="req-composer-toolbar">
               <div id="reqRepoChip" class="req-ghost-sel">
                 <button type="button" id="reqRepoChipToggle" class="req-ghost-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="reqRepoPopover"><svg class="agent-icon harness-icon" data-icon="folder" width="13" height="13" aria-hidden="true"></svg><span id="reqRepoChipLabel" class="req-ghost-value"></span><svg class="agent-icon harness-icon req-chev" data-icon="chevron-down" width="13" height="13" aria-hidden="true"></svg></button>
@@ -1310,7 +1316,7 @@
     </div>
   </div>
   <div id="revisionModal" class="modal"><div class="modal-card revision-card"><button type="button" class="modal-close" id="revisionClose">×</button><div class="wizard-head"><div><p class="eyebrow">版本历史</p><h2 id="revisionTitle">版本历史</h2><p>对比上一版并回退。回退会生成新版本，不会改已经跑完的记录。</p></div></div><div id="revisionList" class="revision-list"></div><pre id="revisionDiff" class="revision-diff">选择一个历史版本查看差异。</pre><div class="wizard-actions"><button type="button" class="button ghost" id="revisionClose2">关闭</button><button type="button" class="button primary" id="revisionRestore" disabled>回退到此版本</button></div></div></div>
-  <script src="/app.js?v=20261124cardproject"></script>
+  <script src="/app.js?v=20261125reqtitle"></script>
   <script src="/app/assistant-models.js"></script>
   <script src="/app/access.js"></script>
   <script src="/app/dashboards.js"></script>

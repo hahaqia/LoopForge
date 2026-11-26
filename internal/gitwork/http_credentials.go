@@ -29,6 +29,25 @@ func WithHTTPRemote(ctx context.Context, remote string) context.Context {
 	return context.WithValue(ctx, httpRemoteKey{}, remote)
 }
 
+// mirroredInnerURL 取出下载镜像形式里的原始地址：
+// https://gh-proxy.com/https://github.com/owner/repo.git 返回内层的
+// https://github.com/owner/repo.git。镜像只换了实际连接的机器，凭据仍然
+// 属于原始仓库，所以查凭据要用内层 host，而 helper 匹配的是镜像 host。
+func mirroredInnerURL(raw string) (string, bool) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || !strings.EqualFold(u.Scheme, "https") {
+		return "", false
+	}
+	inner := strings.TrimPrefix(u.Path, "/")
+	if !strings.HasPrefix(inner, "https://") {
+		return "", false
+	}
+	if innerURL, err := url.Parse(inner); err != nil || innerURL.Host == "" {
+		return "", false
+	}
+	return inner, true
+}
+
 func httpCredentialForCommand(ctx context.Context, args []string) (credential HTTPCredential, host, urlHost string) {
 	credentials, _ := ctx.Value(httpCredentialsKey{}).(map[string]HTTPCredential)
 	if len(credentials) == 0 {
@@ -45,11 +64,23 @@ func httpCredentialForCommand(ctx context.Context, args []string) (credential HT
 	if err != nil || u.Scheme != "https" {
 		return HTTPCredential{}, "", ""
 	}
-	host, err = HTTPSHostScope("https://" + u.Host)
+	connection := "https://" + u.Host
+	if inner, ok := mirroredInnerURL(remote); ok {
+		remote = inner
+	}
+	credentialURL, err := url.Parse(remote)
+	if err != nil || credentialURL.Scheme != "https" {
+		return HTTPCredential{}, "", ""
+	}
+	host, err = HTTPSHostScope(connection)
 	if err != nil {
 		return HTTPCredential{}, "", ""
 	}
-	credential = credentials[host]
+	credentialHost, err := HTTPSHostScope("https://" + credentialURL.Host)
+	if err != nil {
+		return HTTPCredential{}, "", ""
+	}
+	credential = credentials[credentialHost]
 	if credential.Username == "" {
 		credential.Username = "x-access-token"
 	}

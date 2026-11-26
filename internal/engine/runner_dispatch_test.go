@@ -74,6 +74,25 @@ func TestGateCommandInvocationCarriesResponsibleCredentialReference(t *testing.T
 	}
 }
 
+// 本机已有的 checkout 要随仓库一起下发：执行机器用它当 clone 的对象缓存。
+func TestBindRunnerRepositoriesCarriesLocalCloneCache(t *testing.T) {
+	t.Parallel()
+	repository := domain.RepositoryContext{RepositoryID: "repo", Name: "Service", CloneURL: "https://example.test/service.git", BaseBranch: "main", LocalPath: "/srv/checkouts/service"}
+	for _, run := range []domain.Run{
+		{Repository: repository},
+		{Repositories: []domain.RepositoryContext{repository}},
+	} {
+		invocation := &domain.RunnerInvocation{}
+		bindRunnerRepositories(invocation, run, "", "")
+		if len(invocation.Repositories) != 1 || invocation.Repositories[0].LocalPath != repository.LocalPath {
+			t.Fatalf("runner invocation lost the local clone cache: %+v", invocation)
+		}
+		if invocation.Repository != nil && invocation.Repository.LocalPath != repository.LocalPath {
+			t.Fatalf("legacy runner binding lost the local clone cache: %+v", invocation.Repository)
+		}
+	}
+}
+
 func TestBindRunnerRepositoriesUsesConfiguredMainBranchWhenBaseIsEmpty(t *testing.T) {
 	t.Parallel()
 	repository := domain.RepositoryContext{RepositoryID: "repo", Name: "Service", CloneURL: "https://example.test/service.git", DefaultBranch: "release/configured-main", WorkBranch: "feature/work", RequireExistingWorkBranch: true}

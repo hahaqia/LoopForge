@@ -136,6 +136,82 @@
 }
 #requirementModal .req-chat-composer textarea::placeholder { color: color-mix(in srgb, var(--hui-muted) 80%, transparent); }
 #requirementModal .req-chat-composer.is-compact textarea { min-height: 64px; padding: 12px 14px 4px; font-size: 14px; }
+
+/* 标题预览：默认展示自动抽取的一句话，点一下就地改写 */
+#requirementModal .req-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  margin: 0 10px 2px;
+  padding: 3px 8px;
+  border-top: 1px dashed color-mix(in srgb, var(--hui-border) 65%, transparent);
+}
+#requirementModal .req-title-row[hidden],
+#requirementModal .req-title-text[hidden],
+#requirementModal .req-title-input[hidden] { display: none; }
+#requirementModal .req-title-tag {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--hui-text) 5%, transparent);
+  color: var(--hui-tertiary);
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+#requirementModal .req-title-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--hui-muted);
+  font: 400 13px/1.5 var(--hui-sans);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+  transition: background-color .14s, color .14s;
+}
+#requirementModal .req-title-text:hover {
+  background: color-mix(in srgb, var(--hui-text) 4%, transparent);
+  color: var(--hui-text);
+}
+#requirementModal .req-title-text.is-custom { color: var(--hui-text); font-weight: 500; }
+#requirementModal .req-title-input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--hui-accent) 45%, transparent);
+  border-radius: 7px;
+  outline: 0;
+  background: var(--hui-surface);
+  color: var(--hui-text);
+  font: 400 13px/1.5 var(--hui-sans);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hui-accent) 7%, transparent);
+}
+#requirementModal .req-title-edit {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--hui-tertiary);
+  cursor: pointer;
+  transition: background-color .14s, color .14s;
+}
+#requirementModal .req-title-edit:hover {
+  background: color-mix(in srgb, var(--hui-text) 5%, transparent);
+  color: var(--hui-text);
+}
+#requirementModal .req-title-row.is-editing .req-title-edit { display: none; }
 #requirementModal .req-composer-toolbar {
   display: flex;
   align-items: center;

@@ -1263,6 +1263,13 @@ function bind(){
   $('#reqCreate').onclick=()=>createIssueFromChat();
   $('#reqCreateChat').onclick=()=>createIssueFromChat(undefined,'chat');
   $('#reqRepoChipToggle').onclick=e=>{e.stopPropagation();toggleReqRepoPopover()};
+  $('#reqTitlePreview')?.addEventListener('click',()=>beginReqTitleEdit());
+  $('#reqTitleEdit')?.addEventListener('click',()=>beginReqTitleEdit());
+  $('#reqTitleInput')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();endReqTitleEdit(true)}
+    else if(e.key==='Escape'){e.preventDefault();endReqTitleEdit(false)}
+  });
+  $('#reqTitleInput')?.addEventListener('blur',()=>{if(reqTitleEditing())endReqTitleEdit(true)});
   $$('#reqTarget [data-req-target]').forEach(b=>b.onclick=()=>setReqTarget(b.dataset.reqTarget));
   $$('#reqDelivery [data-req-delivery]').forEach(b=>b.onclick=()=>setReqDelivery(b.dataset.reqDelivery));
   document.addEventListener('pointerdown',e=>{

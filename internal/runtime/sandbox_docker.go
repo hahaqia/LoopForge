@@ -979,11 +979,23 @@ func isolatedRuntimeImage(dockerfile domain.DockerfileDefinition) string {
 	return strings.TrimSpace(os.Getenv("AGENTFLOW_ISOLATED_IMAGE"))
 }
 
-const isolatedDockerfileBase = "FROM node:22-bookworm\nRUN apt-get update && apt-get install -y --no-install-recommends git openssh-client python3 ripgrep ca-certificates curl && rm -rf /var/lib/apt/lists/*\n"
-const legacyIsolatedDockerfile = isolatedDockerfileBase + "RUN npm install -g @openai/codex @anthropic-ai/claude-code @tencent-ai/codebuddy-code\nWORKDIR /workspace\n"
+// legacyIsolatedDockerfile 是历史版本的沙箱定义：apt 与 npm 都走官方源，
+// 装三个 agent CLI 要几十分钟。它只用于识别存量 catalog 行，不要跟着
+// isolatedDockerfileBase 一起改，否则老数据会被误判成自定义镜像。
+const legacyIsolatedDockerfile = "FROM node:22-bookworm\n" +
+	"RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client python3 ripgrep ca-certificates curl && rm -rf /var/lib/apt/lists/*\n" +
+	"RUN npm install -g @openai/codex @anthropic-ai/claude-code @tencent-ai/codebuddy-code\n" +
+	"WORKDIR /workspace\n"
+
+// isolatedDockerfileBase 走国内镜像源。实测本机到 deb.debian.org 约 100kB/s、
+// 到 registry.npmjs.org 约 240kB/s，而中科大 apt 约 900kB/s、npmmirror 约
+// 4.7MB/s；三个 agent CLI 走官方源会让首次派发长时间卡在「构建沙箱镜像」。
+const isolatedDockerfileBase = "FROM node:22-bookworm\n" +
+	"RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then sed -i 's|deb.debian.org|mirrors.ustc.edu.cn|g' /etc/apt/sources.list.d/debian.sources; fi \\\n" +
+	" && apt-get update && apt-get install -y --no-install-recommends git openssh-client python3 ripgrep ca-certificates curl && rm -rf /var/lib/apt/lists/*\n"
 
 // IsolatedDockerfile is the fallback for profiles without a custom image.
-const IsolatedDockerfile = isolatedDockerfileBase + "RUN npm install -g @openai/codex @anthropic-ai/claude-code\nARG CODEBUDDY_PACKAGE=@tencent-ai/codebuddy-code\nRUN if [ -n \"$CODEBUDDY_PACKAGE\" ]; then npm install -g \"$CODEBUDDY_PACKAGE\"; fi\nWORKDIR /workspace\n"
+const IsolatedDockerfile = isolatedDockerfileBase + "RUN npm install -g --registry=https://registry.npmmirror.com @openai/codex @anthropic-ai/claude-code\nARG CODEBUDDY_PACKAGE=@tencent-ai/codebuddy-code\nRUN if [ -n \"$CODEBUDDY_PACKAGE\" ]; then npm install -g --registry=https://registry.npmmirror.com \"$CODEBUDDY_PACKAGE\"; fi\nWORKDIR /workspace\n"
 
 func isBuiltInIsolatedDockerfile(dockerfile domain.DockerfileDefinition) bool {
 	return len(dockerfile.Files) == 0 && (dockerfile.Content == IsolatedDockerfile || dockerfile.Content == legacyIsolatedDockerfile)

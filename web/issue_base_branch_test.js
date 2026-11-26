@@ -22,7 +22,10 @@ function element(value = "") {
   const classes = new Set();
   return {
     value, dataset: {}, hidden: false, disabled: false, textContent: "", innerHTML: "",
-    classList: {contains: v => classes.has(v), add: v => classes.add(v), remove: v => classes.delete(v)},
+    classList: {
+      contains: v => classes.has(v), add: v => classes.add(v), remove: v => classes.delete(v),
+      toggle: (v, force) => { if (force === undefined ? !classes.has(v) : force) { classes.add(v); return true; } classes.delete(v); return false; },
+    },
     querySelectorAll: () => [], querySelector: () => null, focus() {},
   };
 }
@@ -30,6 +33,7 @@ const elements = {};
 for (const id of [
   "reqRepository", "reqBaseBranch", "reqBaseBranchHint", "requirementModal", "reqRepoChip", "reqRepoChipLabel",
   "chatInput", "reqComposerHint", "reqWorkflow",
+  "reqTitleRow", "reqTitlePreview", "reqTitleInput", "reqTitleEdit",
   "importTAPDModal", "importTAPDURL", "importTAPDWorkflow",
   "importTAPDRepository", "importTAPDBaseBranch", "importTAPDBaseBranchHint", "importTAPDRepositoryBranches", "confirmImportTAPD",
 ]) elements["#" + id] = element();
@@ -71,6 +75,8 @@ load(ctx, [
   "updateIssueBaseBranchInput", "reqProjectRepositories", "selectedReqRepositoryIds", "selectedReqRepositoryId", "selectedReqBaseBranch",
   "renderReqRepositoryPicker", "syncReqBaseBranch", "setReqRepositoryIds",
   "reqRepoNames", "renderReqRepoChip", "reqDescription", "collectRequirementDraft",
+  "deriveReqTitle", "reqAutoTitle", "reqEffectiveTitle", "renderReqTitle",
+  "reqTitleEditing", "beginReqTitleEdit", "endReqTitleEdit",
   "persistRequirementComposer", "applyRequirementComposerDraft", "pushExistingIssueToTAPD",
   "createIssueFromChat", "rememberIssue", "clearRequirementComposer", "selectedImportTAPDRepositoryIds", "importTAPDStory",
   "selectedIssueRepositoryBranches", "renderIssueRepositoryBranchInputs", "renderImportTAPDRepositoryPicker", "setImportTAPDRepositoryIds",
@@ -159,6 +165,55 @@ assert.equal(elements["#chatInput"].value, "继续开发已有分支");
   elements["#chatInput"].value = "空分支";
   await ctx.createIssueFromChat("local");
   assert.equal(requests.at(-1).body.baseBranch, "", "blank branch preserves server-side repository defaults");
+
+  assert.equal(ctx.deriveReqTitle("个人主页增加徽章。需要兼容现有成就体系。"), "个人主页增加徽章", "the title stops at the first sentence end");
+  assert.equal(ctx.deriveReqTitle("  个人主页增加徽章  \n兼容现有成就体系"), "个人主页增加徽章", "the title keeps using the first non-empty line");
+  assert.equal(ctx.deriveReqTitle("个人主页增加徽章！"), "个人主页增加徽章", "trailing punctuation is dropped");
+  assert.ok(ctx.deriveReqTitle("个人主页增加徽章".repeat(30)).length <= 80, "overlong titles stay within 80 chars");
+  assert.equal(ctx.deriveReqTitle("   "), "", "blank input yields no title");
+  elements["#chatInput"].value = "个人主页增加徽章\n兼容现有成就体系";
+  ctx.state.reqTitleManual = "个人主页徽章体系";
+  assert.equal(ctx.collectRequirementDraft().title, "个人主页徽章体系", "a hand-written title wins over the derived one");
+  ctx.state.reqTitleManual = "";
+
+  const row = elements["#reqTitleRow"], preview = elements["#reqTitlePreview"], titleInput = elements["#reqTitleInput"];
+  elements["#chatInput"].value = "个人主页增加徽章。需要兼容现有成就体系。";
+  ctx.renderReqTitle();
+  assert.equal(row.hidden, false, "the title row shows once there is a description");
+  assert.equal(preview.textContent, "个人主页增加徽章", "the row previews the derived title");
+  assert.equal(preview.classList.contains("is-custom"), false, "a derived title is not marked as custom");
+
+  ctx.beginReqTitleEdit();
+  assert.equal(row.classList.contains("is-editing"), true, "editing swaps the preview for an input");
+  assert.equal(titleInput.hidden, false);
+  assert.equal(titleInput.value, "个人主页增加徽章", "editing starts from the effective title");
+
+  titleInput.value = "  个人主页徽章体系  ";
+  ctx.endReqTitleEdit(true);
+  assert.equal(row.classList.contains("is-editing"), false);
+  assert.equal(titleInput.hidden, true);
+  assert.equal(ctx.state.reqTitleManual, "个人主页徽章体系", "committing keeps the hand-written title");
+  assert.equal(preview.textContent, "个人主页徽章体系");
+  assert.equal(preview.classList.contains("is-custom"), true);
+
+  elements["#chatInput"].value = "改了正文的另一句话";
+  ctx.renderReqTitle();
+  assert.equal(preview.textContent, "个人主页徽章体系", "a hand-written title survives description edits");
+
+  ctx.beginReqTitleEdit();
+  titleInput.value = "改了正文的另一句话";
+  ctx.endReqTitleEdit(true);
+  assert.equal(ctx.state.reqTitleManual, "", "a title equal to the derived one falls back to auto");
+
+  ctx.beginReqTitleEdit();
+  titleInput.value = "取消掉的标题";
+  ctx.endReqTitleEdit(false);
+  assert.equal(ctx.state.reqTitleManual, "", "cancelling keeps the previous title");
+
+  elements["#chatInput"].value = "";
+  ctx.renderReqTitle();
+  assert.equal(row.hidden, true, "an empty description hides the title row");
+  assert.equal(ctx.state.reqTitleManual, "", "clearing the description drops the hand-written title");
 
   const share = "【关闭套餐后清理付费队列】\nhttps://tapd.example.com/tapd_fe/10000000/task/detail/1010000000100001554";
   elements["#importTAPDURL"].value = share;

@@ -590,6 +590,10 @@ type RunnerRepository struct {
 	// Dir is the workspace-relative checkout directory (empty is only kept
 	// for persisted legacy runs that already checked out at the workspace root).
 	Dir string `json:"dir,omitempty"`
+	// LocalPath is an existing checkout on the execution machine, used only as
+	// a clone object cache (git clone --reference). It never becomes origin and
+	// is silently ignored when it is missing or not a Git repository.
+	LocalPath string `json:"localPath,omitempty"`
 	// SyncWorkBranch is the control plane's decision that WorkBranch may
 	// receive intermediate node commits (it is not a shared base/integration
 	// branch). Only such repositories are touched by the work-branch actions.

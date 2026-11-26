@@ -7,6 +7,74 @@ function hydrateReqIcons(root){
 function reqDescription(){
   return ($('#chatInput')?.value||'').trim();
 }
+// 从需求正文抽一句话做标题：首行优先，遇到句末标点就断开，超长时退到最近的标点处截断。
+// 建单不再要求用户先想好标题，但抽出来的结果会显示在输入框下方，可以就地改。
+function deriveReqTitle(text){
+  const MAX=80;
+  const first=String(text||'').replace(/\r\n?/g,'\n').split('\n').map(l=>l.trim()).find(Boolean)||'';
+  if(!first)return '';
+  let title=first;
+  if(title.length>MAX){
+    const head=title.slice(0,MAX);
+    const cut=Math.max(head.lastIndexOf('。'),head.lastIndexOf('！'),head.lastIndexOf('？'),head.lastIndexOf('；'),
+      head.lastIndexOf('，'),head.lastIndexOf('、'),head.lastIndexOf(', '),head.lastIndexOf('. '));
+    title=cut>0?head.slice(0,cut):head;
+  }else{
+    const stop=title.search(/[。！？；]/);
+    if(stop>0)title=title.slice(0,stop);
+  }
+  return title.replace(/[。！？；，、,.;:!?\s]+$/,'').trim().slice(0,MAX);
+}
+function reqAutoTitle(){
+  return deriveReqTitle(reqDescription());
+}
+function reqEffectiveTitle(){
+  return String(state.reqTitleManual||'').trim()||reqAutoTitle();
+}
+function reqTitleEditing(){
+  return !!$('#reqTitleRow')?.classList.contains('is-editing');
+}
+function renderReqTitle(){
+  const row=$('#reqTitleRow');
+  if(!row)return;
+  const hasText=!!reqDescription();
+  row.hidden=!hasText;
+  if(!hasText)state.reqTitleManual='';
+  const manual=String(state.reqTitleManual||'').trim();
+  const text=reqEffectiveTitle();
+  const preview=$('#reqTitlePreview');
+  if(preview){
+    preview.textContent=text||'待补充标题';
+    preview.classList.toggle('is-custom',!!manual);
+  }
+  const input=$('#reqTitleInput');
+  if(input&&!reqTitleEditing())input.value=text;
+}
+function beginReqTitleEdit(){
+  const row=$('#reqTitleRow'),preview=$('#reqTitlePreview'),input=$('#reqTitleInput');
+  if(!row||!preview||!input||row.hidden||reqTitleEditing())return;
+  row.classList.add('is-editing');
+  preview.hidden=true;
+  input.hidden=false;
+  input.value=reqEffectiveTitle();
+  input.focus();
+  input.select?.();
+}
+// 提交时把「和自动抽取结果一致」的值退回自动态，正文继续变化时标题还能跟着走。
+function endReqTitleEdit(commit){
+  const row=$('#reqTitleRow'),preview=$('#reqTitlePreview'),input=$('#reqTitleInput');
+  if(!row||!preview||!input||!reqTitleEditing())return;
+  if(commit){
+    const MAX=80;
+    const next=(input.value||'').trim().slice(0,MAX);
+    state.reqTitleManual=next&&next!==reqAutoTitle()?next:'';
+  }
+  row.classList.remove('is-editing');
+  input.hidden=true;
+  preview.hidden=false;
+  renderReqTitle();
+  persistRequirementComposer();
+}
 function projectTAPDReady(project){
   project=project||currentProject();
   if(!project)return false;
@@ -238,6 +306,7 @@ function updateReqCharCount(){
 }
 function onReqDescriptionInput(){
   updateReqCharCount();
+  renderReqTitle();
   renderReqFooter();
   persistRequirementComposer();
 }
@@ -265,6 +334,7 @@ function persistRequirementComposer(){
     open:requirementComposerOpen(),
     projectId:currentProject()?.id||'',
     input:$('#chatInput')?.value||'',
+    titleManual:String(state.reqTitleManual||''),
     target:state.reqTarget||'local',
     delivery:reqUsesSOP()?'sop':'none',
     repoIds:selectedReqRepositoryIds(),
@@ -278,8 +348,13 @@ function clearRequirementComposer(){
   try{sessionStorage.removeItem('agentflow.requirementComposer')}catch{}
 }
 function resetRequirementComposer(){
-  Object.assign(state,{reqCreating:'',reqTarget:'local',reqDelivery:'sop'});
+  Object.assign(state,{reqCreating:'',reqTarget:'local',reqDelivery:'sop',reqTitleManual:''});
   ['#reqBaseBranch','#chatInput'].forEach(id=>{const el=$(id);if(el)el.value=''});
+  $('#reqTitleRow')?.classList.remove('is-editing');
+  const titleInput=$('#reqTitleInput'),titlePreview=$('#reqTitlePreview');
+  if(titleInput){titleInput.value='';titleInput.hidden=true}
+  if(titlePreview)titlePreview.hidden=false;
+  renderReqTitle();
   renderReqContext();
   renderReqTarget();
   updateReqCharCount();
@@ -301,6 +376,8 @@ function applyRequirementComposerDraft(raw){
   fillReqWorkflow(raw.workflowId||raw.playbookId);
   renderReqDelivery();
   const input=$('#chatInput');if(input)input.value=raw.input||'';
+  state.reqTitleManual=String(raw.titleManual||'').slice(0,80);
+  renderReqTitle();
   renderReqTarget();
   updateReqCharCount();
   renderReqFooter();
@@ -355,8 +432,7 @@ function clarifyToolLabel(tool){
 }
 function collectRequirementDraft(){
   const description=reqDescription();
-  const first=(description.split('\n').map(l=>l.trim()).find(Boolean)||'');
-  return {title:first.slice(0,80),description};
+  return {title:reqEffectiveTitle(),description};
 }
 function rememberIssue(saved, prevId){
   if(!saved||!saved.id)return saved;

@@ -45,7 +45,45 @@ func Run(ctx context.Context, workspace string, args ...string) (string, error) 
 const (
 	CloneStallEnv   = "AGENTFLOW_GIT_CLONE_STALL_TIMEOUT"
 	CloneTimeoutEnv = "AGENTFLOW_GIT_CLONE_TIMEOUT"
+	// CloneMirrorEnv 是 GitHub 下载镜像的前缀，形如 https://gh-proxy.com/。
+	// 它只承担 clone 的下载：克隆成功后 origin 会改回真实地址，push 与评审
+	// 仍直连仓库，避免把凭据和写操作交给第三方。留空表示直连。
+	CloneMirrorEnv = "AGENTFLOW_GIT_CLONE_MIRROR"
 )
+
+// CloneMirrorURL 把仓库地址拼成镜像地址；未配置镜像或地址为空时返回空串。
+// 镜像约定是「前缀 + 完整原始地址」，例如
+// https://gh-proxy.com/https://github.com/owner/repo.git。
+func CloneMirrorURL(remote string) string {
+	mirror := strings.TrimSpace(os.Getenv(CloneMirrorEnv))
+	remote = strings.TrimSpace(remote)
+	if mirror == "" || remote == "" {
+		return ""
+	}
+	if !strings.HasSuffix(mirror, "/") {
+		mirror += "/"
+	}
+	return mirror + remote
+}
+
+// CloneReferencePath 判断执行机器上已有的 checkout 能否充当这次 clone 的本地
+// 对象缓存（git clone --reference）。分支和提交仍然取自远端，只省掉对象下载；
+// 配合 --dissociate 会把借用的对象复制进新仓库，缓存之后被删掉也不会损坏
+// checkout。路径不是绝对路径、不存在、不是目录或不是 Git 仓库时返回空串，
+// 调用方照常从网络克隆。
+func CloneReferencePath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" || !filepath.IsAbs(path) {
+		return ""
+	}
+	if info, err := os.Stat(path); err != nil || !info.IsDir() {
+		return ""
+	}
+	if _, err := os.Stat(filepath.Join(path, ".git")); err != nil {
+		return ""
+	}
+	return path
+}
 
 // Watch runs a long git command (clone) like Run, but through procwatch:
 // output is streamed to the context's observer, a command that stops printing

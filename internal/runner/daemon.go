@@ -1254,6 +1254,12 @@ func cloneRepository(ctx context.Context, workspace string, repo *domain.RunnerR
 	if err := gitwork.ValidateRemoteURL(url, true); err != nil {
 		return fmt.Errorf("git clone: %w", err)
 	}
+	// 下载镜像只替代这份数据的传输。克隆完成后 origin 会改回真实地址，
+	// 后续 push、评审链接仍然指向仓库本身，不落到镜像上。
+	cloneURL := url
+	if mirrored := gitwork.CloneMirrorURL(url); mirrored != "" {
+		cloneURL = mirrored
+	}
 	// `-c` auth is scoped to this command, so origin stays the clean URL and
 	// the token never lands in .git/config. --progress: without a terminal git
 	// prints nothing until it finishes, so a slow clone looked hung.
@@ -1261,13 +1267,28 @@ func cloneRepository(ctx context.Context, workspace string, repo *domain.RunnerR
 	if ref := strings.TrimSpace(repo.Ref); ref != "" {
 		args = append(args, "--branch", ref)
 	}
-	args = append(args, "--", url, ".")
+	// 本机已有的 checkout 只作为对象缓存：分支与提交仍然按远端解析，
+	// --dissociate 把借用的对象复制进新仓库，缓存之后再不可用也无影响。
+	reference := gitwork.CloneReferencePath(repo.LocalPath)
+	if reference != "" {
+		args = append(args, "--reference", reference, "--dissociate")
+	}
+	args = append(args, "--", cloneURL, ".")
 	watch := runnerCloneWatch(repo)
+	if reference != "" {
+		// --dissociate 在传输完成后静默重打包，本地缓存大时可能几分钟没有输出。
+		watch.Stall = 0
+	}
 	// The platform cannot see this host's output yet; the operator can.
 	ctx = procwatch.WithObserver(ctx, func(event procwatch.Event) { log.Printf("runner checkout: %s", event.Message) })
 	tail, err := gitwork.Watch(repositoryGitContext(ctx, *repo), workspace, watch, args...)
 	if err != nil {
 		return fmt.Errorf("git clone %s: %w (%s)", domain.StripURLCredentials(repo.CloneURL), err, cloneOutput([]byte(tail), repo.GitToken))
+	}
+	if cloneURL != url {
+		if out, err := exec.CommandContext(ctx, "git", "-C", workspace, "remote", "set-url", "origin", url).CombinedOutput(); err != nil {
+			return fmt.Errorf("git set origin: %v (%s)", err, cloneOutput(out, repo.GitToken))
+		}
 	}
 	// The branch steps below keep the bound they always had.
 	cloneCtx := ctx
