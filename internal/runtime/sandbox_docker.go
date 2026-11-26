@@ -166,6 +166,18 @@ func (s *dockerSandbox) Exec(ctx context.Context, command CommandSpec, sink Even
 	return out, err
 }
 
+// dockerProcessStateFile chooses a path the supervisor can write inside the
+// container. Runner tasks carry no conversation root, so their state lives in
+// the workspace mounted at /workspace; using a relative path there would
+// resolve under the shell's cwd and break state/stop coordination.
+func dockerProcessStateFile(conversationRoot string, now time.Time) string {
+	name := fmt.Sprintf("process-%d.pid", now.UnixNano())
+	if conversationRoot != "" {
+		return filepath.Join(conversationRoot, "home", "tmp", name)
+	}
+	return filepath.Join("/workspace", ".agentflow", "runtime", name)
+}
+
 func (s *dockerSandbox) execOnce(ctx context.Context, command CommandSpec, sink EventSink) (out string, err error) {
 	command, cliPath, err := s.prepareSOPCLI(ctx, command)
 	if err != nil {
@@ -191,7 +203,7 @@ func (s *dockerSandbox) execOnce(ctx context.Context, command CommandSpec, sink 
 	}
 	processFile := ""
 	if command.OwnProcessGroup {
-		processFile = filepath.Join(s.requirements.ConversationRoot, "home", "tmp", fmt.Sprintf("process-%d.pid", time.Now().UnixNano()))
+		processFile = dockerProcessStateFile(s.requirements.ConversationRoot, time.Now())
 		argv = dockerConversationProcessArgv(processFile, argv)
 		defer func() {
 			stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

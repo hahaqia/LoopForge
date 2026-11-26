@@ -86,6 +86,16 @@ func (e *Engine) nodeFailedAt(runID string, node domain.WorkflowNode, attempt, g
 	}
 }
 
+// isGateFailureError reports failures produced by a verification gate,
+// including the generated artifact-structure check. Such a failure means the
+// conversation already ran to completion with the wrong result; retrying must
+// start a fresh session with the full brief and the failure feedback, not
+// resume the stale CLI conversation.
+func isGateFailureError(err string) bool {
+	err = strings.TrimSpace(err)
+	return strings.HasPrefix(err, "verification ") || strings.Contains(err, "缺少必需章节")
+}
+
 func shouldRetryFailedAttempt(node domain.WorkflowNode, attempt int, err error) bool {
 	// A failed artifact write must not repeat a child that already succeeded.
 	if errors.Is(err, ErrWorkspaceControlConfiguration) || errors.Is(err, errSOPArtifactWrite) {

@@ -74,7 +74,10 @@ type Config struct {
 	DefaultWorkspaceRoot string
 	HeartbeatInterval    time.Duration
 	LongPollTimeout      time.Duration
-	DisableAutoUpdate    bool
+	// AgentStallTimeout interrupts an agent CLI that emits no output or
+	// observation for too long. Zero disables the watchdog.
+	AgentStallTimeout time.Duration
+	DisableAutoUpdate bool
 	// DisableRunSandboxReuse gives every task its own sandbox instead of one
 	// per run and sandbox definition.
 	DisableRunSandboxReuse bool
@@ -126,6 +129,9 @@ func New(cfg Config) (*Daemon, error) {
 	}
 	if cfg.LongPollTimeout <= 0 {
 		cfg.LongPollTimeout = 35 * time.Second
+	}
+	if cfg.AgentStallTimeout == 0 {
+		cfg.AgentStallTimeout = procwatch.DurationEnv(AgentStallTimeoutEnv, defaultAgentStallTimeout)
 	}
 	if cfg.DefaultWorkspaceRoot == "" {
 		home, _ := os.UserHomeDir()
@@ -994,6 +1000,10 @@ func (d *Daemon) executeInvocation(ctx context.Context, task domain.RunnerTask) 
 	if sandbox != nil {
 		command := prepared.Command
 		command.Argv = argv
+		// The Docker supervisor reaps the CLI and its double-forked children
+		// when a stall (or any other cancel) kills docker exec. Without it a
+		// silent agent would keep running inside the workspace container.
+		command.OwnProcessGroup = true
 		command = runtime.WithCommandEnvironment(command, commandEnv)
 		result = d.executeSandboxProcess(ctx, task, sandbox, command)
 	} else {

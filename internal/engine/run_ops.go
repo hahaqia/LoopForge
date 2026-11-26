@@ -582,8 +582,15 @@ func (e *Engine) retryContext(ctx context.Context, runID, nodeID, reason, humanC
 	// A node parked on 人工确认 is waiting for an answer, not for a fresh
 	// start: keep its CLI session so the operator's note continues the same
 	// conversation instead of discarding everything the Agent already asked.
-	resumeWaitingSession := nodeStatus == "waiting_approval" && !scriptNode
+	// 门禁/验证失败转人工时，旧会话里只有失败的产物；续接它会让 Agent
+	// 把旧稿原样重交。必须开新会话、带完整任务书和失败反馈重跑。
+	// 提问等待、暂停等场景仍续接原会话，保留已经问过的内容。
+	gateFailed := isGateFailureError(r.Nodes[nodeID].Error)
+	resumeWaitingSession := nodeStatus == "waiting_approval" && !scriptNode && !gateFailed
 	note := recordHumanContext(&r, nodeID, reason, humanContext)
+	if gateFailed {
+		note = "上一轮未通过门禁：" + strings.TrimSpace(r.Nodes[nodeID].Error) + "\n\n" + note
+	}
 	var stale []string
 	for id := range reset {
 		if nr := r.Nodes[id]; nr != nil {
@@ -603,9 +610,9 @@ func (e *Engine) retryContext(ctx context.Context, runID, nodeID, reason, humanC
 				nr.Feedback = note
 				if resumeWaitingSession && strings.TrimSpace(nr.SessionID) != "" {
 					nr.ResumeSessionID = strings.TrimSpace(nr.SessionID)
-				}
-				if !resumeWaitingSession {
-					// 人工点的是“从头重跑”，提问配额也重新给。
+				} else {
+					// 门禁失败重跑必须丢弃旧会话；提问配额也重新给。
+					nr.ResumeSessionID = ""
 					nr.AskCount = 0
 				}
 			} else {

@@ -28,6 +28,9 @@ func prepareInvocationWorkspace(workspace string, inv *domain.RunnerInvocation) 
 	if _, err := runtime.RestoreMissingWorkspaceArtifacts(workspace, inv.ArchivedFiles); err != nil {
 		return fmt.Errorf("restore archived outputs: %w", err)
 	}
+	if err := runtime.WriteTemplateFiles(workspace, inv.Templates); err != nil {
+		return fmt.Errorf("write artifact templates: %w", err)
+	}
 	if rel := strings.TrimSpace(inv.GateResultPath); rel != "" {
 		if !domain.SafeWorkspaceRelPath(rel) {
 			return fmt.Errorf("unsafe gate result path %q", rel)

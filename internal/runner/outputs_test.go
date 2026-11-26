@@ -9,6 +9,25 @@ import (
 	"agentflow/internal/domain"
 )
 
+func TestPrepareInvocationWorkspaceWritesArtifactTemplates(t *testing.T) {
+	workspace := t.TempDir()
+	body := "# 需求定型 · {{需求标题}}\n\n## 目标\n"
+	inv := &domain.RunnerInvocation{Templates: map[string]string{"requirement": body}}
+	if err := prepareInvocationWorkspace(workspace, inv); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(workspace, ".agentflow", "templates", "requirement.md"))
+	if err != nil {
+		t.Fatalf("artifact skeleton was not materialized: %v", err)
+	}
+	if string(got) != body {
+		t.Fatalf("template = %q, want %q", got, body)
+	}
+	if err := prepareInvocationWorkspace(t.TempDir(), &domain.RunnerInvocation{}); err != nil {
+		t.Fatalf("empty templates should be a no-op: %v", err)
+	}
+}
+
 func TestPrepareInvocationWorkspaceWritesInputsAndClearsGateResult(t *testing.T) {
 	workspace := t.TempDir()
 	gate := ".agentflow/gate-results/review/attempt-1.json"

@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -18,6 +19,40 @@ func requireConversationSubreaper(t *testing.T) {
 	}
 	if _, err := exec.LookPath("python3"); err != nil {
 		t.Skip("Python3 is required by the Docker conversation supervisor")
+	}
+}
+
+func TestDockerProcessStateFileIsAbsoluteForRunnerTasks(t *testing.T) {
+	now := time.Unix(1_700_000_000, 123_456_789)
+	runnerPath := dockerProcessStateFile("", now)
+	if !filepath.IsAbs(runnerPath) || !strings.HasPrefix(runnerPath, filepath.Join("/workspace", ".agentflow", "runtime", "process-")) {
+		t.Fatalf("runner state file must be absolute under /workspace: %q", runnerPath)
+	}
+	conversationPath := dockerProcessStateFile("/data/conversations/session", now)
+	if want := filepath.Join("/data/conversations/session", "home", "tmp"); !strings.HasPrefix(conversationPath, want) {
+		t.Fatalf("conversation state file = %q, want prefix %q", conversationPath, want)
+	}
+}
+
+func TestDockerConversationStopAfterNormalExitWithoutMarker(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("Python3 is required by the Docker conversation stop script")
+	}
+	path := filepath.Join(t.TempDir(), "process.pid")
+	state, err := json.Marshal(map[string]any{"pid": os.Getpid(), "start": "0", "status": "done"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, state, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	argv := dockerConversationStopArgv(path)
+	output, err := exec.Command(argv[0], argv[1:]...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("stop after a normal CLI exit should succeed without a stop marker: %s %v", output, err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("done state file was not cleaned up: %v", err)
 	}
 }
 

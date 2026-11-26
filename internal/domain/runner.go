@@ -514,6 +514,10 @@ type RunnerInvocation struct {
 	// them into the run workspace so verification and handoff keep working.
 	Artifacts         []ArtifactContract `json:"artifacts,omitempty"`
 	ArtifactDirectory string             `json:"artifactDirectory,omitempty"`
+	// Templates holds artifact skeleton bodies keyed by template ID. The
+	// runner materializes them under .agentflow/templates so an agent sees
+	// the same skeleton as local execution.
+	Templates map[string]string `json:"templates,omitempty"`
 	// Inputs are upstream artifacts the runner writes read-only into the
 	// task workspace before the invocation (paths under .agentflow/inputs).
 	Inputs []RunnerInputFile `json:"inputs,omitempty"`

@@ -778,6 +778,12 @@ func (e *Engine) executeNode(ctx context.Context, runID string, wf domain.Workfl
 				prompt += "\n\n# Upstream artifacts\n\n" + artifactContext
 			}
 			prompt = appendArtifactContract(prompt, effectiveNode, current.RepositoryContexts())
+			// 新会话重跑（门禁失败转人工后重试）时，操作员说明和上一轮失败
+			// 原因保存在 nr.Feedback 里，必须并入完整任务书；resume 分支
+			// 仍用它自己的“继续执行”措辞，不走这里。
+			if resumeSessionID == "" && feedback == "" && resumeFeedback != "" {
+				feedback = resumeFeedback
+			}
 			if feedback != "" && feedback != gateMissingRetryMarker {
 				template := agent.Loop.FeedbackPrompt
 				if template == "" {

@@ -203,6 +203,7 @@ func (e *Engine) dispatchRunnerTask(ctx context.Context, runnerID string, run do
 		Agent:                         agent,
 		Assets:                        assets,
 		Artifacts:                     node.ArtifactOutputs,
+		Templates:                     options.Templates,
 		HumanContext:                  run.HumanContext,
 		CredentialSource:              authMode,
 		GateResultPath:                options.GateResultPath,

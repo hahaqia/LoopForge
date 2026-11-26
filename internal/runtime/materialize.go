@@ -27,6 +27,25 @@ type compiledConfig struct {
 	SystemPrompt string
 }
 
+// WriteTemplateFiles materializes artifact skeletons under
+// .agentflow/templates/<id>.md. The control plane and execution machines both
+// call it, so an agent reads the same skeleton regardless of where it runs.
+func WriteTemplateFiles(workspace string, templates map[string]string) error {
+	if len(templates) == 0 {
+		return nil
+	}
+	root := filepath.Join(workspace, ".agentflow", "templates")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return err
+	}
+	for id, body := range templates {
+		if err := os.WriteFile(filepath.Join(root, id+".md"), []byte(body), 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func materialize(workspace, invocationID string, ex domain.ExecutorDefinition, a domain.AgentDefinition, assets domain.AgentAssetBundle) (compiledConfig, error) {
 	return materializeInvocation(workspace, invocationID, ex, a, assets, InvocationOptions{})
 }
@@ -167,16 +186,8 @@ func materializeInvocationForDriver(workspace, invocationID string, ex domain.Ex
 		}
 		mergedMCP = append(mergedMCP, gateServer)
 	}
-	if len(options.Templates) > 0 {
-		templateRoot := filepath.Join(workspace, ".agentflow", "templates")
-		if err := os.MkdirAll(templateRoot, 0o755); err != nil {
-			return compiled, err
-		}
-		for id, body := range options.Templates {
-			if err := os.WriteFile(filepath.Join(templateRoot, id+".md"), []byte(body), 0o644); err != nil {
-				return compiled, err
-			}
-		}
+	if err := WriteTemplateFiles(workspace, options.Templates); err != nil {
+		return compiled, err
 	}
 	if options.BrowserMCP != nil {
 		mergedMCP = append(mergedMCP, *options.BrowserMCP)

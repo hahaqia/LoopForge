@@ -119,7 +119,12 @@ while True:
         break
     if state['status']=='done':
         os.unlink(path)
-        os.unlink(stopped)
+        # A normal CLI exit never creates a stop marker; only an explicit
+        # cancellation does. Missing marker is success, not a stop failure.
+        try:
+            os.unlink(stopped)
+        except FileNotFoundError:
+            pass
         break
     try:
         with open('/proc/'+str(state['pid'])+'/stat') as f:

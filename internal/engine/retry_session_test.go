@@ -43,6 +43,40 @@ func TestRetryWaitingApprovalKeepsAgentSession(t *testing.T) {
 	}
 }
 
+// 门禁失败转人工后重试必须开新会话，带上产物模板与失败反馈；恢复旧会话
+// 会让 Agent 原样重交上一轮被驳回的文档。
+func TestRetryGateFailureUsesFreshSessionWithFeedback(t *testing.T) {
+	t.Parallel()
+	e, s := newRecoveryEngine(t)
+	e.ConfigureExecution("test", "test", time.Second, false)
+	wf := domain.WorkflowDefinition{ID: "retry-gate-fresh", Name: "retry gate fresh", Nodes: []domain.WorkflowNode{
+		{ID: "clarify", Name: "clarify", Type: "agent"},
+	}}
+	run := domain.Run{ID: "run-retry-gate-fresh", WorkflowID: wf.ID, WorkflowSnapshot: wf, Status: "waiting", Nodes: map[string]*domain.NodeRun{
+		"clarify": {NodeID: "clarify", Status: "waiting_approval", Attempt: 2, SessionID: "session-stale", Error: "verification requirement.md 章节完整: 缺少必需章节: 目标 背景与现状"},
+	}}
+	if err := s.PutRun(run); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Retry(run.ID, "clarify", "人工确认重试本节点", "请按需求文档骨架重写"); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := s.Run(run.ID)
+	if !ok {
+		t.Fatal("run missing after retry")
+	}
+	nr := got.Nodes["clarify"]
+	if nr.ResumeSessionID != "" {
+		t.Fatalf("gate failure retry must start fresh, got resume session %q", nr.ResumeSessionID)
+	}
+	if !strings.Contains(nr.Feedback, "缺少必需章节") {
+		t.Fatalf("failure detail missing from feedback: %q", nr.Feedback)
+	}
+	if !strings.Contains(nr.Feedback, "请按需求文档骨架重写") {
+		t.Fatalf("operator note missing from feedback: %q", nr.Feedback)
+	}
+}
+
 // 失败重试是从头再来：旧 session 可能已经跑偏或被丢，不能盲目 --resume。
 func TestRetryFailedAgentDoesNotResumeStaleSession(t *testing.T) {
 	t.Parallel()

@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -28,6 +29,11 @@ const (
 	// under the lease renew interval so Pause/Cancel still feel immediate
 	// when the control socket is down or stalled.
 	controlFallbackInterval = time.Second
+	// AgentStallTimeoutEnv caps how long an agent CLI may stay silent. "0"
+	// disables the watchdog; malformed values keep the default.
+	AgentStallTimeoutEnv     = "AGENTFLOW_AGENT_STALL_TIMEOUT"
+	defaultAgentStallTimeout = 5 * time.Minute
+	agentStallCheckInterval  = 5 * time.Second
 )
 
 // eventBatcher buffers runner output and ships it in batches. The server
@@ -42,6 +48,9 @@ type eventBatcher struct {
 	buf      []domain.RunnerTaskEvent
 	tail     []string
 	observer *flowruntime.ProtocolObserver
+	// lastProgress is written by the stdout/stderr reader goroutines and read
+	// by the execution loop that owns the stall watchdog.
+	lastProgress atomic.Int64
 }
 
 // executeSandboxProcess runs a prepared command through a sandbox created on
@@ -80,6 +89,8 @@ func (d *Daemon) executeSandboxProcess(ctx context.Context, task domain.RunnerTa
 	controlCh := d.taskControl(task.ID)
 	flushTicker := time.NewTicker(eventFlushInterval)
 	defer flushTicker.Stop()
+	stallTicker := time.NewTicker(agentStallCheckInterval)
+	defer stallTicker.Stop()
 	canceled := false
 	ctxDone := ctx.Done()
 	for {
@@ -107,6 +118,21 @@ func (d *Daemon) executeSandboxProcess(ctx context.Context, task domain.RunnerTa
 			return result
 		case <-flushTicker.C:
 			batcher.flush(ctx)
+		case <-stallTicker.C:
+			if task.Invocation == nil || !batcher.stalled(d.cfg.AgentStallTimeout) {
+				continue
+			}
+			stallErr := agentStallError(d.cfg.AgentStallTimeout)
+			batcher.addLine("system", stallErr.Error())
+			batcher.addObservation(domain.TelemetryEvent{Category: "process", Name: "process.stalled", Phase: "finish", Level: "error", Message: stallErr.Error()})
+			batcher.flush(context.Background())
+			cancel()
+			return execResult{
+				status:   domain.RunnerTaskFailed,
+				exitCode: -1,
+				result:   batcher.taskResult(batcher.result()),
+				errMsg:   stallErr.Error(),
+			}
 		case <-renewTicker.C:
 			if taskLeaseManaged(ctx) {
 				continue
@@ -147,6 +173,7 @@ func tailString(value string, limit int) string {
 
 func newEventBatcher(task domain.RunnerTask, client *Client) *eventBatcher {
 	b := &eventBatcher{taskID: task.ID, client: client}
+	b.lastProgress.Store(time.Now().UnixNano())
 	if task.Invocation != nil {
 		b.observer = flowruntime.NewProtocolObserver(task.Invocation.Executor, b.addObservation)
 	}
@@ -162,6 +189,23 @@ func (b *eventBatcher) add(typ, data string) {
 	if typ == "stdout" {
 		b.tail = append(b.tail, data)
 	}
+	// Only real CLI progress resets the watchdog. Runner-originated system
+	// lines (including the stall warning itself) must not keep it alive.
+	if typ == "stdout" || typ == "stderr" || typ == "observation" {
+		b.lastProgress.Store(time.Now().UnixNano())
+	}
+}
+
+func (b *eventBatcher) stalled(timeout time.Duration) bool {
+	if timeout <= 0 {
+		return false
+	}
+	last := b.lastProgress.Load()
+	return last > 0 && time.Since(time.Unix(0, last)) >= timeout
+}
+
+func agentStallError(timeout time.Duration) error {
+	return fmt.Errorf("agent stall: no CLI output or observation for %s", timeout)
 }
 
 func (b *eventBatcher) addLine(typ, line string) {
@@ -341,6 +385,8 @@ func (d *Daemon) executeProcess(ctx context.Context, task domain.RunnerTask, arg
 	controlCh := d.taskControl(task.ID)
 	flushTicker := time.NewTicker(eventFlushInterval)
 	defer flushTicker.Stop()
+	stallTicker := time.NewTicker(agentStallCheckInterval)
+	defer stallTicker.Stop()
 
 	canceled := false
 	ctxDone := ctx.Done()
@@ -381,6 +427,21 @@ func (d *Daemon) executeProcess(ctx context.Context, task domain.RunnerTask, arg
 			return result
 		case <-flushTicker.C:
 			batcher.flush(ctx)
+		case <-stallTicker.C:
+			if task.Invocation == nil || !batcher.stalled(d.cfg.AgentStallTimeout) {
+				continue
+			}
+			stallErr := agentStallError(d.cfg.AgentStallTimeout)
+			batcher.addLine("system", stallErr.Error())
+			batcher.addObservation(domain.TelemetryEvent{Category: "process", Name: "process.stalled", Phase: "finish", Level: "error", Message: stallErr.Error()})
+			batcher.flush(context.Background())
+			terminateProcessGroup(cmd, processDone)
+			return execResult{
+				status:   domain.RunnerTaskFailed,
+				exitCode: -1,
+				result:   batcher.taskResult(batcher.result()),
+				errMsg:   stallErr.Error(),
+			}
 		case <-renewTicker.C:
 			if taskLeaseManaged(ctx) {
 				continue
